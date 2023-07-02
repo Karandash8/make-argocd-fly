@@ -1,0 +1,9 @@
+envs:
+  - dev
+  - stage
+  - prod
+
+vars:
+  namespace: kek-system
+  app:
+    resource: deployment.yml
