@@ -2,8 +2,7 @@ import logging
 import os
 import yaml
 
-from make_argocd_fly.source import SourceViewer
-from make_argocd_fly.output import OutputRenderer
+from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 
 log = logging.getLogger(__name__)
 
@@ -24,11 +23,11 @@ def read_config(config_file: str) -> dict:
 
   return config
 
-def build_source_viewer(root_path: str, source_dir: str, filter: str = None) -> SourceViewer:
-  source_viewer = SourceViewer(os.path.join(root_path, source_dir))
+def build_resource_viewer(root_element_abs_path: str, filter: str = None) -> ResourceViewer:
+  source_viewer = ResourceViewer(root_element_abs_path)
   source_viewer.build('.')
 
   return source_viewer
 
-def build_output_renderer(output_dir: str, envs: list, filter: str = None) -> OutputRenderer:
-  return OutputRenderer(output_dir, envs)
+def build_resource_writer(output_dir_abs_path: str, envs: list, filter: str = None) -> ResourceWriter:
+  return ResourceWriter(output_dir_abs_path, envs)
