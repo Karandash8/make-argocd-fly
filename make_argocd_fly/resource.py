@@ -2,6 +2,8 @@ import logging
 import os
 import re
 
+from make_argocd_fly.parser import resource_parser
+
 log = logging.getLogger(__name__)
 
 
@@ -34,7 +36,7 @@ class ResourceViewer:
         self.children.append(child)
     else:
       with open(path) as f:
-        self.content = f.readlines()
+        self.content = ''.join(f.readlines())
 
     log.debug('Created element ({})'.format(self))
 
@@ -73,25 +75,30 @@ class ResourceViewer:
 
 
 class ResourceWriter:
-  def __init__(self, output_dir_abs_path: str, envs: list) -> None:
+  def __init__(self, output_dir_abs_path: str, envs: list, existing_resources: list = None) -> None:
     self.output_dir_abs_path = output_dir_abs_path
     self.envs = envs
+    self.existing_resources = existing_resources
 
-  def write_file(self, dir_rel_path: str, filename: str, resource: str) -> None:
+  def update_resource(self, dir_rel_path: str, resource_yml: str) -> None:
+    resource_kind, resource_name = resource_parser(resource_yml)
+
+    self.existing_resources[(dir_rel_path, resource_kind, resource_name)] = resource_yml
+
+  def write_updates(self) -> None:
+    for (dir_rel_path, resource_kind, _), resource_yml in self.existing_resources.items():
+      self.write_file(dir_rel_path, resource_kind + '.yml', resource_yml)
+
+  def write_file(self, dir_rel_path: str, filename: str, resource_yml: str) -> None:
     path = os.path.join(self.output_dir_abs_path, dir_rel_path)
     os.makedirs(path, exist_ok=True)
 
     if not os.path.exists(os.path.join(path, filename)):
       with open(os.path.join(path, filename), 'w') as f:
-        f.write(resource)
+        f.write(resource_yml)
+        f.write('\n')
     else:
-      with open(os.path.join(path, filename), 'r') as f:
-        file_content = f.read()
-
-      if not re.search(resource, file_content):
-        with open(os.path.join(path, filename), 'a') as f:
-          f.write('---')
-          f.write(resource)
-
-  def write_files(self) -> None:
-    pass
+      with open(os.path.join(path, filename), 'a') as f:
+        f.write('---\n')
+        f.write(resource_yml)
+        f.write('\n')

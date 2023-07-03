@@ -3,6 +3,8 @@ import os
 import yaml
 
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
+from make_argocd_fly.parser import multi_resource_parser
+from make_argocd_fly.utils import extract_dir_rel_path
 
 log = logging.getLogger(__name__)
 
@@ -30,4 +32,12 @@ def build_resource_viewer(root_element_abs_path: str, filter: str = None) -> Res
   return source_viewer
 
 def build_resource_writer(output_dir_abs_path: str, envs: list, filter: str = None) -> ResourceWriter:
-  return ResourceWriter(output_dir_abs_path, envs)
+  existing_resources = {}
+
+  if os.path.exists(output_dir_abs_path):
+    output_viewer = build_resource_viewer(output_dir_abs_path)
+    yml_children = output_viewer.get_files_children('.yml$')
+    existing_resources = {(extract_dir_rel_path(yml_child.element_rel_path), resource_kind, resource_name): resource_yml
+                         for yml_child in yml_children for resource_kind, resource_name, resource_yml in multi_resource_parser(yml_child.content)}
+
+  return ResourceWriter(output_dir_abs_path, envs, existing_resources)
