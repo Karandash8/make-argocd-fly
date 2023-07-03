@@ -24,8 +24,8 @@ def read_config(config_file: str) -> dict:
 
   return config
 
-def build_source_viewer(root_dir: str, source_dir: str, filter: str = None) -> SourceViewer:
-  source_viewer = SourceViewer(os.path.join(root_dir, source_dir))
+def build_source_viewer(root_path: str, source_dir: str, filter: str = None) -> SourceViewer:
+  source_viewer = SourceViewer(os.path.join(root_path, source_dir))
   source_viewer.build('.')
 
   return source_viewer
