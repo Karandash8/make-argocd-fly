@@ -1,0 +1,1 @@
+include make_argocd_fly/log_config.yml
