@@ -162,4 +162,6 @@ cython_debug/
 source/
 output/
 .tmp/
+.vscode
+
 

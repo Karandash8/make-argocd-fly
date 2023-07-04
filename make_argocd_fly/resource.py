@@ -80,9 +80,7 @@ class ResourceWriter:
     self.envs = envs
     self.existing_resources = existing_resources
 
-  def update_resource(self, dir_rel_path: str, resource_yml: str) -> None:
-    resource_kind, resource_name = resource_parser(resource_yml)
-
+  def update_resource(self, dir_rel_path: str, resource_kind: str, resource_name: str, resource_yml: str) -> None:
     self.existing_resources[(dir_rel_path, resource_kind, resource_name)] = resource_yml
 
   def write_updates(self) -> None:
@@ -93,12 +91,12 @@ class ResourceWriter:
     path = os.path.join(self.output_dir_abs_path, dir_rel_path)
     os.makedirs(path, exist_ok=True)
 
-    if not os.path.exists(os.path.join(path, filename)):
-      with open(os.path.join(path, filename), 'w') as f:
+    if not os.path.exists(os.path.join(path, filename.lower())):
+      with open(os.path.join(path, filename.lower()), 'w') as f:
         f.write(resource_yml)
         f.write('\n')
     else:
-      with open(os.path.join(path, filename), 'a') as f:
+      with open(os.path.join(path, filename.lower()), 'a') as f:
         f.write('---\n')
         f.write(resource_yml)
         f.write('\n')

@@ -35,12 +35,14 @@ def step_1(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> No
 
     for yml_child in yml_children:
       dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
-      writer.write_file(dir_rel_path, yml_child.name, yml_child.content)
+      for resource_kind, resource_name, resource_yml in multi_resource_parser(yml_child.content):
+        writer.update_resource(dir_rel_path, resource_kind, resource_name, resource_yml)
 
     for j2_child in j2_children:
       dir_rel_path = extract_dir_rel_path(j2_child.element_rel_path)
       template = environment.get_template(j2_child.element_rel_path)
-      writer.write_file(dir_rel_path, j2_child.name[:-3], template.render(config.vars))
+      for resource_kind, resource_name, resource_yml in multi_resource_parser(template.render(config.vars)):
+        writer.update_resource(dir_rel_path, resource_kind, resource_name, resource_yml)
 
 def step_2(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> None:
   # step 2: run kustomize
@@ -58,8 +60,8 @@ def step_2(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> No
                                       universal_newlines=True)
           stdout, stderr = process.communicate()
 
-          for resource_kind, _, resource_yml in multi_resource_parser(stdout):
-            writer.update_resource(os.path.join(env, app.name), resource_yml)
+          for resource_kind, resource_name, resource_yml in multi_resource_parser(stdout):
+            writer.update_resource(os.path.join(env, app.name), resource_kind, resource_name, resource_yml)
           log.debug(stdout)
       else:
         yml_child = app.get_child('kustomization.yml')
@@ -71,16 +73,16 @@ def step_2(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> No
                                       universal_newlines=True)
           stdout, _ = process.communicate()
 
-          for resource_kind, _, resource_yml in multi_resource_parser(stdout):
-            writer.update_resource(os.path.join(env, app.name), resource_yml)
+          for resource_kind, resource_name, resource_yml in multi_resource_parser(stdout):
+            writer.update_resource(os.path.join(env, app.name), resource_kind, resource_name, resource_yml)
           log.debug(stdout)
         else:
           yml_children = app.get_files_children('.yml$')
 
           for yml_child in yml_children:
             dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
-            resource_kind, _ = resource_parser(yml_child.content)
-            writer.write_file(os.path.join(env, app.name), resource_kind + '.yml', yml_child.content)
+            for resource_kind, resource_name, resource_yml in multi_resource_parser(yml_child.content):
+              writer.update_resource(os.path.join(env, app.name), resource_kind, resource_name, resource_yml)
 
 def main() -> None:
   parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')
@@ -100,8 +102,12 @@ def main() -> None:
   source_viewer = build_resource_viewer(config.config['source_dir'], args.app)
   tmp_writer = build_resource_writer(config.config['tmp_dir'], config.envs, args.env)
   step_1(source_viewer, tmp_writer, config)
+  tmp_writer.write_updates()
 
   tmp_viewer = build_resource_viewer(config.config['tmp_dir'], args.app)
   output_writer = build_resource_writer(config.config['output_dir'], config.envs, args.env)
   step_2(tmp_viewer, output_writer, config)
+  #TODO: clean only filtered apps/envs
+  if os.path.exists(config.config['output_dir']):
+    shutil.rmtree(config.config['output_dir'])
   output_writer.write_updates()
