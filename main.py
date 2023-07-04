@@ -27,6 +27,7 @@ if __name__ == '__main__':
   parser.add_argument('--env', type=str, default=None, help='Environment to render')
   parser.add_argument('--app', type=str, default=None, help='Application to render')
   parser.add_argument('--root-dir', type=str, default=os.getcwd(), help='Root directory')
+  parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file')
   parser.add_argument('--log-config-file', type=str, default=LOG_CONFIG_FILE, help='Logging configuration file')
   args = parser.parse_args()
 
@@ -36,7 +37,7 @@ if __name__ == '__main__':
   root_dir = args.root_dir
   log.debug('Root directory path: {}'.format(root_dir))
 
-  config = read_config(root_dir, CONFIG_FILE)
+  config = read_config(root_dir, args.config_file)
   if os.path.exists(config.config['tmp_dir']):
     shutil.rmtree(config.config['tmp_dir'])
 
