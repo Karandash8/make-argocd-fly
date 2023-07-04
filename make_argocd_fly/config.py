@@ -1,11 +1,12 @@
 import logging
 import os
-
-log = logging.getLogger(__name__)
+import yaml
 
 SOURCE_DIR = 'source'
 OUTPUT_DIR = 'output'
 TMP_DIR = '.tmp'
+
+log = logging.getLogger(__name__)
 
 
 class Config:
@@ -32,3 +33,16 @@ class Config:
     if 'tmp_dir' not in self.config:
       self.config['tmp_dir'] = TMP_DIR
     self.config['tmp_dir'] = os.path.join(self.root_dir, self.config['tmp_dir'])
+
+
+def read_config(root_dir: str, config_file: str) -> Config:
+  config = {}
+  try:
+    with open(os.path.join(root_dir, config_file)) as f:
+      config = yaml.safe_load(f.read())
+  except FileNotFoundError as error:
+    log.error('Config file is missing')
+    log.fatal(error)
+    raise
+
+  return Config(root_dir, config)

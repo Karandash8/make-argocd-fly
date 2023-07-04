@@ -5,6 +5,7 @@ A project to generate ArgoCD application resources
 ```
 python -m venv .venv
 . .venv/bin/activate
+python3 -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
