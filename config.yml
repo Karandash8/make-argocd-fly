@@ -1,3 +1,8 @@
+config:
+  source_dir: source
+  output_dir: output
+  tmp_dir: .tmp
+
 envs:
   - dev
   - stage

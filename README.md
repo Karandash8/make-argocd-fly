@@ -10,5 +10,5 @@ pip install -r requirements.txt
 
 # Run
 ```
-python make_argocd_fly/main.py --root-dir-abs-path <path>
+python make_argocd_fly/main.py --root-dir <path>
 ```

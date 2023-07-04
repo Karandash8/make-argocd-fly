@@ -5,45 +5,43 @@ import os
 import argparse
 import subprocess
 import shutil
-import re
 from jinja2 import Environment, FileSystemLoader
 
 from make_argocd_fly.init import read_config, build_resource_viewer, build_resource_writer
-from make_argocd_fly.parser import multi_resource_parser, resource_parser
-from make_argocd_fly.utils import extract_dir_rel_path
+from make_argocd_fly.utils import extract_dir_rel_path, multi_resource_parser, resource_parser
 
 LOG_CONFIG_FILE = 'log_config.yml'
-TMP_DIR = '.tmp'
 CONFIG_FILE = 'config.yml'
-SOURCE_DIR = 'source'
-OUTPUT_DIR = 'output'
 
-try:
-  with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), LOG_CONFIG_FILE)) as f:
-    yaml_config = yaml.safe_load(f.read())
-    logging.config.dictConfig(yaml_config)
-except FileNotFoundError:
-  logging.basicConfig(level='DEBUG')
 
-log = logging.getLogger(__name__)
-
+def configure_logging(log_config_file: str) -> None:
+  try:
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), log_config_file)) as f:
+      yaml_config = yaml.safe_load(f.read())
+      logging.config.dictConfig(yaml_config)
+  except FileNotFoundError:
+    logging.basicConfig(level='DEBUG')
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')
   parser.add_argument('--env', type=str, default=None, help='Environment to render')
   parser.add_argument('--app', type=str, default=None, help='Application to render')
-  parser.add_argument('--root-dir-abs-path', type=str, default=os.path.dirname(os.path.realpath(__file__)), help='Root directory')
+  parser.add_argument('--root-dir', type=str, default=os.getcwd(), help='Root directory')
+  parser.add_argument('--log-config-file', type=str, default=LOG_CONFIG_FILE, help='Logging configuration file')
   args = parser.parse_args()
 
-  root_dir_abs_path = args.root_dir_abs_path
-  log.debug('Root directory path: {}'.format(root_dir_abs_path))
+  configure_logging(args.log_config_file)
+  log = logging.getLogger(__name__)
 
-  if os.path.exists(os.path.join(root_dir_abs_path, TMP_DIR)):
-    shutil.rmtree(os.path.join(root_dir_abs_path, TMP_DIR))
+  root_dir = args.root_dir
+  log.debug('Root directory path: {}'.format(root_dir))
 
-  config = read_config(os.path.join(root_dir_abs_path, CONFIG_FILE))
-  source_viewer = build_resource_viewer(os.path.join(root_dir_abs_path, SOURCE_DIR), args.app)
-  tmp_writer = build_resource_writer(os.path.join(root_dir_abs_path, TMP_DIR), config['envs'], args.env)
+  config = read_config(root_dir, CONFIG_FILE)
+  if os.path.exists(config.config['tmp_dir']):
+    shutil.rmtree(config.config['tmp_dir'])
+
+  source_viewer = build_resource_viewer(config.config['source_dir'], args.app)
+  tmp_writer = build_resource_writer(config.config['tmp_dir'], config.envs, args.env)
 
   # step 1: copy .yml files, render .j2 files
   environment = Environment(loader=FileSystemLoader(source_viewer.root_element_abs_path))
@@ -60,14 +58,14 @@ if __name__ == '__main__':
     for j2_child in j2_children:
       dir_rel_path = extract_dir_rel_path(j2_child.element_rel_path)
       template = environment.get_template(j2_child.element_rel_path)
-      tmp_writer.write_file(dir_rel_path, j2_child.name[:-3], template.render(config['vars']))
+      tmp_writer.write_file(dir_rel_path, j2_child.name[:-3], template.render(config.vars))
 
-  tmp_viewer = build_resource_viewer(os.path.join(root_dir_abs_path, TMP_DIR), args.app)
-  output_writer = build_resource_writer(os.path.join(root_dir_abs_path, OUTPUT_DIR), config['envs'], args.env)
+  tmp_viewer = build_resource_viewer(config.config['tmp_dir'], args.app)
+  output_writer = build_resource_writer(config.config['output_dir'], config.envs, args.env)
 
   # step 2: run kustomize
   apps = [app for app in tmp_viewer.get_dirs_children(depth=1)]
-  for env in config['envs']:
+  for env in config.envs:
     for app in apps:
       env_child = app.get_child(env)
       if env_child:

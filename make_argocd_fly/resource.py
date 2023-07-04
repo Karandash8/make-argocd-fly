@@ -2,7 +2,7 @@ import logging
 import os
 import re
 
-from make_argocd_fly.parser import resource_parser
+from make_argocd_fly.utils import resource_parser
 
 log = logging.getLogger(__name__)
 
