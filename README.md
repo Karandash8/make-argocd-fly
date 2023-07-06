@@ -30,6 +30,8 @@ vars:
   var_3: value_3
 ```
 
+With such configuration file you can have kustomize overlays for `dev/stage/prod` and jinja2 variables like `{{ var_1.var_2 }} and {{ var_3 }}` in your source files.
+
 ## Caveats
 ### Currently supported directory structure
 ```
@@ -37,28 +39,23 @@ repo
   source
     app_1
       base
-        yaml.yml
-        kustomization.yml
+        yaml.yml(.j2)
+        kustomization.yml(.j2)
       dev
-        yaml.yml
-        kustomization.yml
+        yaml.yml(.j2)
+        kustomization.yml(.j2)
       stage
-        yaml.yml
-        kustomization.yml
+        yaml.yml(.j2)
+        kustomization.yml(.j2)
       prod
-        yaml.yml
-        kustomization.yml
+        yaml.yml(.j2)
+        kustomization.yml(.j2)
     app_2
-      yaml.yml
-      kustomization.yml
+      yaml.yml(.j2)
+      kustomization.yml(.j2)
     app_3
-      yaml.yml.j2
-      kustomization.yml.j2
-    app_4
-      yaml.yml
+      yaml.yml(.j2)
 ```
-
-With such configuration file you can have kustomize overlays for `dev/stage/prod` and jinja2 variables like `{{ var_1.var_2 }} and {{ var_3 }}` in your source files.
 
 ### kustomization.yml
 Files referenced in the `resources` section shall be named after Kubernetes resource types with lower case letters as a single word. Example:
