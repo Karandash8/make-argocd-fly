@@ -5,11 +5,11 @@ import os
 import argparse
 import subprocess
 import shutil
-from jinja2 import Environment, FileSystemLoader
 
 from make_argocd_fly.config import read_config, Config
 from make_argocd_fly.utils import extract_dir_rel_path, multi_resource_parser, resource_parser
 from make_argocd_fly.resource import build_resource_viewer, build_resource_writer, ResourceViewer, ResourceWriter
+from make_argocd_fly.application import generate_application
 
 LOG_CONFIG_FILE = 'log_config.yml'
 CONFIG_FILE = 'config.yml'
@@ -24,57 +24,57 @@ except FileNotFoundError:
 log = logging.getLogger(__name__)
 
 
-def step_1(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> None:
-  # step 1: copy .yml files, render .j2 files
-  environment = Environment(loader=FileSystemLoader(viewer.root_element_abs_path))
-  apps = [app for app in viewer.get_dirs_children(depth=1)]
-  for app in apps:
-    yml_children = viewer.get_child(app.name).get_files_children('.yml$')
-    j2_children = viewer.get_child(app.name).get_files_children('.j2$')
-    log.debug('app: {}, yml files: {}, j2_files: {}'.format(app.name, [child.element_rel_path for child in yml_children], [child.element_rel_path for child in j2_children]))
+def find_app_in_envs(target_app_name: str, envs: dict) -> str:
+  for env_name, env_data in envs.items():
+    if target_app_name in env_data['apps'].keys():
+      return env_name
 
-    for yml_child in yml_children:
-      dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
-      for resource_kind, resource_name, resource_yml in multi_resource_parser(yml_child.content):
-        writer.update_resource(dir_rel_path, resource_kind, resource_name, resource_yml)
+# TODO: rework this nonsense
+def run(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> None:
+  # write apps in a tmp dir and run kustomize
+  for env_name, env_data in config.envs.items():
+    if os.path.exists(config.config['tmp_dir']):
+      shutil.rmtree(config.config['tmp_dir'])
+    tmp_writer = build_resource_writer(config.config['tmp_dir'], None)
 
-    for j2_child in j2_children:
-      dir_rel_path = extract_dir_rel_path(j2_child.element_rel_path)
-      template = environment.get_template(j2_child.element_rel_path)
-      for resource_kind, resource_name, resource_yml in multi_resource_parser(template.render(config.vars)):
-        writer.update_resource(dir_rel_path, resource_kind, resource_name, resource_yml)
+    for app_name in env_data['apps'].keys():
+      app = viewer.get_child(app_name)
+      if not app:
+        continue
 
-def step_2(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> None:
-  # step 2: run kustomize
-  apps = [app for app in viewer.get_dirs_children(depth=1)]
-  for env in config.envs:
-    for app in apps:
-      env_child = app.get_child(env)
+      yml_children = app.get_files_children('.yml$')
+      for yml_child in yml_children:
+        dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
+        for resource_kind, resource_name, resource_yml in multi_resource_parser(yml_child.content):
+          tmp_writer.store_resource(dir_rel_path, resource_kind, resource_name, resource_yml)
+      tmp_writer.write_resources()
+
+      env_child = app.get_child(env_name)
       if env_child:
         yml_child = env_child.get_child('kustomization.yml')
         if yml_child:
           dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
           process = subprocess.Popen(['kubectl', 'kustomize',
-                                      os.path.join(viewer.root_element_abs_path, dir_rel_path)],
+                                      os.path.join(viewer.tmp_dir_abs_path, dir_rel_path)],
                                       stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                                       universal_newlines=True)
-          stdout, stderr = process.communicate()
+          stdout, _ = process.communicate()
 
           for resource_kind, resource_name, resource_yml in multi_resource_parser(stdout):
-            writer.update_resource(os.path.join(env, app.name), resource_kind, resource_name, resource_yml)
+            writer.store_resource(os.path.join(env_name, app.name), resource_kind, resource_name, resource_yml)
           log.debug(stdout)
       else:
         yml_child = app.get_child('kustomization.yml')
         if yml_child:
           dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
           process = subprocess.Popen(['kubectl', 'kustomize',
-                                      os.path.join(viewer.root_element_abs_path, dir_rel_path)],
+                                      os.path.join(viewer.tmp_dir_abs_path, dir_rel_path)],
                                       stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                                       universal_newlines=True)
           stdout, _ = process.communicate()
 
           for resource_kind, resource_name, resource_yml in multi_resource_parser(stdout):
-            writer.update_resource(os.path.join(env, app.name), resource_kind, resource_name, resource_yml)
+            writer.store_resource(os.path.join(env_name, app.name), resource_kind, resource_name, resource_yml)
           log.debug(stdout)
         else:
           yml_children = app.get_files_children('.yml$')
@@ -82,7 +82,27 @@ def step_2(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> No
           for yml_child in yml_children:
             dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
             for resource_kind, resource_name, resource_yml in multi_resource_parser(yml_child.content):
-              writer.update_resource(os.path.join(env, app.name), resource_kind, resource_name, resource_yml)
+              writer.store_resource(os.path.join(env_name, app.name), resource_kind, resource_name, resource_yml)
+
+  # generate Application resources
+  for env_name, env_data in config.envs.items():
+    for app_name, app_data in env_data['apps'].items():
+      if app_data:
+        template_vars = config.vars
+        full_app_name = '-'.join([app_name, env_name]).replace('_', '-')
+        template_vars['_application_name'] = full_app_name
+        template_vars['_argocd_namespace'] = env_data['params']['argocd_namespace']
+        template_vars['_project'] = app_data['project']
+        template_vars['_repo_url'] = env_data['params']['repo_url']
+        template_vars['_target_revision'] = env_data['params']['target_revision']
+        template_vars['_path'] = os.path.join(os.path.basename(config.config['output_dir']), env_name, app_name)
+        template_vars['_api_server'] = env_data['params']['api_server']
+        template_vars['_destination_namespace'] = app_data['destination_namespace']
+
+        content = generate_application(template_vars)
+
+        app_deployer_env = find_app_in_envs(app_data['app_deployer'], config.envs)
+        writer.store_resource(os.path.join(app_deployer_env, app_data['app_deployer']), 'Application', full_app_name, content)
 
 def main() -> None:
   parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')
@@ -96,18 +116,11 @@ def main() -> None:
   log.debug('Root directory path: {}'.format(root_dir))
 
   config = read_config(root_dir, args.config_file)
-  if os.path.exists(config.config['tmp_dir']):
-    shutil.rmtree(config.config['tmp_dir'])
+  source_viewer = build_resource_viewer(config.config['source_dir'], config.config['tmp_dir'], config.vars, args.app)
+  output_writer = build_resource_writer(config.config['output_dir'], args.env)
 
-  source_viewer = build_resource_viewer(config.config['source_dir'], args.app)
-  tmp_writer = build_resource_writer(config.config['tmp_dir'], config.envs, args.env)
-  step_1(source_viewer, tmp_writer, config)
-  tmp_writer.write_updates()
+  run(source_viewer, output_writer, config)
 
-  tmp_viewer = build_resource_viewer(config.config['tmp_dir'], args.app)
-  output_writer = build_resource_writer(config.config['output_dir'], config.envs, args.env)
-  step_2(tmp_viewer, output_writer, config)
-  #TODO: clean only filtered apps/envs
   if os.path.exists(config.config['output_dir']):
     shutil.rmtree(config.config['output_dir'])
-  output_writer.write_updates()
+  output_writer.write_resources()

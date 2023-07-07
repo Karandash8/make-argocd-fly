@@ -3,24 +3,28 @@ import os
 import re
 
 from make_argocd_fly.utils import resource_parser, multi_resource_parser, extract_dir_rel_path
+from make_argocd_fly.renderer import AbstractRenderer, JinjaRenderer
 
 log = logging.getLogger(__name__)
 
 
 class ResourceViewer:
-  def __init__(self, root_element_abs_path: str) -> None:
+  def __init__(self, root_element_abs_path: str, tmp_dir_abs_path: str, renderer: AbstractRenderer, template_vars: dict) -> None:
     if not os.path.exists(root_element_abs_path):
       log.error('Path does not exist {}'.format(root_element_abs_path))
       raise Exception
 
     self.root_element_abs_path = root_element_abs_path
+    self.tmp_dir_abs_path = tmp_dir_abs_path
+    self.renderer = renderer
+    self.template_vars = template_vars
     self.element_rel_path = None
     self.name = None
     self.is_dir = None
     self.content = None
     self.children = []
 
-  def build(self, element_rel_path:str, is_root_element: bool = True) -> None:
+  def build(self, element_rel_path:str, is_root_element: bool = False) -> None:
     self.element_rel_path = element_rel_path
     if is_root_element:
       self.name = os.path.basename(self.root_element_abs_path)
@@ -31,12 +35,18 @@ class ResourceViewer:
     self.is_dir = os.path.isdir(path)
     if self.is_dir:
       for child_name in os.listdir(path):
-        child = ResourceViewer(self.root_element_abs_path)
-        child.build(os.path.join(element_rel_path, child_name), is_root_element=False)
+        child = ResourceViewer(self.root_element_abs_path, self.tmp_dir_abs_path, self.renderer, self.template_vars)
+        child.build(os.path.join(element_rel_path, child_name))
         self.children.append(child)
     else:
       with open(path) as f:
-        self.content = ''.join(f.readlines())
+        content = ''.join(f.readlines())
+
+        if self.name.endswith('.j2'):
+          self.content = self.renderer.render(content, self.template_vars)
+          self.name = self.name[:-3]
+        else:
+          self.content = content
 
     log.debug('Created element ({})'.format(self))
 
@@ -74,20 +84,26 @@ class ResourceViewer:
     return 'name: {}, is_dir: {}, element_rel_path: {}'.format(self.name, self.is_dir, self.element_rel_path)
 
 
+def build_resource_viewer(root_element_abs_path: str, tmp_dir_abs_path: str, template_vars: dict, filter: str = None) -> ResourceViewer:
+  source_viewer = ResourceViewer(root_element_abs_path, tmp_dir_abs_path, JinjaRenderer(), template_vars)
+  source_viewer.build('.', is_root_element=True)
+
+  return source_viewer
+
+
 class ResourceWriter:
-  def __init__(self, output_dir_abs_path: str, envs: list, existing_resources: list = None) -> None:
+  def __init__(self, output_dir_abs_path: str) -> None:
     self.output_dir_abs_path = output_dir_abs_path
-    self.envs = envs
-    self.existing_resources = existing_resources
+    self.resources = {}
 
-  def update_resource(self, dir_rel_path: str, resource_kind: str, resource_name: str, resource_yml: str) -> None:
-    self.existing_resources[(dir_rel_path, resource_kind, resource_name)] = resource_yml
+  def store_resource(self, dir_rel_path: str, resource_kind: str, resource_name: str, resource_yml: str) -> None:
+    self.resources[(dir_rel_path, resource_kind, resource_name)] = resource_yml
 
-  def write_updates(self) -> None:
-    for (dir_rel_path, resource_kind, _), resource_yml in self.existing_resources.items():
-      self.write_file(dir_rel_path, resource_kind + '.yml', resource_yml)
+  def write_resources(self) -> None:
+    for (dir_rel_path, resource_kind, _), resource_yml in self.resources.items():
+      self._write_file_resource(dir_rel_path, resource_kind + '.yml', resource_yml)
 
-  def write_file(self, dir_rel_path: str, filename: str, resource_yml: str) -> None:
+  def _write_file_resource(self, dir_rel_path: str, filename: str, resource_yml: str) -> None:
     path = os.path.join(self.output_dir_abs_path, dir_rel_path)
     os.makedirs(path, exist_ok=True)
 
@@ -102,19 +118,5 @@ class ResourceWriter:
         f.write('\n')
 
 
-def build_resource_viewer(root_element_abs_path: str, filter: str = None) -> ResourceViewer:
-  source_viewer = ResourceViewer(root_element_abs_path)
-  source_viewer.build('.')
-
-  return source_viewer
-
-def build_resource_writer(output_dir_abs_path: str, envs: list, filter: str = None) -> ResourceWriter:
-  existing_resources = {}
-
-  if os.path.exists(output_dir_abs_path):
-    output_viewer = build_resource_viewer(output_dir_abs_path)
-    yml_children = output_viewer.get_files_children('.yml$')
-    existing_resources = {(extract_dir_rel_path(yml_child.element_rel_path), resource_kind, resource_name): resource_yml
-                         for yml_child in yml_children for resource_kind, resource_name, resource_yml in multi_resource_parser(yml_child.content)}
-
-  return ResourceWriter(output_dir_abs_path, envs, existing_resources)
+def build_resource_writer(output_dir_abs_path: str, filter: str = None) -> ResourceWriter:
+  return ResourceWriter(output_dir_abs_path)

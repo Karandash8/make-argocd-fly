@@ -12,7 +12,7 @@ def resource_parser(resource_yml: str) -> tuple[str, str]:
   resource_kind = None
   resource_name = None
 
-  match = re.search('kind:(.*)', resource_yml)
+  match = re.search('kind:(.*)', resource_yml)  # TODO: test if "kind:(.*)" fixes the issue with commented out manifests
   if match and match.groups():
     resource_kind = match.group(1).strip()
 

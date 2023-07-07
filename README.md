@@ -1,5 +1,7 @@
 ## Description
-A project to generate on the user side per environemnt Kubernetes manifests that can be deployed with ArgoCD.
+A tool to generate on the user side per environemnt Kubernetes manifests that can be deployed with ArgoCD.
+
+ArcoCD resources of type `Application` are generated automatically based on the provided configuration.
 
 ## Motivation
 Manifests that are written in kustomize/helm/jsonnet might easily become hard to read and debug. The development lifecycle becomes longer when after each change you need to commit, wait for ArgoCD to pick it up and deploy it. Only after that you see the actual end manifest in ArcoCD UI.
@@ -7,6 +9,7 @@ Manifests that are written in kustomize/helm/jsonnet might easily become hard to
 With this tool you can quickly render jinja2/kustomize files, run yaml linter and continuer development.
 
 ## Benefits
+- Application resources are generated automatically
 - Easier to grasp end manifests
 - Shared variables between applications
 
@@ -20,17 +23,35 @@ config:
   tmp_dir: .tmp
 
 envs:
-  - dev
-  - stage
-  - prod
-
+  dev:
+    apps:
+      bootstrap: {}
+      app_1:
+        app_deployer: bootstrap
+        project: default
+        destination_namespace: namespace_1
+      app_2:
+        app_deployer: bootstrap
+        project: default
+        destination_namespace: namespace_2
+    params:
+      argocd_namespace: argocd
+      repo_url: url
+      target_revision: revision
+      api_server: management-api-server
+  prod:
+    apps:
+      app_1:
+        app_deployer: bootstrap
+        project: default
+        destination_namespace: namespace_1
 vars:
   var_1:
     var_2: value_2
   var_3: value_3
 ```
 
-With such configuration file you can have kustomize overlays for `dev/stage/prod` and jinja2 variables like `{{ var_1.var_2 }} and {{ var_3 }}` in your source files.
+With such configuration file you can have kustomize overlays for `dev/prod` and jinja2 variables like `{{ var_1.var_2 }} and {{ var_3 }}` in your source files.
 
 ## Caveats
 ### Currently supported directory structure
@@ -42,9 +63,6 @@ repo
         yaml.yml(.j2)
         kustomization.yml(.j2)
       dev
-        yaml.yml(.j2)
-        kustomization.yml(.j2)
-      stage
         yaml.yml(.j2)
         kustomization.yml(.j2)
       prod
@@ -65,6 +83,22 @@ resources:
   - deployment.yml
   - serviceaccount.yml
 ```
+### Initial app-of-apps application
+`bootstrap` application shall be deployed externally
+
+### Multiple ArgoCD deployments referencing the same repo
+If there is an argocd deployment per environment then app_deployer applications shall have different names for different environments
+
+### Variable names
+The folloving variable names are resenved:
+- _application_name
+- _argocd_namespace
+- _project
+- _repo_url
+- _target_revision
+- _path
+- _api_server
+- _destination_namespace
 
 ## For developers
 ### Build instructions
