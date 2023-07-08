@@ -35,13 +35,13 @@ def run(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> None:
   for env_name, env_data in config.envs.items():
     if os.path.exists(config.config['tmp_dir']):
       shutil.rmtree(config.config['tmp_dir'])
-    tmp_writer = build_resource_writer(config.config['tmp_dir'], None)
 
     for app_name in env_data['apps'].keys():
       app = viewer.get_child(app_name)
       if not app:
         continue
 
+      tmp_writer = build_resource_writer(config.config['tmp_dir'], None)
       yml_children = app.get_files_children('.yml$')
       for yml_child in yml_children:
         dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
