@@ -54,7 +54,7 @@ def run(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> None:
         yml_child = env_child.get_child('kustomization.yml')
         if yml_child:
           dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
-          process = subprocess.Popen(['kubectl', 'kustomize',
+          process = subprocess.Popen(['kubectl', 'kustomize', '--enable-helm',
                                       os.path.join(viewer.tmp_dir_abs_path, dir_rel_path)],
                                       stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                                       universal_newlines=True)
@@ -67,7 +67,7 @@ def run(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> None:
         yml_child = app.get_child('kustomization.yml')
         if yml_child:
           dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
-          process = subprocess.Popen(['kubectl', 'kustomize',
+          process = subprocess.Popen(['kubectl', 'kustomize', '--enable-helm',
                                       os.path.join(viewer.tmp_dir_abs_path, dir_rel_path)],
                                       stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                                       universal_newlines=True)
