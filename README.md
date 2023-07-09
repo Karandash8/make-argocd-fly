@@ -12,6 +12,7 @@ With this tool you can quickly render jinja2/kustomize files, run yaml linter an
 - Application resources are generated automatically
 - Easier to grasp end manifests
 - Shared variables between applications
+- Include content of a text file in the rendered manifest
 
 ## Configuration
 ### config.yml
@@ -26,14 +27,8 @@ envs:
   dev:
     apps:
       bootstrap: {}
-      app_1:
-        app_deployer: bootstrap
-        project: default
-        destination_namespace: namespace_1
-      app_2:
-        app_deployer: bootstrap
-        project: default
-        destination_namespace: namespace_2
+      app_1: {app_deployer: bootstrap, project: default, destination_namespace: namespace_1}
+      app_2: {app_deployer: bootstrap, project: default, destination_namespace: namespace_2}
     params:
       argocd_namespace: argocd
       repo_url: url
@@ -41,10 +36,7 @@ envs:
       api_server: management-api-server
   prod:
     apps:
-      app_1:
-        app_deployer: bootstrap
-        project: default
-        destination_namespace: namespace_1
+      app_1: {app_deployer: bootstrap, project: default, destination_namespace: namespace_1}
 vars:
   var_1:
     var_2: value_2
@@ -73,6 +65,18 @@ repo
       kustomization.yml(.j2)
     app_3
       yaml.yml(.j2)
+    app_4
+      yaml.yml(.j2)
+      files
+        file.json
+```
+
+In order to include the content of a text file while rendering a jinja2 template, a block like the following shall be used:
+
+```
+{%- filter indent(width=4) %}
+{{ include_file('app_4/files/file.json') }}
+{% endfilter %}
 ```
 
 ### kustomization.yml

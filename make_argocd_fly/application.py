@@ -27,6 +27,9 @@ spec:
       selfHeal: true
       prune: true
       allowEmpty: true
+    # https://www.arthurkoziel.com/fixing-argocd-crd-too-long-error/
+    syncOptions:
+      - ServerSideApply=true
 '''
 
 

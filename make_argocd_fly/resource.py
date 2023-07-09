@@ -2,7 +2,6 @@ import logging
 import os
 import re
 
-from make_argocd_fly.utils import resource_parser, multi_resource_parser, extract_dir_rel_path
 from make_argocd_fly.renderer import AbstractRenderer, JinjaRenderer
 
 log = logging.getLogger(__name__)
@@ -85,7 +84,7 @@ class ResourceViewer:
 
 
 def build_resource_viewer(root_element_abs_path: str, tmp_dir_abs_path: str, template_vars: dict, filter: str = None) -> ResourceViewer:
-  source_viewer = ResourceViewer(root_element_abs_path, tmp_dir_abs_path, JinjaRenderer(), template_vars)
+  source_viewer = ResourceViewer(root_element_abs_path, tmp_dir_abs_path, JinjaRenderer(root_element_abs_path), template_vars)
   source_viewer.build('.', is_root_element=True)
 
   return source_viewer
