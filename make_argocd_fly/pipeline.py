@@ -29,17 +29,26 @@ def find_app_in_envs(target_app_name: str, envs: dict) -> str:
     if target_app_name in env_data['apps'].keys():
       return env_name
 
+def run_kustomize(dir_path: str) -> str:
+  process = subprocess.Popen(['kubectl', 'kustomize', '--enable-helm',
+                              dir_path],
+                              stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                              universal_newlines=True)
+  stdout, _ = process.communicate()
+
+  return stdout
+
 # TODO: rework this nonsense
 def run(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> None:
   # write apps in a tmp dir and run kustomize
   for env_name, env_data in config.envs.items():
-    if os.path.exists(config.config['tmp_dir']):
-      shutil.rmtree(config.config['tmp_dir'])
-
     for app_name in env_data['apps'].keys():
       app = viewer.get_child(app_name)
       if not app:
         continue
+
+      if os.path.exists(config.config['tmp_dir']):
+        shutil.rmtree(config.config['tmp_dir'])
 
       tmp_writer = build_resource_writer(config.config['tmp_dir'], None)
       yml_children = app.get_files_children('.yml$')
@@ -49,44 +58,43 @@ def run(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> None:
           tmp_writer.store_resource(dir_rel_path, resource_kind, resource_name, resource_yml)
       tmp_writer.write_resources()
 
-      env_child = app.get_child(env_name)
-      if env_child:
-        yml_child = env_child.get_child('kustomization.yml')
-        if yml_child:
-          dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
-          process = subprocess.Popen(['kubectl', 'kustomize', '--enable-helm',
-                                      os.path.join(viewer.tmp_dir_abs_path, dir_rel_path)],
-                                      stdout=subprocess.PIPE,stderr=subprocess.PIPE,
-                                      universal_newlines=True)
-          stdout, _ = process.communicate()
-
-          for resource_kind, resource_name, resource_yml in multi_resource_parser(stdout):
-            writer.store_resource(os.path.join(env_name, app.name), resource_kind, resource_name, resource_yml)
-        else:
-          log.error('Missing kustomization.yml in the base directory. Skipping application')
-      else:
-        base_child = app.get_child('base')
-        if base_child:
-          yml_child = base_child.get_child('kustomization.yml')
+      kustomize_children = app.get_files_children('kustomization.yml')
+      if kustomize_children:
+        env_child = app.get_child(env_name)
+        if env_child:
+          yml_child = env_child.get_child('kustomization.yml')
           if yml_child:
-            dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
-            process = subprocess.Popen(['kubectl', 'kustomize', '--enable-helm',
-                                        os.path.join(viewer.tmp_dir_abs_path, dir_rel_path)],
-                                        stdout=subprocess.PIPE,stderr=subprocess.PIPE,
-                                        universal_newlines=True)
-            stdout, _ = process.communicate()
+            stdout = run_kustomize(os.path.join(viewer.tmp_dir_abs_path, extract_dir_rel_path(yml_child.element_rel_path)))
 
             for resource_kind, resource_name, resource_yml in multi_resource_parser(stdout):
               writer.store_resource(os.path.join(env_name, app.name), resource_kind, resource_name, resource_yml)
           else:
-            log.error('Missing kustomization.yml in the base directory. Skipping application')
+            log.error('Missing kustomization.yml in the overlay directory. Skipping application')
         else:
-          yml_children = app.get_files_children('.yml$')
+          base_child = app.get_child('base')
+          if base_child:
+            yml_child = base_child.get_child('kustomization.yml')
+            if yml_child:
+              stdout = run_kustomize(os.path.join(viewer.tmp_dir_abs_path, extract_dir_rel_path(yml_child.element_rel_path)))
 
-          for yml_child in yml_children:
-            dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
-            for resource_kind, resource_name, resource_yml in multi_resource_parser(yml_child.content):
-              writer.store_resource(os.path.join(env_name, app.name), resource_kind, resource_name, resource_yml)
+              for resource_kind, resource_name, resource_yml in multi_resource_parser(stdout):
+                writer.store_resource(os.path.join(env_name, app.name), resource_kind, resource_name, resource_yml)
+            else:
+              log.error('Missing kustomization.yml in the base directory. Skipping application')
+
+        yml_child = app.get_child('kustomization.yml')
+        if yml_child:
+          stdout = run_kustomize(os.path.join(viewer.tmp_dir_abs_path, extract_dir_rel_path(yml_child.element_rel_path)))
+
+          for resource_kind, resource_name, resource_yml in multi_resource_parser(stdout):
+            writer.store_resource(os.path.join(env_name, app.name), resource_kind, resource_name, resource_yml)
+      else:
+        yml_children = app.get_files_children('.yml$')
+
+        for yml_child in yml_children:
+          dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
+          for resource_kind, resource_name, resource_yml in multi_resource_parser(yml_child.content):
+            writer.store_resource(os.path.join(env_name, app.name), resource_kind, resource_name, resource_yml)
 
   # generate Application resources
   for env_name, env_data in config.envs.items():
