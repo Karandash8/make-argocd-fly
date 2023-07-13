@@ -62,20 +62,24 @@ def run(viewer: ResourceViewer, writer: ResourceWriter, config: Config) -> None:
 
           for resource_kind, resource_name, resource_yml in multi_resource_parser(stdout):
             writer.store_resource(os.path.join(env_name, app.name), resource_kind, resource_name, resource_yml)
-          log.debug(stdout)
+        else:
+          log.error('Missing kustomization.yml in the base directory. Skipping application')
       else:
-        yml_child = app.get_child('kustomization.yml')
-        if yml_child:
-          dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
-          process = subprocess.Popen(['kubectl', 'kustomize', '--enable-helm',
-                                      os.path.join(viewer.tmp_dir_abs_path, dir_rel_path)],
-                                      stdout=subprocess.PIPE,stderr=subprocess.PIPE,
-                                      universal_newlines=True)
-          stdout, _ = process.communicate()
+        base_child = app.get_child('base')
+        if base_child:
+          yml_child = base_child.get_child('kustomization.yml')
+          if yml_child:
+            dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
+            process = subprocess.Popen(['kubectl', 'kustomize', '--enable-helm',
+                                        os.path.join(viewer.tmp_dir_abs_path, dir_rel_path)],
+                                        stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                                        universal_newlines=True)
+            stdout, _ = process.communicate()
 
-          for resource_kind, resource_name, resource_yml in multi_resource_parser(stdout):
-            writer.store_resource(os.path.join(env_name, app.name), resource_kind, resource_name, resource_yml)
-          log.debug(stdout)
+            for resource_kind, resource_name, resource_yml in multi_resource_parser(stdout):
+              writer.store_resource(os.path.join(env_name, app.name), resource_kind, resource_name, resource_yml)
+          else:
+            log.error('Missing kustomization.yml in the base directory. Skipping application')
         else:
           yml_children = app.get_files_children('.yml$')
 

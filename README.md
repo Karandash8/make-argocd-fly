@@ -71,7 +71,9 @@ repo
         file.json
 ```
 
-In order to include the content of a text file while rendering a jinja2 template, a block like the following shall be used:
+When kustomization overlays are used, kustomization base directory shall be called `base`, overlay directories shall be named after corresponding environment names.
+
+To include stataic text file content in jinja2 template, a block like following shall be used:
 
 ```
 {%- filter indent(width=4) %}

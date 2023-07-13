@@ -9,30 +9,12 @@ envs:
   management:
     apps:
       bootstrap: {}
-      core_deployer:
-        app_deployer: bootstrap
-        project: default
-        destination_namespace: kube-system
-      service_deployer:
-        app_deployer: bootstrap
-        project: default
-        destination_namespace: kube-system
-      app_1:
-        app_deployer: core_deployer
-        project: management
-        destination_namespace: kube-default
-      app_2:
-        app_deployer: core_deployer
-        project: management
-        destination_namespace: kube-default
-      app_3:
-        app_deployer: service_deployer
-        project: management
-        destination_namespace: kube-default
-      app_4:
-        app_deployer: service_deployer
-        project: management
-        destination_namespace: kube-default
+      core_deployer: {app_deployer: bootstrap, project: default, destination_namespace: kube-system}
+      service_deployer: {app_deployer: bootstrap, project: default, destination_namespace: kube-system}
+      app_1: {app_deployer: core_deployer, project: management, destination_namespace: kube-default}
+      app_2: {app_deployer: core_deployer, project: management, destination_namespace: kube-default}
+      app_3: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      app_4: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
     params:
       argocd_namespace: argocd
       repo_url: url
@@ -40,14 +22,9 @@ envs:
       api_server: management-api-server
   external_1:
     apps:
-      app_1:
-        app_deployer: core_deployer
-        project: external_1
-        destination_namespace: kube-default
-      app_4:
-        app_deployer: service_deployer
-        project: external_1
-        destination_namespace: kube-default
+      app_1: {app_deployer: core_deployer, project: external_1, destination_namespace: kube-default}
+      app_2: {app_deployer: core_deployer, project: management, destination_namespace: kube-default}
+      app_4: {app_deployer: service_deployer, project: external_1, destination_namespace: kube-default}
     params:
       argocd_namespace: argocd
       repo_url: url
