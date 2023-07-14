@@ -1,7 +1,6 @@
-config:
-  source_dir: source
-  output_dir: output
-  tmp_dir: .tmp
+source_dir: source
+output_dir: output
+tmp_dir: .tmp
 
 # caveat: 'bootstrap' application shall be deployed externally
 # caveat: if there is an argocd deployment per environment then app_deployer applications shall have different names for different environments
@@ -15,16 +14,20 @@ envs:
       app_2: {app_deployer: core_deployer, project: management, destination_namespace: kube-default}
       app_3: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       app_4: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      app_5: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      app_6: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
     params:
       argocd_namespace: argocd
       repo_url: url
       target_revision: revision
       api_server: management-api-server
+    vars:
+      json_var: json_management
   external_1:
     apps:
       app_1: {app_deployer: core_deployer, project: external_1, destination_namespace: kube-default}
       app_2: {app_deployer: core_deployer, project: management, destination_namespace: kube-default}
-      app_4: {app_deployer: service_deployer, project: external_1, destination_namespace: kube-default}
+      app_5: {app_deployer: service_deployer, project: external_1, destination_namespace: kube-default}
     params:
       argocd_namespace: argocd
       repo_url: url
@@ -36,3 +39,4 @@ vars:
   namespace: kube-system
   app:
     resource: deployment.yml
+  json_var: json

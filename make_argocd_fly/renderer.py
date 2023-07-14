@@ -1,42 +1,62 @@
 import logging
+import os
 from abc import ABC, abstractmethod
-from jinja2 import Environment, BaseLoader, FileSystemLoader
+from jinja2 import Environment, BaseLoader, FunctionLoader, nodes
+from jinja2.ext import Extension
 from markupsafe import Markup
+
+from make_argocd_fly.resource import ResourceViewer
 
 log = logging.getLogger(__name__)
 
 
 class AbstractRenderer(ABC):
-    def __init__(self, root_element_abs_path: str) -> None:
-        super().__init__(root_element_abs_path)
-
-    @abstractmethod
-    def render(self, content: str, template_vars: dict = None) -> str:
-        pass
+  @abstractmethod
+  def render(self, content: str, template_vars: dict = None) -> str:
+    pass
 
 
-class DummyRenderer:
-    def __init__(self, root_element_abs_path: str) -> None:
-        pass
+class DummyRenderer(AbstractRenderer):
+  def __init__(self) -> None:
+    pass
 
-    def render(self, content: str, template_vars: dict = None) -> str:
-        return content
+  def render(self, content: str, template_vars: dict = None) -> str:
+    return content
 
 
-class JinjaRenderer:
-    def __init__(self, root_element_abs_path: str = None) -> None:
-        self.root_element_abs_path = root_element_abs_path
-        if root_element_abs_path:
-            self.loader = FileSystemLoader(root_element_abs_path)
-        else:
-            self.loader = BaseLoader()
-        self.env = Environment(loader=self.loader)
-        self.env.globals['include_file'] = self.include_file
+class IncludeRawExtension(Extension):
+  tags = {"include_raw"}
 
-    def include_file(self, path: str) -> None:
-        return Markup(self.loader.get_source(self.env, path)[0])
+  def parse(self, parser):
+    lineno = parser.stream.expect("name:include_raw").lineno
+    template = parser.parse_expression()
+    result = self.call_method("_render", [template], lineno=lineno)
+    return nodes.Output([result], lineno=lineno)
 
-    def render(self, content: str, template_vars: dict = None) -> str:
-        template = self.env.from_string(content)
+  def _render(self, filename):
+    return Markup(self.environment.loader.get_source(self.environment, filename)[0])
 
-        return template.render(template_vars)
+
+class JinjaRenderer(AbstractRenderer):
+  def __init__(self, viewer: ResourceViewer = None) -> None:
+    self.viewer = viewer
+    if viewer:
+      self.loader = FunctionLoader(self.get_template)
+    else:
+      self.loader = BaseLoader()
+    self.env = Environment(extensions=[IncludeRawExtension],loader=self.loader)
+
+  def get_template(self, path: str):
+    files_children = self.viewer.get_files_children(os.path.basename(path))
+    for file_child in files_children:
+      # TODO: make it more robust
+      if file_child.element_rel_path == path:
+        return file_child.content
+
+    log.error('Missing template {}'.format(path))
+    return ''
+
+  def render(self, content: str, template_vars: dict = None) -> str:
+    template = self.env.from_string(content)
+
+    return template.render(template_vars)

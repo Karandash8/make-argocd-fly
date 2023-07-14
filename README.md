@@ -12,16 +12,16 @@ With this tool you can quickly render jinja2/kustomize files, run yaml linter an
 - Application resources are generated automatically
 - Easier to grasp end manifests
 - Shared variables between applications
-- Include content of a text file in the rendered manifest
+- Use `include` or `include_raw` in templates to render content of an external file
+- Use per environment `vars` block to override global variables
 
 ## Configuration
 ### config.yml
 Expected file structure
 ```
-config:
-  source_dir: source
-  output_dir: output
-  tmp_dir: .tmp
+source_dir: source
+output_dir: output
+tmp_dir: .tmp
 
 envs:
   dev:
@@ -34,6 +34,8 @@ envs:
       repo_url: url
       target_revision: revision
       api_server: management-api-server
+    vars:
+      var_3: value_X
   prod:
     apps:
       app_1: {app_deployer: bootstrap, project: default, destination_namespace: namespace_1}
@@ -43,9 +45,12 @@ vars:
   var_3: value_3
 ```
 
-With such configuration file you can have kustomize overlays for `dev/prod` and jinja2 variables like `{{ var_1.var_2 }} and {{ var_3 }}` in your source files.
+With such configuration file you can have kustomize overlays for `dev/prod` and use jinja2 variables like `{{ var_1.var_2 }} and {{ var_3 }}` in your source files.
 
 ## Caveats
+### Requirements
+`kubectl` is expected to be installed locally.
+
 ### Currently supported directory structure
 ```
 repo
@@ -68,16 +73,24 @@ repo
     app_4
       yaml.yml(.j2)
       files
-        file.json
+        file.json(.j2)
 ```
 
-When kustomization overlays are used, kustomization base directory shall be called `base`, overlay directories shall be named after corresponding environment names.
+When kustomization overlays are used, kustomization base directory shall be called `base`, overlay directories shall be named after the corresponding environments names.
 
-To include stataic text file content in jinja2 template, a block like following shall be used:
+To include an external template in a jinja2 template, use the following block:
 
 ```
 {%- filter indent(width=4) %}
-{{ include_file('app_4/files/file.json') }}
+{% include 'app_4/files/file.json' %}
+{% endfilter %}
+```
+
+To include an external file without rendering it in a jinja2 template, use the following block:
+
+```
+{%- filter indent(width=4) %}
+{% include_raw 'app_4/files/file.json' %}
 {% endfilter %}
 ```
 

@@ -1,12 +1,11 @@
 import logging
-import os
 import re
 
 log = logging.getLogger(__name__)
 
 
 def extract_dir_rel_path(path: str) -> str:
-  return os.path.normpath('/'.join(path.split('/')[:-1]))
+  return '/'.join(path.split('/')[:-1])
 
 def resource_parser(resource_yml: str) -> tuple[str, str]:
   resource_kind = None
