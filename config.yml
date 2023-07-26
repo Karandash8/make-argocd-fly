@@ -38,5 +38,5 @@ envs:
 vars:
   namespace: kube-system
   app:
-    resource: deployment.yml
+    resource: Deployment_thanos.yml
   json_var: json

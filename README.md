@@ -95,12 +95,12 @@ To include an external file without rendering it in a jinja2 template, use the f
 ```
 
 ### kustomization.yml
-Files referenced in the `resources` section shall be named after Kubernetes resource types with lower case letters as a single word. Example:
+Files referenced in the `resources` section shall be named after Kubernetes resource type + `_` + resource name. Example:
 
 ```
 resources:
-  - deployment.yml
-  - serviceaccount.yml
+  - Deployment_nginx.yml
+  - ServiceAccount_nginx-prod.yml
 ```
 ### Initial app-of-apps application
 `bootstrap` application shall be deployed externally
@@ -132,7 +132,7 @@ python -m venv .venv
 . .venv/bin/activate
 python3 -m pip install --upgrade pip
 pip install -r requirements.txt
-pip install -r build_requirements.txt
+pip install -r dev_requirements.txt
 ```
 
 ### Execution

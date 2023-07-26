@@ -1,0 +1,4 @@
+setuptools
+build==0.10.0
+twine==4.0.2
+pytest==7.4.0

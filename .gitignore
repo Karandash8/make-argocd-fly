@@ -163,5 +163,6 @@ source/
 output/
 .tmp/
 .vscode
+config.yml
 
 

@@ -91,4 +91,4 @@ def main() -> None:
 
   if os.path.exists(config.get_output_dir()):
     shutil.rmtree(config.get_output_dir())
-  output_writer.write_files()
+  output_writer.write_resources()

@@ -88,7 +88,11 @@ class KustomizeApplication(AbstractApplication):
                                 dir_path],
                                 stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                                 universal_newlines=True)
-    stdout, _ = process.communicate()
+    stdout, stderr = process.communicate()
+
+    if stderr:
+      log.error('Kustomize error: {}'.format(stderr))
+      raise Exception
 
     return stdout
 
@@ -114,7 +118,7 @@ class KustomizeApplication(AbstractApplication):
       for resource_kind, resource_name, resource_yml in multi_resource_parser(content):
         tmp_resource_writer.store_resource(dir_rel_path, resource_kind, resource_name, resource_yml)
 
-    tmp_resource_writer.write_files()
+    tmp_resource_writer.write_resources()
     tmp_source_viewer = ResourceViewer(os.path.join(config.get_tmp_dir(), self.app_viewer.name))
     tmp_source_viewer.build()
 
