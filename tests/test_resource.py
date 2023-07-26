@@ -1,7 +1,4 @@
-import os
 import pytest
-from unittest.mock import patch, mock_open
-from pathlib import Path
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 
 

@@ -41,22 +41,21 @@ class JinjaRenderer(AbstractRenderer):
   def __init__(self, viewer: ResourceViewer = None) -> None:
     self.viewer = viewer
     if viewer:
-      self.loader = FunctionLoader(self.get_template)
+      self.loader = FunctionLoader(self._get_template)
     else:
       self.loader = BaseLoader()
-    self.env = Environment(extensions=[IncludeRawExtension],loader=self.loader)
+    self.env = Environment(extensions=[IncludeRawExtension], loader=self.loader)
 
-  def get_template(self, path: str):
+  def _get_template(self, path: str):
     files_children = self.viewer.get_files_children(os.path.basename(path))
     for file_child in files_children:
-      # TODO: make it more robust
       if file_child.element_rel_path == path:
         return file_child.content
 
     log.error('Missing template {}'.format(path))
-    return ''
+    return None
 
   def render(self, content: str, template_vars: dict = None) -> str:
     template = self.env.from_string(content)
 
-    return template.render(template_vars)
+    return template.render(template_vars if template_vars else {})
