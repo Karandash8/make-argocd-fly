@@ -56,7 +56,7 @@ def test_JinjaRenderer_base_loader_render_simple():
 
   assert renderer.render(TEMPLATE) == TEMPLATE
 
-def test_JinjaRenderer_base_loader_render_with_vars():
+def test_JinjaRenderer_base_loader_render_with_var():
   renderer = JinjaRenderer()
 
   TEMPLATE = '''\
@@ -69,6 +69,17 @@ def test_JinjaRenderer_base_loader_render_with_vars():
   Template content line 1
   Template content line 2
   '''
+
+def test_JinjaRenderer_base_loader_render_with_undefined_var():
+  renderer = JinjaRenderer()
+
+  TEMPLATE = '''\
+  Template content line 1
+  Template content {{ undefined_var }}
+  '''
+
+  with pytest.raises(jinja2.exceptions.UndefinedError):
+    assert renderer.render(TEMPLATE)
 
 def test_JinjaRenderer_base_loader_render_with_include():
   renderer = JinjaRenderer()
@@ -129,7 +140,7 @@ def test_JinjaRenderer_function_loader_render_with_include(tmp_path):
   Template content 0
   '''
 
-def test_JinjaRenderer_function_loader_render_with_inception(tmp_path):
+def test_JinjaRenderer_function_loader_render_with_include_inception(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
   dir_0 = dir_root / 'dir_0'

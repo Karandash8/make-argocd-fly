@@ -56,12 +56,20 @@ class Config:
 
     return self.envs
 
-  def get_vars(self) -> str:
+  def get_vars(self) -> dict:
     if not self.envs:
       log.error('Config was not initialized.')
       raise Exception
 
     return self.vars
+
+  def get_env_vars(self, env_name: str) -> dict:
+    envs = self.get_envs()
+    if env_name not in envs:
+      log.error('Environment {} is not defined'.format(env_name))
+      raise Exception
+
+    return envs[env_name]['vars'] if 'vars' in envs[env_name] else {}
 
 
 config = Config()

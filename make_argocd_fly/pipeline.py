@@ -36,7 +36,7 @@ def run(viewer: ResourceViewer, writer: ResourceWriter) -> None:
   apps = []
 
   for env_name, env_data in config.get_envs().items():
-    template_vars = merge({}, config.get_vars(), env_data['vars'] if 'vars' in env_data else {})
+    template_vars = merge({}, config.get_vars(), config.get_env_vars(env_name))
 
     for app_name in env_data['apps'].keys():
       app_child = viewer.get_child(app_name)
@@ -55,23 +55,18 @@ def run(viewer: ResourceViewer, writer: ResourceWriter) -> None:
 
   # generate Application resources
   for env_name, env_data in config.get_envs().items():
-    for app_name, app_data in env_data['apps'].items():
-      if app_data:
-        template_vars = config.get_vars()
+    for app_name, app_vars in env_data['apps'].items():
+      if app_vars:
+        template_vars = merge({}, config.get_vars(), config.get_env_vars(env_name), app_vars)
         full_app_name = '-'.join([app_name, env_name]).replace('_', '-')
+        
         template_vars['_application_name'] = full_app_name
-        template_vars['_argocd_namespace'] = env_data['params']['argocd_namespace']
-        template_vars['_project'] = app_data['project']
-        template_vars['_repo_url'] = env_data['params']['repo_url']
-        template_vars['_target_revision'] = env_data['params']['target_revision']
         template_vars['_path'] = os.path.join(os.path.basename(config.get_output_dir()), env_name, app_name)
-        template_vars['_api_server'] = env_data['params']['api_server']
-        template_vars['_destination_namespace'] = app_data['destination_namespace']
 
         content = generate_application_resource(template_vars)
 
-        app_deployer_env = find_app_in_envs(app_data['app_deployer'], config.get_envs())
-        writer.store_resource(os.path.join(app_deployer_env, app_data['app_deployer']), 'Application', full_app_name, content)
+        app_deployer_env = find_app_in_envs(template_vars['app_deployer'], config.get_envs())
+        writer.store_resource(os.path.join(app_deployer_env, template_vars['app_deployer']), 'Application', full_app_name, content)
 
 def main() -> None:
   parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')

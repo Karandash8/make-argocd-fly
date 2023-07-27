@@ -16,26 +16,25 @@ envs:
       app_4: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       app_5: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       app_6: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-    params:
-      argocd_namespace: argocd
-      repo_url: url
-      target_revision: revision
-      api_server: management-api-server
     vars:
+      argocd:
+        api_server: management-api-server
       json_var: json_management
   external_1:
     apps:
       app_1: {app_deployer: core_deployer, project: external_1, destination_namespace: kube-default}
       app_2: {app_deployer: core_deployer, project: management, destination_namespace: kube-default}
       app_5: {app_deployer: service_deployer, project: external_1, destination_namespace: kube-default}
-    params:
-      argocd_namespace: argocd
-      repo_url: url
-      target_revision: revision
-      api_server: external_1-api-server
+    vars:
+      argocd:
+        api_server: external_1-api-server
 
-# caveat: the folloving variable names are resenved: _application_name, _argocd_namespace, _project, _repo_url, _target_revision, _path, _api_server, _destination_namespace
+# caveat: the folloving variable names are resenved: _application_name, _path
 vars:
+  argocd:
+    namespace: argocd
+    repo_url: url
+    target_revision: revision
   namespace: kube-system
   app:
     resource: Deployment_thanos.yml

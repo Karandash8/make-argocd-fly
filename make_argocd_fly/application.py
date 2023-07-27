@@ -12,23 +12,23 @@ from make_argocd_fly.config import get_config
 log = logging.getLogger(__name__)
 
 
-APPLICATION_RESOUCE_TEMPLATE = \
-'''apiVersion: argoproj.io/v1alpha1
+APPLICATION_RESOUCE_TEMPLATE = '''\
+apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: {{ _application_name }}
-  namespace: {{ _argocd_namespace }}
+  namespace: {{ argocd.namespace }}
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: {{ _project }}
+  project: {{ project }}
   source:
-    repoURL: {{ _repo_url }}
-    targetRevision: {{ _target_revision }}
+    repoURL: {{ argocd.repo_url }}
+    targetRevision: {{ argocd.target_revision }}
     path: {{ _path }}
   destination:
-    server: {{ _api_server }}
-    namespace: {{ _destination_namespace }}
+    server: {{ argocd.api_server }}
+    namespace: {{ destination_namespace }}
   syncPolicy:
     automated:
       selfHeal: true
