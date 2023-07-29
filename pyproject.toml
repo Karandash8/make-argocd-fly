@@ -18,7 +18,7 @@ classifiers = [
 dynamic = ["readme", "dependencies"]
 
 [project.scripts]
-make-argocd-fly = "make_argocd_fly.pipeline:main"
+make-argocd-fly = "make_argocd_fly.main:main"
 
 [tool.setuptools.packages]
 find = {}

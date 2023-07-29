@@ -29,7 +29,7 @@ envs:
       argocd:
         api_server: external_1-api-server
 
-# caveat: the folloving variable names are resenved: _application_name, _path
+# caveat: the folloving variable names are resenved: __application
 vars:
   argocd:
     namespace: argocd

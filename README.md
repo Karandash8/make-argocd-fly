@@ -11,9 +11,9 @@ With this tool you can quickly render jinja2/kustomize files, run yaml linter an
 ## Benefits
 - Application resources are generated automatically
 - Easier to grasp end manifests
-- Shared variables between applications
 - Use `include` or `include_raw` in templates to render content of an external file
-- Use per environment `vars` block to override global variables
+- Shared global variables between applications/environments
+- Per environment variables to override global variables
 
 ## Configuration
 ### config.yml
@@ -29,17 +29,21 @@ envs:
       bootstrap: {}
       app_1: {app_deployer: bootstrap, project: default, destination_namespace: namespace_1}
       app_2: {app_deployer: bootstrap, project: default, destination_namespace: namespace_2}
-    params:
-      argocd_namespace: argocd
-      repo_url: url
-      target_revision: revision
-      api_server: management-api-server
     vars:
+      argocd:
+        api_server: dev-api-server
       var_3: value_X
   prod:
     apps:
       app_1: {app_deployer: bootstrap, project: default, destination_namespace: namespace_1}
+    vars:
+      argocd:
+        api_server: prod-api-server
 vars:
+  argocd:
+    namespace: argocd
+    repo_url: url
+    target_revision: revision
   var_1:
     var_2: value_2
   var_3: value_3
@@ -110,14 +114,14 @@ If there is an argocd deployment per environment then app_deployer applications 
 
 ### Variable names
 The folloving variable names are resenved:
-- _application_name
-- _argocd_namespace
-- _project
-- _repo_url
-- _target_revision
-- _path
-- _api_server
-- _destination_namespace
+- __application
+
+### Expected variables
+The folloving variables are expected to be present:
+- argocd.api_server
+- argocd.namespace
+- argocd.repo_url
+- argocd.target_revision
 
 ## For developers
 ### Build instructions

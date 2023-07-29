@@ -72,7 +72,7 @@ class ResourceViewer:
     return dirs
 
   def __str__(self) -> str:
-    return 'element_rel_path: {}, is_dir: {}'.format(self.element_rel_path, self.is_dir)
+    return 'root_path: {}, element_rel_path: {}, is_dir: {}'.format(self.root_element_abs_path, self.element_rel_path, self.is_dir)
 
 
 class ResourceWriter:

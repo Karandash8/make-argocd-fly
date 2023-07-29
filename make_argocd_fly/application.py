@@ -3,6 +3,9 @@ import os
 from abc import ABC, abstractmethod
 import subprocess
 import shutil
+import textwrap
+
+from mergedeep import merge
 
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.renderer import JinjaRenderer
@@ -12,58 +15,90 @@ from make_argocd_fly.config import get_config
 log = logging.getLogger(__name__)
 
 
-APPLICATION_RESOUCE_TEMPLATE = '''\
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: {{ _application_name }}
-  namespace: {{ argocd.namespace }}
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: {{ project }}
-  source:
-    repoURL: {{ argocd.repo_url }}
-    targetRevision: {{ argocd.target_revision }}
-    path: {{ _path }}
-  destination:
-    server: {{ argocd.api_server }}
-    namespace: {{ destination_namespace }}
-  syncPolicy:
-    automated:
-      selfHeal: true
-      prune: true
-      allowEmpty: true
-    # https://www.arthurkoziel.com/fixing-argocd-crd-too-long-error/
-    syncOptions:
-      - ServerSideApply=true
-'''
-
-
-def generate_application_resource(template_vars: dict) -> str:
-    renderer = JinjaRenderer()
-    return renderer.render(APPLICATION_RESOUCE_TEMPLATE, template_vars)
-
-
 class AbstractApplication(ABC):
-  def __init__(self, app_viewer: ResourceViewer, env_name: str, template_vars: dict) -> None:
+  def __init__(self, app_name: str, env_name: str, template_vars: dict, app_viewer: ResourceViewer = None) -> None:
     super().__init__()
 
-    self.app_viewer = app_viewer
+    self.app_name = app_name
     self.env_name = env_name
     self.template_vars = template_vars
-    self.name = app_viewer.name
+    self.app_viewer = app_viewer
+
+    log.debug('Created application {} in environment {}'.format(app_name, env_name))
 
   @abstractmethod
-  def generate_resources(self) -> None:
+  def generate_resources(self) -> str:
     pass
+
+  def get_app_rel_path(self) -> str:
+    return os.path.join(self.env_name, self.app_name)
+
+
+class AppOfApps(AbstractApplication):
+  APPLICATION_RESOUCE_TEMPLATE = '''\
+    apiVersion: argoproj.io/v1alpha1
+    kind: Application
+    metadata:
+      name: {{ __application.application_name }}
+      namespace: {{ argocd.namespace }}
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: {{ __application.project }}
+      source:
+        repoURL: {{ argocd.repo_url }}
+        targetRevision: {{ argocd.target_revision }}
+        path: {{ __application.path }}
+      destination:
+        server: {{ argocd.api_server }}
+        namespace: {{ __application.destination_namespace }}
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+          allowEmpty: true
+        # https://www.arthurkoziel.com/fixing-argocd-crd-too-long-error/
+        syncOptions:
+          - ServerSideApply=true
+    '''
+
+
+  def __init__(self, app_name: str, env_name: str, template_vars: dict, app_viewer: ResourceViewer = None) -> None:
+    self._config = get_config()
+
+    super().__init__(app_name, env_name, template_vars, app_viewer)
+
+  def _find_deploying_apps(self, app_deployer_name:str) -> tuple:
+    for env_name, env_data in self._config.get_envs().items():
+      for app_name, app_data in env_data['apps'].items():
+        if 'app_deployer' in app_data and 'project' in app_data and 'destination_namespace' in app_data and \
+            app_deployer_name == app_data['app_deployer']:
+          yield (app_name, env_name, app_data['project'], app_data['destination_namespace'])
+
+  def generate_resources(self) -> str:
+    resources = []
+    renderer = JinjaRenderer()
+
+    for (app_name, env_name, project, destination_namespace) in self._find_deploying_apps(self.app_name):
+      template_vars = merge({}, self.template_vars, {
+        '__application': {
+          'application_name': '-'.join([app_name, env_name]).replace('_', '-'),
+          'path': os.path.join(os.path.basename(self._config.get_output_dir()), env_name, app_name),
+          'project': project,
+          'destination_namespace': destination_namespace
+        }
+      })
+      content = renderer.render(textwrap.dedent(self.APPLICATION_RESOUCE_TEMPLATE), template_vars)
+      resources.append(content)
+
+    return '---'.join(resources)
 
 
 class Application(AbstractApplication):
-  def __init__(self, app_viewer: ResourceViewer, env_name: str, template_vars: dict) -> None:
-    super().__init__(app_viewer, env_name, template_vars)
+  def __init__(self, app_name: str, env_name: str, template_vars: dict, app_viewer: ResourceViewer = None) -> None:
+    super().__init__(app_name, env_name, template_vars, app_viewer)
 
-  def generate_resources(self) -> None:
+  def generate_resources(self) -> str:
     resources = []
     renderer = JinjaRenderer(self.app_viewer)
 
@@ -80,8 +115,8 @@ class Application(AbstractApplication):
 
 
 class KustomizeApplication(AbstractApplication):
-  def __init__(self, app_viewer: ResourceViewer, env_name: str, template_vars: dict) -> None:
-    super().__init__(app_viewer, env_name, template_vars)
+  def __init__(self, app_name: str, env_name: str, template_vars: dict, app_viewer: ResourceViewer = None) -> None:
+    super().__init__(app_name, env_name, template_vars, app_viewer)
 
   def _run_kustomize(self, dir_path: str) -> str:
     process = subprocess.Popen(['kubectl', 'kustomize', '--enable-helm',
@@ -96,7 +131,7 @@ class KustomizeApplication(AbstractApplication):
 
     return stdout
 
-  def generate_resources(self) -> None:
+  def generate_resources(self) -> str:
     config = get_config()
     if os.path.exists(config.get_tmp_dir()):
       shutil.rmtree(config.get_tmp_dir())
@@ -143,3 +178,17 @@ class KustomizeApplication(AbstractApplication):
       return self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, extract_dir_rel_path(yml_child.element_rel_path)))
     else:
       log.error('Missing kustomization.yml in the application directory. Skipping application')
+
+
+def application_factory(viewer: ResourceViewer, app_name: str, env_name: str, template_vars: dict) -> AbstractApplication:
+  app_child = viewer.get_child(app_name)
+
+  if app_child:
+    kustomize_children = app_child.get_files_children('kustomization.yml')
+
+    if not kustomize_children:
+      return Application(app_name, env_name, template_vars, app_child)
+    else:
+      return KustomizeApplication(app_name, env_name, template_vars, app_child)
+  else:
+    return AppOfApps(app_name, env_name, template_vars, None)
