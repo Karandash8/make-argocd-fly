@@ -1,6 +1,9 @@
 import pytest
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 
+##################
+### ResourceViewer
+##################
 
 def test_ResourceViewer_constructor_with_default_values(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -140,6 +143,60 @@ def test_ResourceViewer_build_with_directories_and_files(tmp_path):
   assert resource_viewer.children[2].is_dir is True
   assert resource_viewer.children[2].content is None
   assert len(resource_viewer.children[2].children) == 0
+
+def test_ResourceViewer_get_element_simple(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_app = dir_root / 'app'
+  dir_app.mkdir()
+
+  resource_viewer = ResourceViewer(str(dir_root))
+  resource_viewer.build()
+
+  child = resource_viewer.get_element('app')
+  assert child.name == 'app'
+
+def test_ResourceViewer_get_element_non_existent_simple(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+
+  resource_viewer = ResourceViewer(str(dir_root))
+  resource_viewer.build()
+
+  child = resource_viewer.get_element('app')
+  assert child == None
+
+def test_ResourceViewer_get_element_path(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_subdir = dir_root / 'subdir'
+  dir_subdir.mkdir()
+  dir_app = dir_subdir / 'app'
+  dir_app.mkdir()
+
+  resource_viewer = ResourceViewer(str(dir_root))
+  resource_viewer.build()
+
+  child = resource_viewer.get_element('subdir/app')
+  assert child.name == 'app'
+  assert child.element_rel_path == 'subdir/app'
+
+def test_ResourceViewer_get_element_non_existent_path(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_subdir = dir_root / 'subdir'
+  dir_subdir.mkdir()
+
+  resource_viewer = ResourceViewer(str(dir_root))
+  resource_viewer.build()
+
+  child = resource_viewer.get_element('subdir/app')
+  assert child == None
+
+
+##################
+### ResourceWriter
+##################
 
 def test_ResourceWriter_constructor_with_default_values(tmp_path):
   dir_output = tmp_path / 'dir_output'

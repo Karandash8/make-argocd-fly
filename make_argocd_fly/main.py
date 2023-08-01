@@ -32,24 +32,28 @@ def main() -> None:
   args = parser.parse_args()
 
   log.debug('Root directory path: {}'.format(args.root_dir))
-
   config = read_config(args.root_dir, args.config_file)
+
+  log.info('Reading source directory')
   source_viewer = ResourceViewer(config.get_source_dir())
   source_viewer.build()
-  output_writer = ResourceWriter(config.get_output_dir())
 
   apps = []
+  log.info('Creating applications')
   for env_name, env_data in config.get_envs().items():
     for app_name in env_data['apps'].keys():
       template_vars = merge({}, config.get_vars(), config.get_env_vars(env_name))
 
       apps.append(application_factory(source_viewer, app_name, env_name, template_vars))
 
-  log.debug('Rendering resources')
+  output_writer = ResourceWriter(config.get_output_dir())
+
+  log.info('Rendering resources')
   for app in apps:
     for resource_kind, resource_name, resource_yml in multi_resource_parser(app.generate_resources()):
       output_writer.store_resource(app.get_app_rel_path(), resource_kind, resource_name, resource_yml)
 
+  log.info('Writing resources files')
   if os.path.exists(config.get_output_dir()):
     shutil.rmtree(config.get_output_dir())
   output_writer.write_resources()

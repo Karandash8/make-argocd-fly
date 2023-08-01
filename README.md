@@ -8,12 +8,13 @@ Manifests that are written in kustomize/helm/jsonnet might easily become hard to
 
 With this tool you can quickly render jinja2/kustomize files, run yaml linter and continuer development.
 
-## Benefits
-- Application resources are generated automatically
-- Easier to grasp end manifests
-- Use `include` or `include_raw` in templates to render content of an external file
-- Shared global variables between applications/environments
-- Per environment variables to override global variables
+## Features
+- Jinja2 and Kustomize rendering
+- ArgoCD Application resources are generated automatically
+- Use `include` or `include_raw` in Jinja2 templates to render content of external files
+- Global and per environment Jinja2 variables
+- Single line YAML comments are supported
+- Applications in subdirectories are supported
 
 ## Configuration
 ### config.yml
@@ -27,8 +28,9 @@ envs:
   dev:
     apps:
       bootstrap: {}
+      extra_app_deployer: {app_deployer: bootstrap, project: default, destination_namespace: namespace_1}
       app_1: {app_deployer: bootstrap, project: default, destination_namespace: namespace_1}
-      app_2: {app_deployer: bootstrap, project: default, destination_namespace: namespace_2}
+      subdirectory/app_2: {app_deployer: extra_app_deployer, project: default, destination_namespace: namespace_2}
     vars:
       argocd:
         api_server: dev-api-server
@@ -59,7 +61,7 @@ With such configuration file you can have kustomize overlays for `dev/prod` and 
 ```
 repo
   source
-    app_1
+    (subdirectory/)app_1
       base
         yaml.yml(.j2)
         kustomization.yml(.j2)
@@ -69,12 +71,12 @@ repo
       prod
         yaml.yml(.j2)
         kustomization.yml(.j2)
-    app_2
+    (subdirectory/)app_2
       yaml.yml(.j2)
       kustomization.yml(.j2)
-    app_3
+    (subdirectory/)app_3
       yaml.yml(.j2)
-    app_4
+    (subdirectory/)app_4
       yaml.yml(.j2)
       files
         file.json(.j2)

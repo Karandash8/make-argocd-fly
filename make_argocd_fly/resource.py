@@ -41,10 +41,21 @@ class ResourceViewer:
 
     log.debug('Created element ({})'.format(self))
 
-  def get_child(self, name: str) -> 'ResourceViewer':
+  def _get_child(self, name: str) -> 'ResourceViewer':
     for child in self.children:
       if child.name == name:
         return child
+
+    return None
+
+  def get_element(self, path: str) -> 'ResourceViewer':
+    path_split = (os.path.normpath(path)).split('/')
+    if len(path_split) > 1:
+      child = self._get_child(path_split[0])
+      if child:
+        return child.get_element('/'.join(path_split[1:]))
+    elif len(path_split) == 1:
+      return self._get_child(path_split[0])
 
     return None
 

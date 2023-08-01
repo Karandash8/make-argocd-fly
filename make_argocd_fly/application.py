@@ -9,7 +9,7 @@ from mergedeep import merge
 
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.renderer import JinjaRenderer
-from make_argocd_fly.utils import extract_dir_rel_path, multi_resource_parser
+from make_argocd_fly.utils import multi_resource_parser
 from make_argocd_fly.config import get_config
 
 log = logging.getLogger(__name__)
@@ -23,8 +23,6 @@ class AbstractApplication(ABC):
     self.env_name = env_name
     self.template_vars = template_vars
     self.app_viewer = app_viewer
-
-    log.debug('Created application {} in environment {}'.format(app_name, env_name))
 
   @abstractmethod
   def generate_resources(self) -> str:
@@ -62,11 +60,11 @@ class AppOfApps(AbstractApplication):
           - ServerSideApply=true
     '''
 
-
   def __init__(self, app_name: str, env_name: str, template_vars: dict, app_viewer: ResourceViewer = None) -> None:
     self._config = get_config()
-
     super().__init__(app_name, env_name, template_vars, app_viewer)
+
+    log.debug('Created application {} of type {} for environment {}'.format(app_name, __class__.__name__, env_name))
 
   def _find_deploying_apps(self, app_deployer_name:str) -> tuple:
     for env_name, env_data in self._config.get_envs().items():
@@ -76,13 +74,15 @@ class AppOfApps(AbstractApplication):
           yield (app_name, env_name, app_data['project'], app_data['destination_namespace'])
 
   def generate_resources(self) -> str:
+    log.debug('Generating resources for application {} in environment {}'.format(self.app_name, self.env_name))
+
     resources = []
     renderer = JinjaRenderer()
 
     for (app_name, env_name, project, destination_namespace) in self._find_deploying_apps(self.app_name):
       template_vars = merge({}, self.template_vars, {
         '__application': {
-          'application_name': '-'.join([app_name, env_name]).replace('_', '-'),
+          'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
           'path': os.path.join(os.path.basename(self._config.get_output_dir()), env_name, app_name),
           'project': project,
           'destination_namespace': destination_namespace
@@ -98,17 +98,20 @@ class Application(AbstractApplication):
   def __init__(self, app_name: str, env_name: str, template_vars: dict, app_viewer: ResourceViewer = None) -> None:
     super().__init__(app_name, env_name, template_vars, app_viewer)
 
+    log.debug('Created application {} of type {} for environment {}'.format(app_name, __class__.__name__, env_name))
+
   def generate_resources(self) -> str:
+    log.debug('Generating resources for application {} in environment {}'.format(self.app_name, self.env_name))
+
     resources = []
     renderer = JinjaRenderer(self.app_viewer)
 
-    yml_children = self.app_viewer.get_files_children('.yml$')
+    yml_children = self.app_viewer.get_files_children('(\.yml|\.yml\.j2)$')
     for yml_child in yml_children:
-      resources.append(yml_child.content)
+      content = yml_child.content
+      if yml_child.element_rel_path.endswith('.j2'):
+        content = renderer.render(content, self.template_vars)
 
-    yml_j2_children = self.app_viewer.get_files_children('.yml.j2$')
-    for yml_j2_child in yml_j2_children:
-      content = renderer.render(yml_j2_child.content, self.template_vars)
       resources.append(content)
 
     return '---'.join(resources)
@@ -117,6 +120,8 @@ class Application(AbstractApplication):
 class KustomizeApplication(AbstractApplication):
   def __init__(self, app_name: str, env_name: str, template_vars: dict, app_viewer: ResourceViewer = None) -> None:
     super().__init__(app_name, env_name, template_vars, app_viewer)
+
+    log.debug('Created application {} of type {} for environment {}'.format(app_name, __class__.__name__, env_name))
 
   def _run_kustomize(self, dir_path: str) -> str:
     process = subprocess.Popen(['kubectl', 'kustomize', '--enable-helm',
@@ -131,57 +136,54 @@ class KustomizeApplication(AbstractApplication):
 
     return stdout
 
-  def generate_resources(self) -> str:
+  def _prepare_kustomization_directory(self) -> str:
     config = get_config()
-    if os.path.exists(config.get_tmp_dir()):
-      shutil.rmtree(config.get_tmp_dir())
+    tmp_dir = config.get_tmp_dir()
 
-    tmp_resource_writer = ResourceWriter(config.get_tmp_dir())
+    if os.path.exists(tmp_dir):
+      shutil.rmtree(tmp_dir)
+
+    tmp_resource_writer = ResourceWriter(tmp_dir)
     renderer = JinjaRenderer(self.app_viewer)
 
-    yml_children = self.app_viewer.get_files_children('.yml$')
+    yml_children = self.app_viewer.get_files_children('(\.yml|\.yml\.j2)$')
     for yml_child in yml_children:
-      dir_rel_path = extract_dir_rel_path(yml_child.element_rel_path)
-      for resource_kind, resource_name, resource_yml in multi_resource_parser(yml_child.content):
-        tmp_resource_writer.store_resource(dir_rel_path, resource_kind, resource_name, resource_yml)
+      content = yml_child.content
+      if yml_child.element_rel_path.endswith('.j2'):
+        content = renderer.render(content, self.template_vars)
 
-    yml_j2_children = self.app_viewer.get_files_children('.yml.j2$')
-    for yml_j2_child in yml_j2_children:
-      content = renderer.render(yml_j2_child.content, self.template_vars)
-
-      dir_rel_path = extract_dir_rel_path(yml_j2_child.element_rel_path)
+      dir_rel_path = os.path.dirname(yml_child.element_rel_path)
       for resource_kind, resource_name, resource_yml in multi_resource_parser(content):
         tmp_resource_writer.store_resource(dir_rel_path, resource_kind, resource_name, resource_yml)
 
     tmp_resource_writer.write_resources()
-    tmp_source_viewer = ResourceViewer(os.path.join(config.get_tmp_dir(), self.app_viewer.name))
+
+    return os.path.join(tmp_dir, self.app_viewer.element_rel_path)
+
+  def generate_resources(self) -> str:
+    log.debug('Generating resources for application {} in environment {}'.format(self.app_name, self.env_name))
+
+    tmp_source_viewer = ResourceViewer(self._prepare_kustomization_directory())
     tmp_source_viewer.build()
 
-    env_child = tmp_source_viewer.get_child(self.env_name)
-    if env_child:
-      yml_child = env_child.get_child('kustomization.yml')
-      if yml_child:
-        return self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, extract_dir_rel_path(yml_child.element_rel_path)))
-      else:
-        log.error('Missing kustomization.yml in the overlay directory. Skipping application')
-    else:
-      base_child = tmp_source_viewer.get_child('base')
-      if base_child:
-        yml_child = base_child.get_child('kustomization.yml')
-        if yml_child:
-          return self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, extract_dir_rel_path(yml_child.element_rel_path)))
-        else:
-          log.error('Missing kustomization.yml in the base directory. Skipping application')
-
-    yml_child = tmp_source_viewer.get_child('kustomization.yml')
+    yml_child = tmp_source_viewer.get_element(os.path.join(self.env_name, 'kustomization.yml'))
     if yml_child:
-      return self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, extract_dir_rel_path(yml_child.element_rel_path)))
-    else:
-      log.error('Missing kustomization.yml in the application directory. Skipping application')
+      return self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, os.path.dirname(yml_child.element_rel_path)))
+
+    yml_child = tmp_source_viewer.get_element(os.path.join('base', 'kustomization.yml'))
+    if yml_child:
+      return self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, os.path.dirname(yml_child.element_rel_path)))
+
+    yml_child = tmp_source_viewer.get_element('kustomization.yml')
+    if yml_child:
+      return self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, os.path.dirname(yml_child.element_rel_path)))
+
+    log.error('Missing kustomization.yml in the application directory. Skipping application')
+    return ''
 
 
 def application_factory(viewer: ResourceViewer, app_name: str, env_name: str, template_vars: dict) -> AbstractApplication:
-  app_child = viewer.get_child(app_name)
+  app_child = viewer.get_element(app_name)
 
   if app_child:
     kustomize_children = app_child.get_files_children('kustomization.yml')

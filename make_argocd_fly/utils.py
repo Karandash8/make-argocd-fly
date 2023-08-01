@@ -4,19 +4,16 @@ import re
 log = logging.getLogger(__name__)
 
 
-def extract_dir_rel_path(path: str) -> str:
-  return '/'.join(path.split('/')[:-1])
-
 def resource_parser(resource_yml: str) -> tuple[str, str]:
   resource_kind = None
   resource_name = None
 
-  match = re.search('kind:(.*)', resource_yml)  # TODO: test if "kind:(.*)" fixes the issue with commented out manifests
-  if match and match.groups():
-    resource_kind = match.group(1).strip()
+  match = re.search('(^kind|\nkind):(.*)', resource_yml)
+  if match and len(match.groups()) >= 2:
+    resource_kind = match.group(2).strip()
 
   match = re.search('\n  name:(.*)', resource_yml)
-  if match and match.groups():
+  if match and len(match.groups()) >= 1:
     resource_name = match.group(1).strip()
 
   return (resource_kind, resource_name)
