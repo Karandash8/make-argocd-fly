@@ -80,7 +80,17 @@ class AppOfApps(AbstractApplication):
     renderer = JinjaRenderer()
 
     for (app_name, env_name, project, destination_namespace) in self._find_deploying_apps(self.app_name):
-      template_vars = merge({}, self.template_vars, {
+      # template_vars = merge({}, self.template_vars, {
+      #   '__application': {
+      #     'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
+      #     'path': os.path.join(os.path.basename(self._config.get_output_dir()), env_name, app_name),
+      #     'project': project,
+      #     'destination_namespace': destination_namespace
+      #   }
+      # })
+      # TODO: temporary workaround to get proper env vars
+      config = get_config()
+      template_vars = merge({}, config.get_vars(), config.get_env_vars(env_name), {
         '__application': {
           'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
           'path': os.path.join(os.path.basename(self._config.get_output_dir()), env_name, app_name),
@@ -146,6 +156,8 @@ class KustomizeApplication(AbstractApplication):
     tmp_resource_writer = ResourceWriter(tmp_dir)
     renderer = JinjaRenderer(self.app_viewer)
 
+    # TODO: BUG: only environment specific files shall be rendered.
+    # TODO: current workaround: define environment specific vars in all envs
     yml_children = self.app_viewer.get_files_children('(\.yml|\.yml\.j2)$')
     for yml_child in yml_children:
       content = yml_child.content
