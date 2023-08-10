@@ -120,7 +120,7 @@ class Application(AbstractApplication):
     for yml_child in yml_children:
       content = yml_child.content
       if yml_child.element_rel_path.endswith('.j2'):
-        content = renderer.render(content, self.template_vars)
+        content = renderer.render(content, self.template_vars, yml_child.element_rel_path)
 
       resources.append(content)
 
@@ -162,7 +162,7 @@ class KustomizeApplication(AbstractApplication):
     for yml_child in yml_children:
       content = yml_child.content
       if yml_child.element_rel_path.endswith('.j2'):
-        content = renderer.render(content, self.template_vars)
+        content = renderer.render(content, self.template_vars, yml_child.element_rel_path)
 
       dir_rel_path = os.path.dirname(yml_child.element_rel_path)
       for resource_kind, resource_name, resource_yml in multi_resource_parser(content):

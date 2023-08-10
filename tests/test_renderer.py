@@ -14,7 +14,7 @@ def test_JinjaRenderer_get_template_simple(tmp_path):
   resource_viewer.build()
   renderer = JinjaRenderer(resource_viewer)
 
-  assert renderer._get_template('template.txt.j2') == TEMPLATE
+  assert renderer._get_template('template.txt.j2') == (TEMPLATE, 'template.txt.j2', None)
 
 def test_JinjaRenderer_get_template_does_not_exist(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -44,7 +44,7 @@ def test_JinjaRenderer_get_template_same_filename(tmp_path):
   resource_viewer.build()
   renderer = JinjaRenderer(resource_viewer)
 
-  assert renderer._get_template('dir_1/template.txt.j2') == TEMPLATE_1
+  assert renderer._get_template('dir_1/template.txt.j2') == (TEMPLATE_1, 'dir_1/template.txt.j2', None)
 
 def test_JinjaRenderer_base_loader_render_simple():
   renderer = JinjaRenderer()

@@ -50,12 +50,13 @@ class JinjaRenderer(AbstractRenderer):
     files_children = self.viewer.get_files_children(os.path.basename(path))
     for file_child in files_children:
       if file_child.element_rel_path == path:
-        return file_child.content
+        return (file_child.content, path, None)
 
     log.error('Missing template {}'.format(path))
     return None
 
-  def render(self, content: str, template_vars: dict = None) -> str:
+  def render(self, content: str, template_vars: dict = None, filename: str = '<template>') -> str:
     template = self.env.from_string(content)
+    template.filename = filename
 
     return template.render(template_vars if template_vars else {})
