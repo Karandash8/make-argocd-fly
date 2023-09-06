@@ -2,6 +2,17 @@ source_dir: source
 output_dir: output
 tmp_dir: .tmp
 
+# caveat: the folloving variable names are resenved: __application
+vars:
+  argocd:
+    namespace: argocd
+    repo_url: url
+    target_revision: revision
+  namespace: kube-system
+  app:
+    resource: Deployment_thanos.yml
+  json_var: json
+
 # caveat: 'bootstrap' application shall be deployed externally
 # caveat: if there is an argocd deployment per environment then app_deployer applications shall have different names for different environments
 envs:
@@ -18,27 +29,20 @@ envs:
       app_6: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       subdirectory/app_7: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       subdirectory_2/app_8: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      app_9: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
     vars:
       argocd:
         api_server: management-api-server
       json_var: json_management
+      parent_var:
+        env_specific_var: test_env_specific
   external_1:
     apps:
       app_1: {app_deployer: core_deployer, project: external_1, destination_namespace: kube-default}
       app_2: {app_deployer: core_deployer, project: management, destination_namespace: kube-default}
       app_5: {app_deployer: service_deployer, project: external_1, destination_namespace: kube-default}
       subdirectory/app_7: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      app_9: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
     vars:
       argocd:
         api_server: external_1-api-server
-
-# caveat: the folloving variable names are resenved: __application
-vars:
-  argocd:
-    namespace: argocd
-    repo_url: url
-    target_revision: revision
-  namespace: kube-system
-  app:
-    resource: Deployment_thanos.yml
-  json_var: json

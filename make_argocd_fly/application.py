@@ -156,9 +156,7 @@ class KustomizeApplication(AbstractApplication):
     tmp_resource_writer = ResourceWriter(tmp_dir)
     renderer = JinjaRenderer(self.app_viewer)
 
-    # TODO: BUG: only environment specific files shall be rendered.
-    # TODO: current workaround: define environment specific vars in all envs
-    yml_children = self.app_viewer.get_files_children('(\.yml|\.yml\.j2)$')
+    yml_children = self.app_viewer.get_files_children('(\.yml|\.yml\.j2)$', ['base', self.env_name])
     for yml_child in yml_children:
       content = yml_child.content
       if yml_child.element_rel_path.endswith('.j2'):
@@ -194,15 +192,13 @@ class KustomizeApplication(AbstractApplication):
     return ''
 
 
-def application_factory(viewer: ResourceViewer, app_name: str, env_name: str, template_vars: dict) -> AbstractApplication:
-  app_child = viewer.get_element(app_name)
-
-  if app_child:
-    kustomize_children = app_child.get_files_children('kustomization.yml')
+def application_factory(app_viewer: ResourceViewer, app_name: str, env_name: str, template_vars: dict) -> AbstractApplication:
+  if app_viewer:
+    kustomize_children = app_viewer.get_files_children('kustomization.yml')
 
     if not kustomize_children:
-      return Application(app_name, env_name, template_vars, app_child)
+      return Application(app_name, env_name, template_vars, app_viewer)
     else:
-      return KustomizeApplication(app_name, env_name, template_vars, app_child)
+      return KustomizeApplication(app_name, env_name, template_vars, app_viewer)
   else:
     return AppOfApps(app_name, env_name, template_vars, None)

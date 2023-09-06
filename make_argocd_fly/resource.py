@@ -62,13 +62,17 @@ class ResourceViewer:
   def get_children(self) -> list:
     return self.children
 
-  def get_files_children(self, name_pattern: str) -> list:
+  # if `search_subdirs` is a list of subdirs, then only those subdirs will be searched
+  def get_files_children(self, name_pattern: str, search_subdirs: list = None) -> list:
     files = []
     for child in self.children:
       if not child.is_dir and re.search(name_pattern, child.name):
         files.append(child)
       else:
-        files.extend(child.get_files_children(name_pattern))
+        if not search_subdirs:
+          files.extend(child.get_files_children(name_pattern))
+        elif child.name in search_subdirs:
+          files.extend(child.get_files_children(name_pattern))
 
     return files
 

@@ -43,15 +43,9 @@ def test_application_factory_create_KustomizeApplication(tmp_path):
   assert isinstance(app_instance, KustomizeApplication)
 
 def test_application_factory_create_AppOfApps(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-
-  resource_viewer = ResourceViewer(str(dir_root))
-  resource_viewer.build()
-
   app_name = 'app'
   env_name = 'env'
 
-  app_instance = application_factory(resource_viewer, app_name, env_name, {})
+  app_instance = application_factory(None, app_name, env_name, {})
 
   assert isinstance(app_instance, AppOfApps)

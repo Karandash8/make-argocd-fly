@@ -55,10 +55,7 @@ With such configuration file you can have kustomize overlays for `dev/prod` and 
 
 ## Caveats
 ### Known bugs
-#### Kustomize and per environment vars
-Currently, if a kustomize environment resource has a variable that is undefined for other environments then template rendering fails.
-
-**Workaround**: define that variable with a dummy value for environments where the variable is not used or have the variable defined in the global scope with a default value.
+It is just perfect.
 
 ### Requirements
 `kubectl` is expected to be installed locally.
