@@ -95,7 +95,7 @@ class ResourceWriter:
     self.output_dir_abs_path = output_dir_abs_path
     self.resources = {}
 
-  def store_resource(self, dir_rel_path: str, resource_kind: str, resource_name: str, resource_yml: str) -> None:
+  def store_resource(self, env_name:str, dir_rel_path: str, resource_kind: str, resource_name: str, resource_yml: str) -> None:
     if not dir_rel_path:
       log.error('Parameter `dir_rel_path` is undefined')
       raise Exception
@@ -104,11 +104,11 @@ class ResourceWriter:
       log.error('Parameter `resource_kind` is undefined')
       raise Exception
 
-    if (dir_rel_path, resource_kind, resource_name) in self.resources:
-      log.error('Resource ({}, {}, {}) already exists'.format(dir_rel_path, resource_kind, resource_name))
+    if (env_name, dir_rel_path, resource_kind, resource_name) in self.resources:
+      log.error('Resource ({}, {}, {}, {}) already exists'.format(env_name, dir_rel_path, resource_kind, resource_name))
       raise Exception
 
-    self.resources[(dir_rel_path, resource_kind, resource_name)] = resource_yml
+    self.resources[(env_name, dir_rel_path, resource_kind, resource_name)] = resource_yml
 
   def _assemble_filename(self, resource_kind: str, resource_name: str) -> str:
     if resource_name:
@@ -118,7 +118,7 @@ class ResourceWriter:
       return '{}.yml'.format(resource_kind).lower()
 
   def write_resources(self) -> None:
-    for (dir_rel_path, resource_kind, resource_name), resource_yml in self.resources.items():
+    for (_, dir_rel_path, resource_kind, resource_name), resource_yml in self.resources.items():
       path = os.path.join(self.output_dir_abs_path, dir_rel_path)
       os.makedirs(path, exist_ok=True)
 

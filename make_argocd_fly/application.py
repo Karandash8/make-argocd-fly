@@ -16,13 +16,13 @@ log = logging.getLogger(__name__)
 
 
 class AbstractApplication(ABC):
-  def __init__(self, app_name: str, env_name: str, template_vars: dict, app_viewer: ResourceViewer = None) -> None:
+  def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:
     super().__init__()
 
     self.app_name = app_name
     self.env_name = env_name
-    self.template_vars = template_vars
     self.app_viewer = app_viewer
+    self.config = get_config()
 
   @abstractmethod
   def generate_resources(self) -> str:
@@ -60,18 +60,19 @@ class AppOfApps(AbstractApplication):
           - ServerSideApply=true
     '''
 
-  def __init__(self, app_name: str, env_name: str, template_vars: dict, app_viewer: ResourceViewer = None) -> None:
+  def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:
     self._config = get_config()
-    super().__init__(app_name, env_name, template_vars, app_viewer)
+    super().__init__(app_name, env_name, app_viewer)
 
     log.debug('Created application {} of type {} for environment {}'.format(app_name, __class__.__name__, env_name))
 
-  def _find_deploying_apps(self, app_deployer_name:str) -> tuple:
+  def _find_deploying_apps(self, app_deployer_name:str, app_deployer_env_name: str) -> tuple:
     for env_name, env_data in self._config.get_envs().items():
       for app_name, app_data in env_data['apps'].items():
-        if 'app_deployer' in app_data and 'project' in app_data and 'destination_namespace' in app_data and \
-            app_deployer_name == app_data['app_deployer']:
-          yield (app_name, env_name, app_data['project'], app_data['destination_namespace'])
+        if 'app_deployer' in app_data and 'project' in app_data and 'destination_namespace' in app_data:
+          if app_deployer_name == app_data['app_deployer'] and (('app_deployer_env' not in app_data and env_name == app_deployer_env_name) or \
+              ('app_deployer_env' in app_data and app_deployer_env_name == app_data['app_deployer_env'])):
+            yield (app_name, env_name, app_data['project'], app_data['destination_namespace'])
 
   def generate_resources(self) -> str:
     log.debug('Generating resources for application {} in environment {}'.format(self.app_name, self.env_name))
@@ -79,18 +80,8 @@ class AppOfApps(AbstractApplication):
     resources = []
     renderer = JinjaRenderer()
 
-    for (app_name, env_name, project, destination_namespace) in self._find_deploying_apps(self.app_name):
-      # template_vars = merge({}, self.template_vars, {
-      #   '__application': {
-      #     'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
-      #     'path': os.path.join(os.path.basename(self._config.get_output_dir()), env_name, app_name),
-      #     'project': project,
-      #     'destination_namespace': destination_namespace
-      #   }
-      # })
-      # TODO: temporary workaround to get proper env vars
-      config = get_config()
-      template_vars = merge({}, config.get_vars(), config.get_env_vars(env_name), {
+    for (app_name, env_name, project, destination_namespace) in self._find_deploying_apps(self.app_name, self.env_name):
+      template_vars = merge({}, self.config.get_vars(), self.config.get_env_vars(env_name), {
         '__application': {
           'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
           'path': os.path.join(os.path.basename(self._config.get_output_dir()), env_name, app_name),
@@ -105,8 +96,8 @@ class AppOfApps(AbstractApplication):
 
 
 class Application(AbstractApplication):
-  def __init__(self, app_name: str, env_name: str, template_vars: dict, app_viewer: ResourceViewer = None) -> None:
-    super().__init__(app_name, env_name, template_vars, app_viewer)
+  def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:
+    super().__init__(app_name, env_name, app_viewer)
 
     log.debug('Created application {} of type {} for environment {}'.format(app_name, __class__.__name__, env_name))
 
@@ -120,7 +111,8 @@ class Application(AbstractApplication):
     for yml_child in yml_children:
       content = yml_child.content
       if yml_child.element_rel_path.endswith('.j2'):
-        content = renderer.render(content, self.template_vars, yml_child.element_rel_path)
+        template_vars = merge({}, self.config.get_vars(), self.config.get_env_vars(self.env_name))
+        content = renderer.render(content, template_vars, yml_child.element_rel_path)
 
       resources.append(content)
 
@@ -128,8 +120,8 @@ class Application(AbstractApplication):
 
 
 class KustomizeApplication(AbstractApplication):
-  def __init__(self, app_name: str, env_name: str, template_vars: dict, app_viewer: ResourceViewer = None) -> None:
-    super().__init__(app_name, env_name, template_vars, app_viewer)
+  def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:
+    super().__init__(app_name, env_name, app_viewer)
 
     log.debug('Created application {} of type {} for environment {}'.format(app_name, __class__.__name__, env_name))
 
@@ -160,11 +152,12 @@ class KustomizeApplication(AbstractApplication):
     for yml_child in yml_children:
       content = yml_child.content
       if yml_child.element_rel_path.endswith('.j2'):
-        content = renderer.render(content, self.template_vars, yml_child.element_rel_path)
+        template_vars = merge({}, self.config.get_vars(), self.config.get_env_vars(self.env_name))
+        content = renderer.render(content, template_vars, yml_child.element_rel_path)
 
       dir_rel_path = os.path.dirname(yml_child.element_rel_path)
       for resource_kind, resource_name, resource_yml in multi_resource_parser(content):
-        tmp_resource_writer.store_resource(dir_rel_path, resource_kind, resource_name, resource_yml)
+        tmp_resource_writer.store_resource(self.env_name, dir_rel_path, resource_kind, resource_name, resource_yml)
 
     tmp_resource_writer.write_resources()
 
@@ -192,13 +185,13 @@ class KustomizeApplication(AbstractApplication):
     return ''
 
 
-def application_factory(app_viewer: ResourceViewer, app_name: str, env_name: str, template_vars: dict) -> AbstractApplication:
+def application_factory(app_viewer: ResourceViewer, app_name: str, env_name: str) -> AbstractApplication:
   if app_viewer:
     kustomize_children = app_viewer.get_files_children('kustomization.yml')
 
     if not kustomize_children:
-      return Application(app_name, env_name, template_vars, app_viewer)
+      return Application(app_name, env_name, app_viewer)
     else:
-      return KustomizeApplication(app_name, env_name, template_vars, app_viewer)
+      return KustomizeApplication(app_name, env_name, app_viewer)
   else:
-    return AppOfApps(app_name, env_name, template_vars, None)
+    return AppOfApps(app_name, env_name, None)

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "make_argocd_fly"
-version = "0.0.20"
+version = "0.0.21"
 authors = [
     {name = "Andrei Lapin", email = "karandash8@gmail.com"},
 ]

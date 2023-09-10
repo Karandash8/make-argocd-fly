@@ -42,17 +42,16 @@ def main() -> None:
   log.info('Creating applications')
   for env_name, env_data in config.get_envs().items():
     for app_name in env_data['apps'].keys():
-      template_vars = merge({}, config.get_vars(), config.get_env_vars(env_name))
       app_viewer = source_viewer.get_element(app_name)
 
-      apps.append(application_factory(app_viewer, app_name, env_name, template_vars))
+      apps.append(application_factory(app_viewer, app_name, env_name))
 
   output_writer = ResourceWriter(config.get_output_dir())
 
   log.info('Rendering resources')
   for app in apps:
     for resource_kind, resource_name, resource_yml in multi_resource_parser(app.generate_resources()):
-      output_writer.store_resource(app.get_app_rel_path(), resource_kind, resource_name, resource_yml)
+      output_writer.store_resource(app.env_name, app.get_app_rel_path(), resource_kind, resource_name, resource_yml)
 
   log.info('Writing resources files')
   if os.path.exists(config.get_output_dir()):

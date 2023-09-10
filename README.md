@@ -53,6 +53,13 @@ vars:
 
 With such configuration file you can have kustomize overlays for `dev/prod` and use jinja2 variables like `{{ var_1.var_2 }} and {{ var_3 }}` in your source files.
 
+### app parameters
+- `app_deployer` - name of the application that will deploy this application
+- `app_deployer_env` - (OPTIONAL) environment of the application that will deploy this application
+- `project` - ArgoCD project name
+- `destination_namespace` - namespace where the application will be deployed
+
+
 ## Caveats
 ### Known bugs
 It is just perfect.
@@ -113,9 +120,6 @@ resources:
 ```
 ### Initial app-of-apps application
 `bootstrap` application shall be deployed externally
-
-### Multiple ArgoCD deployments referencing the same repo
-If there is an argocd deployment per environment then app_deployer applications shall have different names for different environments
 
 ### Variable names
 The folloving variable names are resenved:

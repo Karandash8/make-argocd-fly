@@ -38,11 +38,16 @@ envs:
         env_specific_var: test_env_specific
   external_1:
     apps:
-      app_1: {app_deployer: core_deployer, project: external_1, destination_namespace: kube-default}
-      app_2: {app_deployer: core_deployer, project: management, destination_namespace: kube-default}
-      app_5: {app_deployer: service_deployer, project: external_1, destination_namespace: kube-default}
-      subdirectory/app_7: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      app_9: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      bootstrap: {}
+      unused_deployer: {app_deployer: bootstrap, project: default, destination_namespace: kube-system}
+      app_1: {app_deployer: core_deployer, app_deployer_env: management, project: external_1, destination_namespace: kube-default}
+      app_2: {app_deployer: core_deployer, app_deployer_env: management, project: management, destination_namespace: kube-default}
+      app_5: {app_deployer: service_deployer, app_deployer_env: management, project: external_1, destination_namespace: kube-default}
+      subdirectory/app_7: {app_deployer: service_deployer, app_deployer_env: management, project: management, destination_namespace: kube-default}
+      app_9: {app_deployer: service_deployer, app_deployer_env: management, project: management, destination_namespace: kube-default}
     vars:
       argocd:
         api_server: external_1-api-server
+  external_2:
+    apps: {}
+    vars: {}
