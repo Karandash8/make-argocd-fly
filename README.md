@@ -87,9 +87,6 @@ With such configuration file you can have kustomize overlays for `dev/prod` and 
 
 
 ## Caveats
-### Known bugs
-It is just perfect.
-
 ### Requirements
 `kubectl` is expected to be installed locally.
 
