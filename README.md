@@ -16,6 +16,15 @@ With this tool you can quickly render jinja2/kustomize files, run yaml linter an
 - Single line YAML comments are supported
 - Applications in subdirectories are supported
 
+## Usage
+```
+python3 -m venv .venv
+. .venv/bin/activate
+pip install make-argocd-fly
+
+make-argocd-fly
+```
+
 ## Configuration
 ### config.yml
 Expected file structure
