@@ -10,7 +10,7 @@ With this tool you can quickly render jinja2/kustomize files, run yaml linter an
 
 ## Features
 - Jinja2 and Kustomize rendering
-- ArgoCD Application resources are generated automatically
+- ArgoCD `Application` resources are generated automatically
 - Use `include` or `include_raw` in Jinja2 templates to render content of external files
 - Global and per environment Jinja2 variables
 - Single line YAML comments are supported
@@ -29,7 +29,13 @@ envs:
     apps:
       bootstrap: {}
       extra_app_deployer: {app_deployer: bootstrap, project: default, destination_namespace: namespace_1}
-      app_1: {app_deployer: bootstrap, project: default, destination_namespace: namespace_1}
+      app_1:
+        app_deployer: bootstrap
+        project: default
+        destination_namespace: namespace_1
+        vars:
+          argocd:
+            target_revision: custom_branch
       subdirectory/app_2: {app_deployer: extra_app_deployer, project: default, destination_namespace: namespace_2}
     vars:
       argocd:
@@ -44,8 +50,18 @@ envs:
 vars:
   argocd:
     namespace: argocd
-    repo_url: url
-    target_revision: revision
+    repo_url: https://example.com/repo.git
+    target_revision: HEAD
+    sync_policy:
+      automated:
+        selfHeal: true
+        prune: true
+        allowEmpty: true
+      # https://www.arthurkoziel.com/fixing-argocd-crd-too-long-error/
+      syncOptions:
+        - ServerSideApply=true
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
   var_1:
     var_2: value_2
   var_3: value_3
@@ -58,6 +74,7 @@ With such configuration file you can have kustomize overlays for `dev/prod` and 
 - `app_deployer_env` - (OPTIONAL) environment of the application that will deploy this application
 - `project` - ArgoCD project name
 - `destination_namespace` - namespace where the application will be deployed
+- `vars` - (OPTIONAL) application specific jinja2 variables
 
 
 ## Caveats
@@ -131,6 +148,10 @@ The folloving variables are expected to be present:
 - argocd.namespace
 - argocd.repo_url
 - argocd.target_revision
+
+### Optional variables
+- argocd.sync_policy
+- argocd.finalizers
 
 ## For developers
 ### Build instructions

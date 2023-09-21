@@ -5,11 +5,9 @@ import subprocess
 import shutil
 import textwrap
 
-from mergedeep import merge
-
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.renderer import JinjaRenderer
-from make_argocd_fly.utils import multi_resource_parser
+from make_argocd_fly.utils import multi_resource_parser, merge_dicts
 from make_argocd_fly.config import get_config
 
 log = logging.getLogger(__name__)
@@ -39,8 +37,12 @@ class AppOfApps(AbstractApplication):
     metadata:
       name: {{ __application.application_name }}
       namespace: {{ argocd.namespace }}
+    {%- if argocd.finalizers | default([]) %}
       finalizers:
-        - resources-finalizer.argocd.argoproj.io
+      {{ argocd.finalizers | to_nice_yaml | trim }}
+    {%- else %}
+      finalizers: []
+    {%- endif %}
     spec:
       project: {{ __application.project }}
       source:
@@ -51,13 +53,7 @@ class AppOfApps(AbstractApplication):
         server: {{ argocd.api_server }}
         namespace: {{ __application.destination_namespace }}
       syncPolicy:
-        automated:
-          selfHeal: true
-          prune: true
-          allowEmpty: true
-        # https://www.arthurkoziel.com/fixing-argocd-crd-too-long-error/
-        syncOptions:
-          - ServerSideApply=true
+        {{ argocd.sync_policy | default({}) | to_nice_yaml(indent=2) | trim | indent(4) }}
     '''
 
   def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:
@@ -81,7 +77,7 @@ class AppOfApps(AbstractApplication):
     renderer = JinjaRenderer()
 
     for (app_name, env_name, project, destination_namespace) in self._find_deploying_apps(self.app_name, self.env_name):
-      template_vars = merge({}, self.config.get_vars(), self.config.get_env_vars(env_name), {
+      template_vars = merge_dicts(self.config.get_vars(), self.config.get_env_vars(env_name), self.config.get_app_vars(env_name, app_name), {
         '__application': {
           'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
           'path': os.path.join(os.path.basename(self._config.get_output_dir()), env_name, app_name),
@@ -111,7 +107,7 @@ class Application(AbstractApplication):
     for yml_child in yml_children:
       content = yml_child.content
       if yml_child.element_rel_path.endswith('.j2'):
-        template_vars = merge({}, self.config.get_vars(), self.config.get_env_vars(self.env_name))
+        template_vars = merge_dicts({}, self.config.get_vars(), self.config.get_env_vars(self.env_name), self.config.get_app_vars(self.env_name, self.app_name))
         content = renderer.render(content, template_vars, yml_child.element_rel_path)
 
       resources.append(content)
@@ -152,7 +148,7 @@ class KustomizeApplication(AbstractApplication):
     for yml_child in yml_children:
       content = yml_child.content
       if yml_child.element_rel_path.endswith('.j2'):
-        template_vars = merge({}, self.config.get_vars(), self.config.get_env_vars(self.env_name))
+        template_vars = merge_dicts({}, self.config.get_vars(), self.config.get_env_vars(self.env_name), self.config.get_app_vars(self.env_name, self.app_name))
         content = renderer.render(content, template_vars, yml_child.element_rel_path)
 
       dir_rel_path = os.path.dirname(yml_child.element_rel_path)

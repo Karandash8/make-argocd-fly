@@ -1,0 +1,19 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../base
+
+commonLabels:
+  app: external_1
+
+patchesStrategicMerge:
+- |-
+  kind: Deployment
+  apiVersion: apps/v1
+  metadata:
+    name: prometheus
+    namespace: monitoring
+  spec:
+    param: external

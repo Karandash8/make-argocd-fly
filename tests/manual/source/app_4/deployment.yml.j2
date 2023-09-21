@@ -1,0 +1,17 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: thanos-sidecar
+  namespace: {{ namespace }}
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: thanos-sidecar-2
+  namespace: {{ namespace }}
+data: |-
+{%- filter indent(width=4) %}
+{% include_raw 'app_4/files/file.json' %}
+{% endfilter %}

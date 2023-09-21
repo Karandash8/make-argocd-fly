@@ -71,6 +71,18 @@ class Config:
 
     return envs[env_name]['vars'] if 'vars' in envs[env_name] else {}
 
+  def get_app_vars(self, env_name: str, app_name: str) -> dict:
+    envs = self.get_envs()
+    if env_name not in envs:
+      log.error('Environment {} is not defined'.format(env_name))
+      raise Exception
+
+    if app_name not in envs[env_name]['apps']:
+      log.error('Application {} is not defined in environment {}'.format(app_name, env_name))
+      raise Exception
+
+    return envs[env_name]['apps'][app_name]['vars'] if 'vars' in envs[env_name]['apps'][app_name] else {}
+
 
 config = Config()
 

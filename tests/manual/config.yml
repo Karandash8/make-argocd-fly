@@ -1,6 +1,6 @@
-source_dir: source
-output_dir: output
-tmp_dir: .tmp
+source_dir: tests/manual/source
+output_dir: tests/manual/output
+tmp_dir: tests/manual/.tmp
 
 # caveat: the folloving variable names are resenved: __application
 vars:
@@ -8,20 +8,35 @@ vars:
     namespace: argocd
     repo_url: url
     target_revision: revision
+    sync_policy:
+      automated:
+        selfHeal: true
+        prune: true
+        allowEmpty: true
+      # https://www.arthurkoziel.com/fixing-argocd-crd-too-long-error/
+      syncOptions:
+        - ServerSideApply=true
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
   namespace: kube-system
   app:
     resource: Deployment_thanos.yml
   json_var: json
 
 # caveat: 'bootstrap' application shall be deployed externally
-# caveat: if there is an argocd deployment per environment then app_deployer applications shall have different names for different environments
 envs:
   management:
     apps:
       bootstrap: {}
       core_deployer: {app_deployer: bootstrap, project: default, destination_namespace: kube-system}
       service_deployer: {app_deployer: bootstrap, project: default, destination_namespace: kube-system}
-      app_1: {app_deployer: core_deployer, project: management, destination_namespace: kube-default}
+      app_1:
+        app_deployer: core_deployer
+        project: management
+        destination_namespace: kube-default
+        vars:
+          argocd:
+            target_revision: custom_revision
       app_2: {app_deployer: core_deployer, project: management, destination_namespace: kube-default}
       app_3: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       app_4: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
@@ -33,6 +48,8 @@ envs:
     vars:
       argocd:
         api_server: management-api-server
+        sync_policy:
+          automated: null
       json_var: json_management
       parent_var:
         env_specific_var: test_env_specific

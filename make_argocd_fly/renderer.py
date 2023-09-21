@@ -44,7 +44,7 @@ class JinjaRenderer(AbstractRenderer):
       self.loader = FunctionLoader(self._get_template)
     else:
       self.loader = BaseLoader()
-    self.env = Environment(extensions=[IncludeRawExtension], loader=self.loader, undefined=StrictUndefined)
+    self.env = Environment(extensions=[IncludeRawExtension, 'jinja2_ansible_filters.AnsibleCoreFiltersExtension'], loader=self.loader, undefined=StrictUndefined)
 
   def _get_template(self, path: str):
     files_children = self.viewer.get_files_children(os.path.basename(path))
