@@ -1,6 +1,7 @@
+import pytest
 import textwrap
 
-from make_argocd_fly.utils import resource_parser, merge_dicts
+from make_argocd_fly.utils import resource_parser, multi_resource_parser, merge_dicts
 
 ###################
 ### resource_parser
@@ -64,6 +65,211 @@ def test_resource_parser_with_comments_and_leading_kind():
     '''
 
   assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+
+def test_resource_parser_invalid_yaml_duplicate_resource_kind(caplog):
+  resource_yml = '''\
+    kind: Deployment
+    kind: DaemonSet
+    apiVersion: apps/v1
+    metadata:
+      name: grafana
+    '''
+
+  with pytest.raises(Exception):
+      resource_parser(textwrap.dedent(resource_yml))
+  assert 'Duplicate resource kind' in caplog.text
+
+def test_resource_parser_with_messed_up_order_metadata_at_the_beginning():
+  resource_yml = '''\
+    metadata:
+      name: grafana
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    '''
+
+  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+
+def test_resource_parser_with_messed_up_order_metadata_in_the_middle():
+  resource_yml = '''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+      name: grafana
+    '''
+
+  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+
+def test_resource_parser_with_messed_up_order_name_extra_spaces():
+  resource_yml = '''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+        name: grafana
+    '''
+
+  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+
+def test_resource_parser_with_messed_up_order_name_is_not_first():
+  resource_yml = '''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+      namespace: monitoring
+      name: grafana
+    '''
+
+  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+
+def test_resource_parser_with_messed_up_order_name_is_not_first_with_comment_1():
+  resource_yml = '''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+      namespace: monitoring
+    # comment
+      name: grafana
+    '''
+
+  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+
+def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_2():
+  resource_yml = '''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+      namespace: monitoring
+     # comment
+      name: grafana
+    '''
+
+  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+
+def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_3():
+  resource_yml = '''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+      namespace: monitoring
+      # comment
+      name: grafana
+    '''
+
+  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+
+def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_4():
+  resource_yml = '''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+      namespace: monitoring
+       # comment
+      name: grafana
+    '''
+
+  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+
+###################
+### multi_resource_parser
+###################
+
+def test_multi_resource_parser_with_valid_yaml():
+  # Test when valid YAML is provided with multiple resources
+  multi_resource_yml = '''\
+    kind: Deployment
+    metadata:
+      name: grafana
+    ---
+    kind: DaemonSet
+    metadata:
+      name: prometheus
+    '''
+
+  result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
+  expected = [
+      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana'),
+      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+  ]
+
+  assert result == expected
+
+def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_top():
+  # Test when valid YAML is provided with multiple resources
+  multi_resource_yml = '''\
+    ---
+    kind: Deployment
+    metadata:
+      name: grafana
+    ---
+    kind: DaemonSet
+    metadata:
+      name: prometheus
+    '''
+
+  result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
+  expected = [
+      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana'),
+      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+  ]
+
+  assert result == expected
+
+def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_bottom():
+  # Test when valid YAML is provided with multiple resources
+  multi_resource_yml = '''\
+    kind: Deployment
+    metadata:
+      name: grafana
+    ---
+    kind: DaemonSet
+    metadata:
+      name: prometheus
+    ---
+    '''
+
+  result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
+  expected = [
+      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana'),
+      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+  ]
+
+  assert result == expected
+
+def test_multi_resource_parser_with_valid_yaml_not_an_extra_separator():
+  # Test when valid YAML is provided with multiple resources
+  multi_resource_yml = '''\
+    kind: Deployment
+    metadata:
+      name: grafana
+      comment: "--- This is not an extra separator"
+    ---
+    kind: DaemonSet
+    metadata:
+      name: prometheus
+    '''
+
+  result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
+  expected = [
+      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n  comment: "--- This is not an extra separator"'),
+      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+  ]
+
+  assert result == expected
 
 ###############
 ### merge_dicts

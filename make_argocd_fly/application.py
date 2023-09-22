@@ -88,7 +88,7 @@ class AppOfApps(AbstractApplication):
       content = renderer.render(textwrap.dedent(self.APPLICATION_RESOUCE_TEMPLATE), template_vars)
       resources.append(content)
 
-    return '---'.join(resources)
+    return '\n---\n'.join(resources)
 
 
 class Application(AbstractApplication):
@@ -112,7 +112,7 @@ class Application(AbstractApplication):
 
       resources.append(content)
 
-    return '---'.join(resources)
+    return '\n---\n'.join(resources)
 
 
 class KustomizeApplication(AbstractApplication):

@@ -36,8 +36,11 @@ class ResourceViewer:
         child.build()
         self.children.append(child)
     else:
-      with open(path) as f:
-        self.content = ''.join(f.readlines())
+      try:
+        with open(path) as f:
+          self.content = ''.join(f.readlines())
+      except UnicodeDecodeError:
+        log.warning('File is not a text file {}'.format(path))
 
     log.debug('Created element ({})'.format(self))
 
