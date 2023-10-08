@@ -1,12 +1,12 @@
 ## Description
-A tool to generate on the user side per environemnt Kubernetes manifests that can be deployed with ArgoCD.
+A tool to generate on the user side per environment Kubernetes manifests that can be deployed with ArgoCD.
 
 ArcoCD resources of type `Application` are generated automatically based on the provided configuration.
 
 ## Motivation
 Manifests that are written in kustomize/helm/jsonnet might easily become hard to read and debug. The development lifecycle becomes longer when after each change you need to commit, wait for ArgoCD to pick it up and deploy it. Only after that you see the actual end manifest in ArcoCD UI.
 
-With this tool you can quickly render jinja2/kustomize files, run yaml linter and continuer development.
+With this tool you can quickly render jinja2/kustomize files, run yaml linter and continue development.
 
 ## Features
 - Jinja2 and Kustomize rendering
@@ -168,7 +168,7 @@ https://packaging.python.org/en/latest/tutorials/packaging-projects/
 
 ### Preparation
 ```
-python -m venv .venv
+python3 -m venv .venv
 . .venv/bin/activate
 python3 -m pip install --upgrade pip
 pip install -r requirements.txt
@@ -177,12 +177,12 @@ pip install -r dev_requirements.txt
 
 ### Execution
 ```
-python main.py --root-dir <path>
+python3 main.py --root-dir <path>
 ```
 
 ### Packaging
 ```
 <change version in pyproject.toml>
-python -m build
-python -m twine upload  dist/*
+python3 -m build
+python3 -m twine upload  dist/*
 ```

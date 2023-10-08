@@ -19,14 +19,24 @@ class Config:
     self.envs = None
     self.vars = None
 
-  def init_config(self, root_dir: str, config: dict) -> None:
+  def init_config(self, root_dir: str, config: dict, envs: list) -> None:
     self.root_dir = root_dir
-
+    
     self.source_dir = config['source_dir'] if 'source_dir' in config else SOURCE_DIR
     self.output_dir = config['output_dir'] if 'output_dir' in config else OUTPUT_DIR
     self.tmp_dir = config['tmp_dir'] if 'tmp_dir' in config else TMP_DIR
-    self.envs = config['envs'] if 'envs' in config else ENVS
     self.vars = config['vars'] if 'vars' in config else VARS
+    
+    if envs:
+      unfiltered_envs = config['envs'] if 'envs' in config else ENVS
+      for env in envs:
+        if env not in unfiltered_envs:
+          log.error('Environment {} not specified in envs section'.format(env))
+          raise Exception
+      self.envs = {env: config['envs'][env] for env in envs}
+    else:
+      self.envs = config['envs'] if 'envs' in config else ENVS
+    
 
   def get_source_dir(self) -> str:
     if not self.source_dir:
@@ -87,8 +97,9 @@ class Config:
 config = Config()
 
 
-def read_config(root_dir: str, config_file: str) -> Config:
+def read_config(root_dir: str, config_file: str, envs: str) -> Config:
   config_content = {}
+  envs = envs.split(",")
   try:
     with open(os.path.join(root_dir, config_file)) as f:
       config_content = yaml.safe_load(f.read())
@@ -97,7 +108,7 @@ def read_config(root_dir: str, config_file: str) -> Config:
     log.fatal(error)
     raise
 
-  config.init_config(root_dir, config_content)
+  config.init_config(root_dir, config_content, envs)
 
   return config
 

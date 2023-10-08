@@ -5,8 +5,6 @@ import os
 import argparse
 import shutil
 
-from mergedeep import merge
-
 from make_argocd_fly.config import read_config, get_config
 from make_argocd_fly.utils import multi_resource_parser
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
@@ -29,11 +27,15 @@ def main() -> None:
   parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')
   parser.add_argument('--root-dir', type=str, default=os.getcwd(), help='Root directory')
   parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file')
+  parser.add_argument('--env', type=str, default='', help='Environments to bootstrap')
   args = parser.parse_args()
 
   log.debug('Root directory path: {}'.format(args.root_dir))
-  config = read_config(args.root_dir, args.config_file)
-
+  log.debug('Configuration file: {}'.format(args.config_file))
+  log.debug('Environments to bootstrap: {}'.format(args.env))
+  
+  config = read_config(args.root_dir, args.config_file, args.env)
+  
   log.info('Reading source directory')
   source_viewer = ResourceViewer(config.get_source_dir())
   source_viewer.build()

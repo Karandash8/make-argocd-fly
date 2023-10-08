@@ -117,7 +117,7 @@ class ResourceWriter:
     if resource_name:
       return '{}_{}.yml'.format(resource_kind, resource_name)
     else:
-      # kustomize expects one of the follosing files to be present: 'kustomization.yaml', 'kustomization.yml' or 'Kustomization'
+      # kustomize expects one of the following files to be present: 'kustomization.yaml', 'kustomization.yml' or 'Kustomization'
       return '{}.yml'.format(resource_kind).lower()
 
   def write_resources(self) -> None:
