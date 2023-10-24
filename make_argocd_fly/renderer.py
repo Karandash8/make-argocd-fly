@@ -1,5 +1,6 @@
 import logging
 import os
+import socket
 from abc import ABC, abstractmethod
 from jinja2 import Environment, BaseLoader, FunctionLoader, nodes, StrictUndefined
 from jinja2.ext import Extension
@@ -24,6 +25,19 @@ class DummyRenderer(AbstractRenderer):
     return content
 
 
+class DigExtension(Extension):
+  def __init__(self, environment):
+    super(DigExtension, self).__init__(environment)
+    self.environment.filters['dig'] = self.dig_filter
+
+  def dig_filter(self, host):
+    try:
+      ip_address = socket.gethostbyname(host)
+      return ip_address
+    except socket.gaierror:
+      return None
+
+
 class IncludeRawExtension(Extension):
   tags = {"include_raw"}
 
@@ -44,7 +58,7 @@ class JinjaRenderer(AbstractRenderer):
       self.loader = FunctionLoader(self._get_template)
     else:
       self.loader = BaseLoader()
-    self.env = Environment(extensions=[IncludeRawExtension, 'jinja2_ansible_filters.AnsibleCoreFiltersExtension'], loader=self.loader, undefined=StrictUndefined)
+    self.env = Environment(extensions=[IncludeRawExtension, DigExtension, 'jinja2_ansible_filters.AnsibleCoreFiltersExtension'], loader=self.loader, undefined=StrictUndefined)
 
   def _get_template(self, path: str):
     files_children = self.viewer.get_files_children(os.path.basename(path))
