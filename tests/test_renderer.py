@@ -166,3 +166,17 @@ def test_JinjaRenderer_function_loader_render_with_include_inception(tmp_path):
   Template content line 1
   Template content 0
   '''
+
+def test_JinjaRenderer_function_loader_render_with_dig_filter():
+  renderer = JinjaRenderer()
+
+  TEMPLATE = '''\
+  Template content line 1
+  Template content {{ 'localhost' | dig }}
+  '''
+
+  assert renderer.render(TEMPLATE) == \
+  '''\
+  Template content line 1
+  Template content 127.0.0.1
+  '''
