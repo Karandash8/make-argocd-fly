@@ -19,7 +19,7 @@ jobs:
 #  deploy:
   build:
     name: Build make-argocd-fly
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
     - uses: actions/checkout@v3
@@ -48,7 +48,7 @@ jobs:
     name: Publish make-argocd-fly to TestPyPI
     needs:
     - build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     environment:
       name: testpypi
