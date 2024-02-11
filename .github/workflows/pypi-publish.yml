@@ -16,7 +16,6 @@ permissions:
   contents: read
 
 jobs:
-#  deploy:
   build:
     name: Build make-argocd-fly
     runs-on: self-hosted
@@ -38,11 +37,6 @@ jobs:
       with:
         name: python-package-distributions
         path: dist/
-#    - name: Publish package
-#      uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
-#      with:
-#        user: __token__
-#        password: ${{ secrets.PYPI_API_TOKEN }}
 
   publish-to-testpypi:
     name: Publish make-argocd-fly to TestPyPI
@@ -55,7 +49,7 @@ jobs:
       url: https://test.pypi.org/p/make-argocd-fly
 
     permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
+      id-token: write
 
     steps:
     - name: Download all the dists
