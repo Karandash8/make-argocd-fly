@@ -85,6 +85,30 @@ With such configuration file you can have kustomize overlays for `dev/prod` and 
 - `destination_namespace` - namespace where the application will be deployed
 - `vars` - (OPTIONAL) application specific jinja2 variables
 
+## Jinja2 extensions
+To include an external template in a jinja2 template, use the following block:
+
+```
+{%- filter indent(width=4) %}
+{% include 'app_4/files/file.json' %}
+{% endfilter %}
+```
+
+To include an external file without rendering it in a jinja2 template, use the following block:
+
+```
+{%- filter indent(width=4) %}
+{% include_raw 'app_4/files/file.json' %}
+{% endfilter %}
+```
+
+To perform a DNS lookup, use the following filter:
+
+```
+{{ 'example.com' | dig }}
+```
+
+Ansible filters are supported as well: https://pypi.org/project/jinja2-ansible-filters/
 
 ## Caveats
 ### Requirements
@@ -116,22 +140,6 @@ repo
 ```
 
 When kustomization overlays are used, kustomization base directory shall be called `base`, overlay directories shall be named after the corresponding environments names.
-
-To include an external template in a jinja2 template, use the following block:
-
-```
-{%- filter indent(width=4) %}
-{% include 'app_4/files/file.json' %}
-{% endfilter %}
-```
-
-To include an external file without rendering it in a jinja2 template, use the following block:
-
-```
-{%- filter indent(width=4) %}
-{% include_raw 'app_4/files/file.json' %}
-{% endfilter %}
-```
 
 ### kustomization.yml
 Files referenced in the `resources` section shall be named after Kubernetes resource type + `_` + resource name. Example:
@@ -165,6 +173,7 @@ https://setuptools.pypa.io/en/latest/userguide/quickstart.html
 https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
 https://setuptools.pypa.io/en/latest/userguide/datafiles.html
 https://packaging.python.org/en/latest/tutorials/packaging-projects/
+https://packaging.python.org/en/latest/guides/single-sourcing-package-version/#single-sourcing-the-version
 
 ### Preparation
 ```

@@ -17,11 +17,12 @@ def resource_parser(resource_yml: str) -> tuple[str, str]:
   if len(match_list) == 1:
     resource_kind = match_list[0][1].strip()
 
-  match_list = re.findall('(^metadata:|\nmetadata:)((\n\s*#.*|\n\s+.*)*)\n\s+name:(.+)', resource_yml)
+  match_list = re.findall(r'(^metadata:|\nmetadata:)((\n\s*#.*|\n\s+.*)*)\n\s+name:(.+)', resource_yml)
   if len(match_list) == 1 and len(match_list[0]) == 4:
     resource_name = match_list[0][3].strip()
 
   return (resource_kind, resource_name)
+
 
 def multi_resource_parser(multi_resource_yml: str) -> tuple[str, str, str]:
   for resource_yml in multi_resource_yml.split('---\n'):
@@ -29,6 +30,7 @@ def multi_resource_parser(multi_resource_yml: str) -> tuple[str, str, str]:
 
     if resource_kind:
       yield (resource_kind, resource_name, resource_yml.strip())
+
 
 def merge_dicts(*dicts):
   if not dicts:

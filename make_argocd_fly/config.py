@@ -112,5 +112,6 @@ def read_config(root_dir: str, config_file: str, envs: str) -> Config:
 
   return config
 
+
 def get_config() -> Config:
   return config

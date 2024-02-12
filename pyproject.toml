@@ -1,10 +1,11 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = [
+    "setuptools>=61.0",
+    "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "make_argocd_fly"
-version = "0.0.27"
+name = "make-argocd-fly"
 authors = [
     {name = "Andrei Lapin", email = "karandash8@gmail.com"},
 ]
@@ -15,10 +16,12 @@ license = {text = "GPLv3+"}
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
-dynamic = ["readme", "dependencies"]
+dynamic = ["readme", "dependencies", "version"]
 
 [project.scripts]
 make-argocd-fly = "make_argocd_fly.main:main"
+
+[tool.setuptools_scm]
 
 [tool.setuptools.packages]
 find = {}

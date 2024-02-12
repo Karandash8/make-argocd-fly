@@ -7,3 +7,6 @@ data:
     {
       "test": "json_management"
     }
+
+
+  ip: 127.0.0.1
