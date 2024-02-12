@@ -5,5 +5,9 @@ kind: Kustomization
 resources:
   - ../base
 
-commonLabels:
-  app: management
+
+labels:
+  - pairs:
+      app: management
+    includeSelectors: true
+    includeTemplates: true

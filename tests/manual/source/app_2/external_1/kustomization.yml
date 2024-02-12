@@ -5,15 +5,18 @@ kind: Kustomization
 resources:
   - ../base
 
-commonLabels:
-  app: external_1
+labels:
+  - pairs:
+      app: external_1
+    includeSelectors: true
+    includeTemplates: true
 
-patchesStrategicMerge:
-- |-
-  kind: Deployment
-  apiVersion: apps/v1
-  metadata:
-    name: prometheus
-    namespace: monitoring
-  spec:
-    param: external
+patches:
+  - patch: |-
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: prometheus
+        namespace: monitoring
+      spec:
+        param: external
