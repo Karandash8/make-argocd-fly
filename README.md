@@ -173,6 +173,7 @@ https://setuptools.pypa.io/en/latest/userguide/quickstart.html
 https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
 https://setuptools.pypa.io/en/latest/userguide/datafiles.html
 https://packaging.python.org/en/latest/tutorials/packaging-projects/
+https://packaging.python.org/en/latest/guides/single-sourcing-package-version/#single-sourcing-the-version
 
 ### Preparation
 ```

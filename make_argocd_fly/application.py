@@ -62,12 +62,13 @@ class AppOfApps(AbstractApplication):
 
     log.debug('Created application {} of type {} for environment {}'.format(app_name, __class__.__name__, env_name))
 
-  def _find_deploying_apps(self, app_deployer_name:str, app_deployer_env_name: str) -> tuple:
+  def _find_deploying_apps(self, app_deployer_name: str, app_deployer_env_name: str) -> tuple[str, str, str, str]:
     for env_name, env_data in self._config.get_envs().items():
       for app_name, app_data in env_data['apps'].items():
         if 'app_deployer' in app_data and 'project' in app_data and 'destination_namespace' in app_data:
-          if app_deployer_name == app_data['app_deployer'] and (('app_deployer_env' not in app_data and env_name == app_deployer_env_name) or \
-              ('app_deployer_env' in app_data and app_deployer_env_name == app_data['app_deployer_env'])):
+          if (app_deployer_name == app_data['app_deployer'] and
+              (('app_deployer_env' not in app_data and env_name == app_deployer_env_name) or
+               ('app_deployer_env' in app_data and app_deployer_env_name == app_data['app_deployer_env']))):
             yield (app_name, env_name, app_data['project'], app_data['destination_namespace'])
 
   def generate_resources(self) -> str:
@@ -103,11 +104,12 @@ class Application(AbstractApplication):
     resources = []
     renderer = JinjaRenderer(self.app_viewer)
 
-    yml_children = self.app_viewer.get_files_children('(\.yml|\.yml\.j2)$')
+    yml_children = self.app_viewer.get_files_children(r'(\.yml|\.yml\.j2)$')
     for yml_child in yml_children:
       content = yml_child.content
       if yml_child.element_rel_path.endswith('.j2'):
-        template_vars = merge_dicts({}, self.config.get_vars(), self.config.get_env_vars(self.env_name), self.config.get_app_vars(self.env_name, self.app_name))
+        template_vars = merge_dicts({}, self.config.get_vars(), self.config.get_env_vars(self.env_name),
+                                    self.config.get_app_vars(self.env_name, self.app_name))
         content = renderer.render(content, template_vars, yml_child.element_rel_path)
 
       resources.append(content)
@@ -122,10 +124,9 @@ class KustomizeApplication(AbstractApplication):
     log.debug('Created application {} of type {} for environment {}'.format(app_name, __class__.__name__, env_name))
 
   def _run_kustomize(self, dir_path: str) -> str:
-    process = subprocess.Popen(['kubectl', 'kustomize', '--enable-helm',
-                                dir_path],
-                                stdout=subprocess.PIPE,stderr=subprocess.PIPE,
-                                universal_newlines=True)
+    process = subprocess.Popen(['kubectl', 'kustomize', '--enable-helm', dir_path],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               universal_newlines=True)
     stdout, stderr = process.communicate()
 
     if stderr:
@@ -144,11 +145,12 @@ class KustomizeApplication(AbstractApplication):
     tmp_resource_writer = ResourceWriter(tmp_dir)
     renderer = JinjaRenderer(self.app_viewer)
 
-    yml_children = self.app_viewer.get_files_children('(\.yml|\.yml\.j2)$', ['base', self.env_name])
+    yml_children = self.app_viewer.get_files_children(r'(\.yml|\.yml\.j2)$', ['base', self.env_name])
     for yml_child in yml_children:
       content = yml_child.content
       if yml_child.element_rel_path.endswith('.j2'):
-        template_vars = merge_dicts({}, self.config.get_vars(), self.config.get_env_vars(self.env_name), self.config.get_app_vars(self.env_name, self.app_name))
+        template_vars = merge_dicts({}, self.config.get_vars(), self.config.get_env_vars(self.env_name),
+                                    self.config.get_app_vars(self.env_name, self.app_name))
         content = renderer.render(content, template_vars, yml_child.element_rel_path)
 
       dir_rel_path = os.path.dirname(yml_child.element_rel_path)
