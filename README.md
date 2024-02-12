@@ -166,6 +166,7 @@ The folloving variables are expected to be present:
 ### Optional variables
 - argocd.sync_policy
 - argocd.finalizers
+- argocd.ignoreDifferences
 
 ## For developers
 ### Build instructions

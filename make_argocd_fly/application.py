@@ -53,6 +53,10 @@ class AppOfApps(AbstractApplication):
         namespace: {{ __application.destination_namespace }}
       syncPolicy:
         {{ argocd.sync_policy | default({}) | to_nice_yaml(indent=2) | trim | indent(4) }}
+      {%- if argocd.ignoreDifferences | default([]) %}
+      ignoreDifferences:
+      {{ argocd.ignoreDifferences | default([]) | to_nice_yaml(indent=2) | trim | indent(2) }}
+      {%- endif %}
     '''
 
   def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:

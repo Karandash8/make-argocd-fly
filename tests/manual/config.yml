@@ -37,7 +37,24 @@ envs:
         vars:
           argocd:
             target_revision: custom_revision
-      app_2: {app_deployer: core_deployer, project: management, destination_namespace: kube-default}
+      app_2:
+        app_deployer: core_deployer
+        project: management
+        destination_namespace: kube-default
+        vars:
+          argocd:
+            ignoreDifferences:
+              - group: apps
+                kind: Deployment
+                name: guestbook
+                namespace: default
+                jsonPointers:
+                  - /spec/replicas
+              - group: storage.k8s.io
+                kind: CSIDriver
+                jqPathExpressions:
+                - .spec.seLinuxMount
+            finalizers: null
       app_3: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       app_4: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       app_5: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
