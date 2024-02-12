@@ -27,6 +27,8 @@ def main() -> None:
   parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')
   parser.add_argument('--root-dir', type=str, default=os.getcwd(), help='Root directory')
   parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file')
+  parser.add_argument('--render-apps', type=str, default='', help='Comma separate list of applications to render')
+  parser.add_argument('--render-envs', type=str, default='', help='Comma separate list of environments to render')
   parser.add_argument('--preserve-tmp-dir', action="store_true", help='Preserve temporary directory')
   args = parser.parse_args()
 
@@ -41,12 +43,20 @@ def main() -> None:
   if os.path.exists(tmp_dir):
     shutil.rmtree(tmp_dir)
 
+  apps_to_render = args.render_apps.split(',') if args.render_apps else []
+  envs_to_render = args.render_envs.split(',') if args.render_envs else []
   apps = []
+
   log.info('Creating applications')
   for env_name, env_data in config.get_envs().items():
-    for app_name in env_data['apps'].keys():
-      app_viewer = source_viewer.get_element(app_name)
+    if envs_to_render and env_name not in envs_to_render:
+      continue
 
+    for app_name in env_data['apps'].keys():
+      if apps_to_render and app_name not in apps_to_render:
+        continue
+
+      app_viewer = source_viewer.get_element(app_name)
       apps.append(application_factory(app_viewer, app_name, env_name))
 
   output_writer = ResourceWriter(config.get_output_dir())

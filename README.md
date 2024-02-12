@@ -1,12 +1,12 @@
 ## Description
-A tool to generate on the user side per environemnt Kubernetes manifests that can be deployed with ArgoCD.
+A tool to generate on the user side per environment Kubernetes manifests that can be deployed with ArgoCD.
 
 ArcoCD resources of type `Application` are generated automatically based on the provided configuration.
 
 ## Motivation
 Manifests that are written in kustomize/helm/jsonnet might easily become hard to read and debug. The development lifecycle becomes longer when after each change you need to commit, wait for ArgoCD to pick it up and deploy it. Only after that you see the actual end manifest in ArcoCD UI.
 
-With this tool you can quickly render jinja2/kustomize files, run yaml linter and continuer development.
+With this tool you can quickly render jinja2/kustomize files, run yaml linter and continue development.
 
 ## Features
 - Jinja2 and Kustomize rendering
