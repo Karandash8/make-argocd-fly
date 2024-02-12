@@ -2,7 +2,6 @@ import logging
 import os
 from abc import ABC, abstractmethod
 import subprocess
-import shutil
 import textwrap
 
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
