@@ -61,3 +61,24 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         repository-url: https://test.pypi.org/legacy/
+
+  publish-to-pypi:
+    name: Publish make-argocd-fly to PyPI
+    needs:
+    - publish-to-testpypi
+    runs-on: self-hosted
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/make-argocd-fly
+    permissions:
+      id-token: write
+
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+    - name: Publish package to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
