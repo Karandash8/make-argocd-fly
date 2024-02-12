@@ -112,7 +112,7 @@ Ansible filters are supported as well: https://pypi.org/project/jinja2-ansible-f
 
 ## Caveats
 ### Requirements
-`kubectl` is expected to be installed locally.
+`kustomize` is expected to be installed locally.
 
 ### Currently supported directory structure
 ```

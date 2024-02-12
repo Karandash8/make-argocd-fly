@@ -124,7 +124,7 @@ class KustomizeApplication(AbstractApplication):
     log.debug('Created application {} of type {} for environment {}'.format(app_name, __class__.__name__, env_name))
 
   def _run_kustomize(self, dir_path: str) -> str:
-    process = subprocess.Popen(['kubectl', 'kustomize', '--enable-helm', dir_path],
+    process = subprocess.Popen(['kustomize', 'build', '--enable-helm', dir_path],
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                universal_newlines=True)
     stdout, stderr = process.communicate()
