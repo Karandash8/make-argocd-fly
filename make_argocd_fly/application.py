@@ -139,9 +139,6 @@ class KustomizeApplication(AbstractApplication):
     config = get_config()
     tmp_dir = config.get_tmp_dir()
 
-    if os.path.exists(tmp_dir):
-      shutil.rmtree(tmp_dir)
-
     tmp_resource_writer = ResourceWriter(tmp_dir)
     renderer = JinjaRenderer(self.app_viewer)
 
@@ -153,13 +150,15 @@ class KustomizeApplication(AbstractApplication):
                                     self.config.get_app_vars(self.env_name, self.app_name))
         content = renderer.render(content, template_vars, yml_child.element_rel_path)
 
-      dir_rel_path = os.path.dirname(yml_child.element_rel_path)
       for resource_kind, resource_name, resource_yml in multi_resource_parser(content):
-        tmp_resource_writer.store_resource(self.env_name, dir_rel_path, resource_kind, resource_name, resource_yml)
+        tmp_resource_writer.store_resource(
+          self.env_name,
+          os.path.join(self.env_name, os.path.dirname(yml_child.element_rel_path)),
+          resource_kind, resource_name, resource_yml)
 
     tmp_resource_writer.write_resources()
 
-    return os.path.join(tmp_dir, self.app_viewer.element_rel_path)
+    return os.path.join(tmp_dir, self.get_app_rel_path())
 
   def generate_resources(self) -> str:
     log.debug('Generating resources for application {} in environment {}'.format(self.app_name, self.env_name))

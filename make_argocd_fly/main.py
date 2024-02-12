@@ -27,6 +27,7 @@ def main() -> None:
   parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')
   parser.add_argument('--root-dir', type=str, default=os.getcwd(), help='Root directory')
   parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file')
+  parser.add_argument('--preserve-tmp-dir', action="store_true", help='Preserve temporary directory')
   args = parser.parse_args()
 
   log.debug('Root directory path: {}'.format(args.root_dir))
@@ -35,6 +36,10 @@ def main() -> None:
   log.info('Reading source directory')
   source_viewer = ResourceViewer(config.get_source_dir())
   source_viewer.build()
+
+  tmp_dir = config.get_tmp_dir()
+  if os.path.exists(tmp_dir):
+    shutil.rmtree(tmp_dir)
 
   apps = []
   log.info('Creating applications')
@@ -55,3 +60,6 @@ def main() -> None:
   if os.path.exists(config.get_output_dir()):
     shutil.rmtree(config.get_output_dir())
   output_writer.write_resources()
+
+  if not args.preserve_tmp_dir and os.path.exists(tmp_dir):
+    shutil.rmtree(tmp_dir)
