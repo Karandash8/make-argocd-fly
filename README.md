@@ -174,6 +174,7 @@ https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
 https://setuptools.pypa.io/en/latest/userguide/datafiles.html
 https://packaging.python.org/en/latest/tutorials/packaging-projects/
 https://packaging.python.org/en/latest/guides/single-sourcing-package-version/#single-sourcing-the-version
+https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
 
 ### Preparation
 ```
