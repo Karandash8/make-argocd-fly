@@ -79,7 +79,7 @@ class ResourceViewer:
 
     return files
 
-  def get_dirs_children(self, depth:int = 1) -> list:
+  def get_dirs_children(self, depth: int = 1) -> list:
     dirs = []
     for child in self.children:
       if child.is_dir:
@@ -98,7 +98,7 @@ class ResourceWriter:
     self.output_dir_abs_path = output_dir_abs_path
     self.resources = {}
 
-  def store_resource(self, env_name:str, dir_rel_path: str, resource_kind: str, resource_name: str, resource_yml: str) -> None:
+  def store_resource(self, env_name: str, dir_rel_path: str, resource_kind: str, resource_name: str, resource_yml: str) -> None:
     if not dir_rel_path:
       log.error('Parameter `dir_rel_path` is undefined')
       raise Exception

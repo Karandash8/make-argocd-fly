@@ -5,7 +5,7 @@ import os
 import argparse
 import shutil
 
-from make_argocd_fly.config import read_config, get_config
+from make_argocd_fly.config import read_config
 from make_argocd_fly.utils import multi_resource_parser
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.application import application_factory
