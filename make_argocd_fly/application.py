@@ -1,7 +1,7 @@
 import logging
 import os
+import asyncio
 from abc import ABC, abstractmethod
-import subprocess
 import textwrap
 
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
@@ -20,9 +20,10 @@ class AbstractApplication(ABC):
     self.env_name = env_name
     self.app_viewer = app_viewer
     self.config = get_config()
+    self.resources = None
 
   @abstractmethod
-  def generate_resources(self) -> str:
+  async def generate_resources(self) -> None:
     pass
 
   def get_app_rel_path(self) -> str:
@@ -74,7 +75,7 @@ class AppOfApps(AbstractApplication):
                ('app_deployer_env' in app_data and app_deployer_env_name == app_data['app_deployer_env']))):
             yield (app_name, env_name, app_data['project'], app_data['destination_namespace'])
 
-  def generate_resources(self) -> str:
+  async def generate_resources(self) -> None:
     log.debug('Generating resources for application {} in environment {}'.format(self.app_name, self.env_name))
 
     resources = []
@@ -92,7 +93,8 @@ class AppOfApps(AbstractApplication):
       content = renderer.render(textwrap.dedent(self.APPLICATION_RESOUCE_TEMPLATE), template_vars)
       resources.append(content)
 
-    return '\n---\n'.join(resources)
+    self.resources = '\n---\n'.join(resources)
+    log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
 
 
 class Application(AbstractApplication):
@@ -101,7 +103,7 @@ class Application(AbstractApplication):
 
     log.debug('Created application {} of type {} for environment {}'.format(app_name, __class__.__name__, env_name))
 
-  def generate_resources(self) -> str:
+  async def generate_resources(self) -> None:
     log.debug('Generating resources for application {} in environment {}'.format(self.app_name, self.env_name))
 
     resources = []
@@ -117,7 +119,8 @@ class Application(AbstractApplication):
 
       resources.append(content)
 
-    return '\n---\n'.join(resources)
+    self.resources = '\n---\n'.join(resources)
+    log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
 
 
 class KustomizeApplication(AbstractApplication):
@@ -126,19 +129,21 @@ class KustomizeApplication(AbstractApplication):
 
     log.debug('Created application {} of type {} for environment {}'.format(app_name, __class__.__name__, env_name))
 
-  def _run_kustomize(self, dir_path: str) -> str:
-    process = subprocess.Popen(['kustomize', 'build', '--enable-helm', dir_path],
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                               universal_newlines=True)
-    stdout, stderr = process.communicate()
+  async def _run_kustomize(self, dir_path: str) -> str:
+    proc = await asyncio.create_subprocess_shell(
+      'kustomize build --enable-helm {}'.format(dir_path),
+      stdout=asyncio.subprocess.PIPE,
+      stderr=asyncio.subprocess.PIPE)
+
+    stdout, stderr = await proc.communicate()
 
     if stderr:
       log.error('Kustomize error: {}'.format(stderr))
       raise Exception
 
-    return stdout
+    return stdout.decode("utf-8")
 
-  def _prepare_kustomization_directory(self) -> str:
+  async def _prepare_kustomization_directory(self) -> str:
     config = get_config()
     tmp_dir = config.get_tmp_dir()
 
@@ -159,30 +164,35 @@ class KustomizeApplication(AbstractApplication):
           os.path.join(self.env_name, os.path.dirname(yml_child.element_rel_path)),
           resource_kind, resource_name, resource_yml)
 
-    tmp_resource_writer.write_resources()
+    await tmp_resource_writer.write_resources()
 
     return os.path.join(tmp_dir, self.get_app_rel_path())
 
-  def generate_resources(self) -> str:
+  async def generate_resources(self) -> None:
     log.debug('Generating resources for application {} in environment {}'.format(self.app_name, self.env_name))
 
-    tmp_source_viewer = ResourceViewer(self._prepare_kustomization_directory())
+    tmp_source_viewer = ResourceViewer(await self._prepare_kustomization_directory())
     tmp_source_viewer.build()
 
     yml_child = tmp_source_viewer.get_element(os.path.join(self.env_name, 'kustomization.yml'))
     if yml_child:
-      return self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, os.path.dirname(yml_child.element_rel_path)))
+      self.resources = await self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, os.path.dirname(yml_child.element_rel_path)))
+      log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
+      return
 
     yml_child = tmp_source_viewer.get_element(os.path.join('base', 'kustomization.yml'))
     if yml_child:
-      return self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, os.path.dirname(yml_child.element_rel_path)))
+      self.resources = await self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, os.path.dirname(yml_child.element_rel_path)))
+      log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
+      return
 
     yml_child = tmp_source_viewer.get_element('kustomization.yml')
     if yml_child:
-      return self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, os.path.dirname(yml_child.element_rel_path)))
+      self.resources = await self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, os.path.dirname(yml_child.element_rel_path)))
+      log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
+      return
 
     log.error('Missing kustomization.yml in the application directory. Skipping application')
-    return ''
 
 
 def application_factory(app_viewer: ResourceViewer, app_name: str, env_name: str) -> AbstractApplication:

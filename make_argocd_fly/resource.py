@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import asyncio
 
 log = logging.getLogger(__name__)
 
@@ -120,10 +121,15 @@ class ResourceWriter:
       # kustomize expects one of the following files to be present: 'kustomization.yaml', 'kustomization.yml' or 'Kustomization'
       return '{}.yml'.format(resource_kind).lower()
 
-  def write_resources(self) -> None:
-    for (_, dir_rel_path, resource_kind, resource_name), resource_yml in self.resources.items():
-      path = os.path.join(self.output_dir_abs_path, dir_rel_path)
-      os.makedirs(path, exist_ok=True)
+  async def _write_resource(self, dir_rel_path: str, resource_kind: str, resource_name: str, resource_yml: str) -> None:
+    path = os.path.join(self.output_dir_abs_path, dir_rel_path)
+    os.makedirs(path, exist_ok=True)
 
-      with open(os.path.join(path, self._assemble_filename(resource_kind, resource_name)), 'w') as f:
-        f.write(resource_yml)
+    with open(os.path.join(path, self._assemble_filename(resource_kind, resource_name)), 'w') as f:
+      f.write(resource_yml)
+
+  async def write_resources(self) -> None:
+    await asyncio.gather(
+      *[self._write_resource(dir_rel_path, resource_kind, resource_name, resource_yml) for
+        (_, dir_rel_path, resource_kind, resource_name), resource_yml in self.resources.items()]
+    )
