@@ -14,14 +14,20 @@ from make_argocd_fly.application import application_factory
 LOG_CONFIG_FILE = 'log_config.yml'
 CONFIG_FILE = 'config.yml'
 
-try:
-  with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), LOG_CONFIG_FILE)) as f:
-    yaml_config = yaml.safe_load(f.read())
-    logging.config.dictConfig(yaml_config)
-except FileNotFoundError:
-  logging.basicConfig(level='DEBUG')
+logging.basicConfig(level='INFO')
 
 log = logging.getLogger(__name__)
+
+
+def init_logging(loglevel: str) -> None:
+  try:
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), LOG_CONFIG_FILE)) as f:
+      yaml_config = yaml.safe_load(f.read())
+      if loglevel in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
+        yaml_config['loggers']['root']['level'] = loglevel
+      logging.config.dictConfig(yaml_config)
+  except FileNotFoundError:
+    pass
 
 
 async def main() -> None:
@@ -30,13 +36,16 @@ async def main() -> None:
   parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file')
   parser.add_argument('--render-apps', type=str, default='', help='Comma separate list of applications to render')
   parser.add_argument('--render-envs', type=str, default='', help='Comma separate list of environments to render')
-  parser.add_argument('--preserve-tmp-dir', action="store_true", help='Preserve temporary directory')
+  parser.add_argument('--preserve-tmp-dir', action='store_true', help='Preserve temporary directory')
+  parser.add_argument('--loglevel', type=str, default='INFO', help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
   args = parser.parse_args()
 
-  log.debug('Root directory path: {}'.format(args.root_dir))
-  config = read_config(args.root_dir, args.config_file)
+  init_logging(args.loglevel)
 
-  log.info('Reading source directory')
+  log.debug('Root directory path: {}'.format(os.path.abspath(args.root_dir)))
+  config = read_config(os.path.abspath(args.root_dir), args.config_file)
+
+  log.debug('Reading source directory')
   source_viewer = ResourceViewer(config.get_source_dir())
   source_viewer.build()
 
@@ -48,7 +57,7 @@ async def main() -> None:
   envs_to_render = args.render_envs.split(',') if args.render_envs else []
   apps = []
 
-  log.info('Creating applications')
+  log.debug('Creating applications')
   for env_name, env_data in config.get_envs().items():
     if envs_to_render and env_name not in envs_to_render:
       continue
@@ -62,14 +71,14 @@ async def main() -> None:
 
   output_writer = ResourceWriter(config.get_output_dir())
 
-  log.info('Rendering resources')
+  log.debug('Rendering resources')
   await asyncio.gather(*[app.generate_resources() for app in apps])
 
   for app in apps:
     for resource_kind, resource_name, resource_yml in multi_resource_parser(app.resources):
       output_writer.store_resource(app.env_name, app.get_app_rel_path(), resource_kind, resource_name, resource_yml)
 
-  log.info('Writing resources files')
+  log.debug('Writing resources files')
   if os.path.exists(config.get_output_dir()):
     shutil.rmtree(config.get_output_dir())
   await output_writer.write_resources()

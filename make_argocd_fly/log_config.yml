@@ -11,7 +11,7 @@ handlers:
     stream: ext://sys.stdout
 loggers:
   root:
-    level: DEBUG
+    level: INFO
     handlers:
       - console
     propagate: no
