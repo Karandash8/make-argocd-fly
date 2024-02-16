@@ -4,6 +4,7 @@ import yaml
 import os
 import argparse
 import shutil
+import asyncio
 
 from make_argocd_fly.config import read_config
 from make_argocd_fly.utils import multi_resource_parser
@@ -23,7 +24,7 @@ except FileNotFoundError:
 log = logging.getLogger(__name__)
 
 
-def main() -> None:
+async def main() -> None:
   parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')
   parser.add_argument('--root-dir', type=str, default=os.getcwd(), help='Root directory')
   parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file')
@@ -62,14 +63,16 @@ def main() -> None:
   output_writer = ResourceWriter(config.get_output_dir())
 
   log.info('Rendering resources')
+  await asyncio.gather(*[app.generate_resources() for app in apps])
+
   for app in apps:
-    for resource_kind, resource_name, resource_yml in multi_resource_parser(app.generate_resources()):
+    for resource_kind, resource_name, resource_yml in multi_resource_parser(app.resources):
       output_writer.store_resource(app.env_name, app.get_app_rel_path(), resource_kind, resource_name, resource_yml)
 
   log.info('Writing resources files')
   if os.path.exists(config.get_output_dir()):
     shutil.rmtree(config.get_output_dir())
-  output_writer.write_resources()
+  await output_writer.write_resources()
 
   if not args.preserve_tmp_dir and os.path.exists(tmp_dir):
     shutil.rmtree(tmp_dir)
