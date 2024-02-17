@@ -53,7 +53,7 @@ envs:
               - group: storage.k8s.io
                 kind: CSIDriver
                 jqPathExpressions:
-                - .spec.seLinuxMount
+                  - .spec.seLinuxMount
             finalizers: null
       app_3: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       app_4: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}

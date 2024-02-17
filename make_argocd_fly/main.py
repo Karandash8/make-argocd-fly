@@ -1,12 +1,14 @@
 import logging
 import logging.config
-import yaml
 import os
 import argparse
 import shutil
 import asyncio
+import subprocess
+import yaml
+import yamllint
 
-from make_argocd_fly.config import read_config
+from make_argocd_fly.config import read_config, get_config
 from make_argocd_fly.utils import multi_resource_parser
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.application import application_factory
@@ -30,31 +32,15 @@ def init_logging(loglevel: str) -> None:
     pass
 
 
-async def main() -> None:
-  parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')
-  parser.add_argument('--root-dir', type=str, default=os.getcwd(), help='Root directory')
-  parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file')
-  parser.add_argument('--render-apps', type=str, default='', help='Comma separate list of applications to render')
-  parser.add_argument('--render-envs', type=str, default='', help='Comma separate list of environments to render')
-  parser.add_argument('--preserve-tmp-dir', action='store_true', help='Preserve temporary directory')
-  parser.add_argument('--loglevel', type=str, default='INFO', help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
-  args = parser.parse_args()
-
-  init_logging(args.loglevel)
-
-  log.debug('Root directory path: {}'.format(os.path.abspath(args.root_dir)))
-  config = read_config(os.path.abspath(args.root_dir), args.config_file)
+async def generate(render_envs, render_apps) -> None:
+  config = get_config()
 
   log.debug('Reading source directory')
   source_viewer = ResourceViewer(config.get_source_dir())
   source_viewer.build()
 
-  tmp_dir = config.get_tmp_dir()
-  if os.path.exists(tmp_dir):
-    shutil.rmtree(tmp_dir)
-
-  apps_to_render = args.render_apps.split(',') if args.render_apps else []
-  envs_to_render = args.render_envs.split(',') if args.render_envs else []
+  apps_to_render = render_apps.split(',') if render_apps else []
+  envs_to_render = render_envs.split(',') if render_envs else []
   apps = []
 
   log.debug('Creating applications')
@@ -83,5 +69,51 @@ async def main() -> None:
     shutil.rmtree(config.get_output_dir())
   await output_writer.write_resources()
 
+
+def main() -> None:
+  parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')
+  parser.add_argument('--root-dir', type=str, default=os.getcwd(), help='Root directory')
+  parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file')
+  parser.add_argument('--render-apps', type=str, default='', help='Comma separate list of applications to render')
+  parser.add_argument('--render-envs', type=str, default='', help='Comma separate list of environments to render')
+  parser.add_argument('--skip-generate', action='store_true', help='Skip resource generation')
+  parser.add_argument('--preserve-tmp-dir', action='store_true', help='Preserve temporary directory')
+  parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
+  parser.add_argument('--kube-linter', action='store_true', help='Run kube-linter against output directory (https://github.com/stackrox/kube-linter)')
+  parser.add_argument('--loglevel', type=str, default='INFO', help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
+  args = parser.parse_args()
+
+  init_logging(args.loglevel)
+
+  log.debug('Root directory path: {}'.format(os.path.abspath(args.root_dir)))
+  config = read_config(os.path.abspath(args.root_dir), args.config_file)
+
+  tmp_dir = config.get_tmp_dir()
+  if os.path.exists(tmp_dir):
+    shutil.rmtree(tmp_dir)
+
+  if not args.skip_generate:
+    asyncio.run(generate(args.render_envs, args.render_apps))
+
   if not args.preserve_tmp_dir and os.path.exists(tmp_dir):
     shutil.rmtree(tmp_dir)
+
+  # TODO: it does not make sense to write yamls on disk and then read them again to run through linters
+  if args.yaml_linter:
+    log.info('Running yamllint')
+    process = subprocess.Popen(['yamllint', '-d', '{extends: default, rules: {line-length: disable}}', config.get_output_dir()],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               universal_newlines=True)
+    stdout, stderr = process.communicate()
+
+    log.info('{} {}\n\n{}'.format(yamllint.APP_NAME, yamllint.APP_VERSION, stdout))
+
+  if args.kube_linter:
+    log.info('Running kube-linter')
+    process = subprocess.Popen(['kube-linter', 'lint', config.get_output_dir()],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               universal_newlines=True)
+    stdout, stderr = process.communicate()
+
+    log.info(stdout)
+    log.info(stderr)

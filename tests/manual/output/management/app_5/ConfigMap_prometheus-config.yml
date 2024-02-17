@@ -1,3 +1,4 @@
+---
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -7,6 +8,4 @@ data:
     {
       "test": "json_management"
     }
-
-
   ip: 127.0.0.1

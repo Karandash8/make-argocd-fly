@@ -2,3 +2,4 @@ setuptools
 build==0.10.0
 twine==4.0.2
 pytest==7.4.0
+yelp-gprof2dot==1.2.0
