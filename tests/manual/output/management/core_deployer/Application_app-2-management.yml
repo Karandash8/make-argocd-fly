@@ -1,3 +1,4 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -15,15 +16,15 @@ spec:
     namespace: kube-default
   syncPolicy:
     syncOptions:
-    - ServerSideApply=true
+      - ServerSideApply=true
   ignoreDifferences:
-  - group: apps
-    jsonPointers:
-    - /spec/replicas
-    kind: Deployment
-    name: guestbook
-    namespace: default
-  - group: storage.k8s.io
-    jqPathExpressions:
-    - .spec.seLinuxMount
-    kind: CSIDriver
+    - group: apps
+      jsonPointers:
+        - /spec/replicas
+      kind: Deployment
+      name: guestbook
+      namespace: default
+    - group: storage.k8s.io
+      jqPathExpressions:
+        - .spec.seLinuxMount
+      kind: CSIDriver

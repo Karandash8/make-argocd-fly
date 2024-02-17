@@ -1,10 +1,11 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: app-9-external-1
   namespace: argocd
   finalizers:
-  - resources-finalizer.argocd.argoproj.io
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: management
   source:
@@ -20,4 +21,4 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
-    - ServerSideApply=true
+      - ServerSideApply=true

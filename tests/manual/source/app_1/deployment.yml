@@ -4,3 +4,5 @@ apiVersion: apps/v1
 metadata:
   name: grafana
   namespace: monitoring
+  labels:
+    app: grafana_veeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeery_long_label

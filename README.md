@@ -193,7 +193,13 @@ python main.py --root-dir <path>
 
 ### Packaging
 ```
-<change version in pyproject.toml>
+<tag HEAD>
 python -m build
 python -m twine upload  dist/*
+```
+
+### Profiling
+```
+python -m cProfile -o profile.pstats main.py --root-dir <path>
+gprof2dot log.pstats [-z <function>] | dot -Tsvg -o profile.svg
 ```

@@ -202,8 +202,8 @@ def test_multi_resource_parser_with_valid_yaml():
 
   result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana'),
-      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+      ('Deployment', 'grafana', '---\nkind: Deployment\nmetadata:\n  name: grafana\n'),
+      ('DaemonSet', 'prometheus', '---\nkind: DaemonSet\nmetadata:\n  name: prometheus\n')
   ]
 
   assert result == expected
@@ -223,8 +223,8 @@ def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_top():
 
   result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana'),
-      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+      ('Deployment', 'grafana', '---\nkind: Deployment\nmetadata:\n  name: grafana\n'),
+      ('DaemonSet', 'prometheus', '---\nkind: DaemonSet\nmetadata:\n  name: prometheus\n')
   ]
 
   assert result == expected
@@ -244,8 +244,8 @@ def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_bottom():
 
   result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana'),
-      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+      ('Deployment', 'grafana', '---\nkind: Deployment\nmetadata:\n  name: grafana\n'),
+      ('DaemonSet', 'prometheus', '---\nkind: DaemonSet\nmetadata:\n  name: prometheus\n')
   ]
 
   assert result == expected
@@ -265,8 +265,8 @@ def test_multi_resource_parser_with_valid_yaml_not_an_extra_separator():
 
   result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n  comment: "--- This is not an extra separator"'),
-      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+      ('Deployment', 'grafana', '---\nkind: Deployment\nmetadata:\n  name: grafana\n  comment: \'--- This is not an extra separator\'\n'),
+      ('DaemonSet', 'prometheus', '---\nkind: DaemonSet\nmetadata:\n  name: prometheus\n')
   ]
 
   assert result == expected

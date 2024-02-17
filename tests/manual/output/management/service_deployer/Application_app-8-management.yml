@@ -1,10 +1,11 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: app-8-management
   namespace: argocd
   finalizers:
-  - resources-finalizer.argocd.argoproj.io
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: management
   source:
@@ -16,4 +17,4 @@ spec:
     namespace: kube-default
   syncPolicy:
     syncOptions:
-    - ServerSideApply=true
+      - ServerSideApply=true
