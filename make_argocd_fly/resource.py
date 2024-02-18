@@ -2,8 +2,29 @@ import logging
 import os
 import re
 import asyncio
+import yaml
+try:
+  from yaml import CSafeLoader as SafeLoader
+except ImportError:
+  from yaml import SafeLoader
 
 log = logging.getLogger(__name__)
+
+
+class SafeDumper(yaml.SafeDumper):
+  def increase_indent(self, flow=False, *args, **kwargs):
+    return super().increase_indent(flow=flow, indentless=False)
+
+
+def str_presenter(dumper, data):
+    """configures yaml for dumping multiline strings
+    Ref: https://stackoverflow.com/questions/8640959/how-can-i-control-what-scalar-form-pyyaml-uses-for-my-data"""
+    if data.count('\n') > 0:
+        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data)
+
+
+yaml.add_representer(str, str_presenter, Dumper=SafeDumper)
 
 
 class ResourceViewer:
@@ -99,37 +120,33 @@ class ResourceWriter:
     self.output_dir_abs_path = output_dir_abs_path
     self.resources = {}
 
-  def store_resource(self, env_name: str, dir_rel_path: str, resource_kind: str, resource_name: str, resource_yml: str) -> None:
-    if not dir_rel_path:
-      log.error('Parameter `dir_rel_path` is undefined')
+  def store_resource(self, file_path: str, resource_yml: str) -> None:
+    if not file_path:
+      log.error('Parameter `file_path` is undefined')
       raise Exception
 
-    if not resource_kind:
-      log.error('Parameter `resource_kind` is undefined')
+    if file_path in self.resources:
+      log.error('Resource ({}) already exists'.format(file_path))
       raise Exception
 
-    if (env_name, dir_rel_path, resource_kind, resource_name) in self.resources:
-      log.error('Resource ({}, {}, {}, {}) already exists'.format(env_name, dir_rel_path, resource_kind, resource_name))
-      raise Exception
+    self.resources[file_path] = resource_yml
 
-    self.resources[(env_name, dir_rel_path, resource_kind, resource_name)] = resource_yml
-
-  def _assemble_filename(self, resource_kind: str, resource_name: str) -> str:
-    if resource_name:
-      return '{}_{}.yml'.format(resource_kind, resource_name)
-    else:
-      # kustomize expects one of the following files to be present: 'kustomization.yaml', 'kustomization.yml' or 'Kustomization'
-      return '{}.yml'.format(resource_kind).lower()
-
-  async def _write_resource(self, dir_rel_path: str, resource_kind: str, resource_name: str, resource_yml: str) -> None:
-    path = os.path.join(self.output_dir_abs_path, dir_rel_path)
+  async def _write_resource(self, file_path: str, resource_yml: str) -> None:
+    path = os.path.join(self.output_dir_abs_path, os.path.dirname(file_path))
     os.makedirs(path, exist_ok=True)
 
-    with open(os.path.join(path, self._assemble_filename(resource_kind, resource_name)), 'w') as f:
+    with open(os.path.join(self.output_dir_abs_path, file_path), 'w') as f:
       f.write(resource_yml)
+    yaml_obj = yaml.load(resource_yml, Loader=SafeLoader)
+    with open(os.path.join(self.output_dir_abs_path, file_path), 'w') as f:
+      yaml.dump(yaml_obj, f, Dumper=SafeDumper,
+                default_flow_style=False,
+                sort_keys=False,
+                allow_unicode=True,
+                encoding='utf-8',
+                explicit_start=True)
 
   async def write_resources(self) -> None:
     await asyncio.gather(
-      *[self._write_resource(dir_rel_path, resource_kind, resource_name, resource_yml) for
-        (_, dir_rel_path, resource_kind, resource_name), resource_yml in self.resources.items()]
+      *[self._write_resource(file_path, resource_yml) for file_path, resource_yml in self.resources.items()]
     )

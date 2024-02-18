@@ -1,34 +1,7 @@
 import logging
 import re
 
-from yamlfix import fix_code
-from yamlfix.model import ConfigSchema, Optional, YamlNodeStyle
-
 log = logging.getLogger(__name__)
-
-
-class YamlfixConfig(ConfigSchema):
-    allow_duplicate_keys: bool = False
-    comments_min_spaces_from_content: int = 2
-    comments_require_starting_space: bool = True
-    comments_whitelines: int = 1
-    whitelines: int = 0
-    section_whitelines: int = 0
-    config_path: Optional[str] = None
-    explicit_start: bool = True
-    indent_mapping: int = 2
-    indent_offset: int = 2
-    indent_sequence: int = 4
-    line_length: int = 80
-    none_representation: str = ""
-    quote_basic_values: bool = False
-    quote_keys_and_basic_values: bool = False
-    preserve_quotes: bool = False
-    quote_representation: str = "'"
-    sequence_style: YamlNodeStyle = YamlNodeStyle.BLOCK_STYLE
-
-
-yaml_fix_config = YamlfixConfig()
 
 
 # TODO: rename this, logic does not align with multi_resource_parser
@@ -51,16 +24,24 @@ def resource_parser(resource_yml: str) -> tuple[str, str]:
   return (resource_kind, resource_name)
 
 
-def resource_formatter(resource_yml: str) -> str:
-  return fix_code(resource_yml, yaml_fix_config)
-
-
 def multi_resource_parser(multi_resource_yml: str) -> tuple[str, str, str]:
   for resource_yml in multi_resource_yml.split('---\n'):
     (resource_kind, resource_name) = resource_parser(resource_yml)
 
     if resource_kind:
-      yield (resource_kind, resource_name, resource_formatter(resource_yml))
+      yield (resource_kind, resource_name, resource_yml)
+
+
+def generate_filename(resource_kind: str, resource_name: str) -> str:
+    if not resource_kind:
+      log.error('Parameter `resource_kind` is undefined')
+      raise Exception
+
+    if resource_name:
+      return '{}_{}.yml'.format(resource_kind, resource_name)
+    else:
+      # kustomize expects one of the following files to be present: 'kustomization.yaml', 'kustomization.yml' or 'Kustomization'
+      return '{}.yml'.format(resource_kind).lower()
 
 
 def merge_dicts(*dicts):

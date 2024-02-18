@@ -1,7 +1,7 @@
 import pytest
 import textwrap
 
-from make_argocd_fly.utils import resource_parser, multi_resource_parser, merge_dicts
+from make_argocd_fly.utils import resource_parser, multi_resource_parser, generate_filename, merge_dicts
 
 ###################
 ### resource_parser
@@ -202,8 +202,8 @@ def test_multi_resource_parser_with_valid_yaml():
 
   result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', '---\nkind: Deployment\nmetadata:\n  name: grafana\n'),
-      ('DaemonSet', 'prometheus', '---\nkind: DaemonSet\nmetadata:\n  name: prometheus\n')
+      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n'),
+      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus\n')
   ]
 
   assert result == expected
@@ -223,8 +223,8 @@ def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_top():
 
   result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', '---\nkind: Deployment\nmetadata:\n  name: grafana\n'),
-      ('DaemonSet', 'prometheus', '---\nkind: DaemonSet\nmetadata:\n  name: prometheus\n')
+      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n'),
+      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus\n')
   ]
 
   assert result == expected
@@ -244,8 +244,8 @@ def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_bottom():
 
   result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', '---\nkind: Deployment\nmetadata:\n  name: grafana\n'),
-      ('DaemonSet', 'prometheus', '---\nkind: DaemonSet\nmetadata:\n  name: prometheus\n')
+      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n'),
+      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus\n')
   ]
 
   assert result == expected
@@ -265,11 +265,30 @@ def test_multi_resource_parser_with_valid_yaml_not_an_extra_separator():
 
   result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', '---\nkind: Deployment\nmetadata:\n  name: grafana\n  comment: \'--- This is not an extra separator\'\n'),
-      ('DaemonSet', 'prometheus', '---\nkind: DaemonSet\nmetadata:\n  name: prometheus\n')
+      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n  comment: "--- This is not an extra separator"\n'),
+      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus\n')
   ]
 
   assert result == expected
+
+#####################
+### generate_filename
+#####################
+
+def test_generate_filename_undefined_resource_kind(tmp_path, caplog):
+  with pytest.raises(Exception):
+    generate_filename(None, 'key_1')
+  assert 'Parameter `resource_kind` is undefined' in caplog.text
+
+  with pytest.raises(Exception):
+    generate_filename('', 'key_1')
+  assert 'Parameter `resource_kind` is undefined' in caplog.text
+
+def test_generate_filename(tmp_path):
+  assert generate_filename('key_1', 'key_2') == 'key_1_key_2.yml'
+
+def test_generate_filename_undefined_resource_name(tmp_path):
+  assert generate_filename('key_1', None) == 'key_1.yml'
 
 ###############
 ### merge_dicts

@@ -212,23 +212,17 @@ def test_ResourceWriter_store_resource_multiple(tmp_path):
   resource_writer = ResourceWriter(str(dir_output))
   env_name = 'env'
 
-  resource_writer.store_resource(env_name, 'key_1', 'key_2', 'key_3', 'resource body 1')
-  resource_writer.store_resource(env_name, 'key_1', 'key_2', 'key_4', 'resource body 2')
-  resource_writer.store_resource(env_name, 'key_1', 'key_5', 'key_3', 'resource body 3')
-  resource_writer.store_resource(env_name, 'key_6', 'key_2', 'key_3', 'resource body 4')
-  resource_writer.store_resource(env_name, 'key_7', 'key_8', 'key_9', 'resource body 5')
+  resource_writer.store_resource('/a/b/c', 'resource body 1')
+  resource_writer.store_resource('/a/b/d', 'resource body 2')
+  resource_writer.store_resource('/a/b/e', 'resource body 3')
 
-  assert len(resource_writer.resources) == 5
-  assert (env_name, 'key_1', 'key_2', 'key_3') in resource_writer.resources
-  assert resource_writer.resources[(env_name, 'key_1', 'key_2', 'key_3')] == 'resource body 1'
-  assert (env_name, 'key_1', 'key_2', 'key_4') in resource_writer.resources
-  assert resource_writer.resources[(env_name, 'key_1', 'key_2', 'key_4')] == 'resource body 2'
-  assert (env_name, 'key_1', 'key_5', 'key_3') in resource_writer.resources
-  assert resource_writer.resources[(env_name, 'key_1', 'key_5', 'key_3')] == 'resource body 3'
-  assert (env_name, 'key_6', 'key_2', 'key_3') in resource_writer.resources
-  assert resource_writer.resources[(env_name, 'key_6', 'key_2', 'key_3')] == 'resource body 4'
-  assert (env_name, 'key_7', 'key_8', 'key_9') in resource_writer.resources
-  assert resource_writer.resources[(env_name, 'key_7', 'key_8', 'key_9')] == 'resource body 5'
+  assert len(resource_writer.resources) == 3
+  assert '/a/b/c' in resource_writer.resources
+  assert resource_writer.resources['/a/b/c'] == 'resource body 1'
+  assert '/a/b/d' in resource_writer.resources
+  assert resource_writer.resources['/a/b/d'] == 'resource body 2'
+  assert '/a/b/e' in resource_writer.resources
+  assert resource_writer.resources['/a/b/e'] == 'resource body 3'
 
 def test_ResourceWriter_store_resource_duplicate(tmp_path, caplog):
   dir_output = tmp_path / 'dir_output'
@@ -236,10 +230,10 @@ def test_ResourceWriter_store_resource_duplicate(tmp_path, caplog):
   resource_writer = ResourceWriter(str(dir_output))
   env_name = 'env'
 
-  resource_writer.store_resource(env_name, 'key_1', 'key_2', 'key_3', 'resource body 1')
+  resource_writer.store_resource('/a/b/c', 'resource body 1')
   with pytest.raises(Exception):
-      resource_writer.store_resource(env_name, 'key_1', 'key_2', 'key_3', 'resource body 1')
-  assert 'Resource (env, key_1, key_2, key_3) already exists' in caplog.text
+      resource_writer.store_resource('/a/b/c', 'resource body 1')
+  assert 'Resource (/a/b/c) already exists' in caplog.text
 
 def test_ResourceWriter_store_resource_undefined_dir_rel_path(tmp_path, caplog):
   dir_output = tmp_path / 'dir_output'
@@ -248,39 +242,9 @@ def test_ResourceWriter_store_resource_undefined_dir_rel_path(tmp_path, caplog):
   env_name = 'env'
 
   with pytest.raises(Exception):
-    resource_writer.store_resource(env_name, None, 'key_2', 'key_3', 'resource body 1')
-  assert 'Parameter `dir_rel_path` is undefined' in caplog.text
+    resource_writer.store_resource(None, 'resource body 1')
+  assert 'Parameter `file_path` is undefined' in caplog.text
 
   with pytest.raises(Exception):
-    resource_writer.store_resource(env_name, '', 'key_2', 'key_3', 'resource body 1')
-  assert 'Parameter `dir_rel_path` is undefined' in caplog.text
-
-def test_ResourceWriter_store_resource_undefined_resource_kind(tmp_path, caplog):
-  dir_output = tmp_path / 'dir_output'
-  dir_output.mkdir()
-  resource_writer = ResourceWriter(str(dir_output))
-  env_name = 'env'
-
-  with pytest.raises(Exception):
-    resource_writer.store_resource(env_name, 'key_1', None, 'key_3', 'resource body 1')
-  assert 'Parameter `resource_kind` is undefined' in caplog.text
-
-  with pytest.raises(Exception):
-    resource_writer.store_resource(env_name, 'key_1', '', 'key_3', 'resource body 1')
-  assert 'Parameter `resource_kind` is undefined' in caplog.text
-
-def test_ResourceWriter_assemble_filename(tmp_path):
-  dir_output = tmp_path / 'dir_output'
-  dir_output.mkdir()
-  resource_writer = ResourceWriter(str(dir_output))
-
-  assert resource_writer._assemble_filename('key_1', 'key_2') == 'key_1_key_2.yml'
-  assert resource_writer._assemble_filename('Key_1', 'Key_2') == 'Key_1_Key_2.yml'
-
-def test_ResourceWriter_assemble_filename_undefined_resource_name(tmp_path):
-  dir_output = tmp_path / 'dir_output'
-  dir_output.mkdir()
-  resource_writer = ResourceWriter(str(dir_output))
-
-  assert resource_writer._assemble_filename('key_1', None) == 'key_1.yml'
-  assert resource_writer._assemble_filename('Key_1', None) == 'key_1.yml'
+    resource_writer.store_resource('', 'resource body 1')
+  assert 'Parameter `file_path` is undefined' in caplog.text

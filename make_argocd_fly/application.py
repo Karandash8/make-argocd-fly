@@ -6,7 +6,7 @@ import textwrap
 
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.renderer import JinjaRenderer
-from make_argocd_fly.utils import multi_resource_parser, merge_dicts
+from make_argocd_fly.utils import multi_resource_parser, merge_dicts, generate_filename
 from make_argocd_fly.config import get_config
 
 log = logging.getLogger(__name__)
@@ -159,10 +159,8 @@ class KustomizeApplication(AbstractApplication):
         content = renderer.render(content, template_vars, yml_child.element_rel_path)
 
       for resource_kind, resource_name, resource_yml in multi_resource_parser(content):
-        tmp_resource_writer.store_resource(
-          self.env_name,
-          os.path.join(self.env_name, os.path.dirname(yml_child.element_rel_path)),
-          resource_kind, resource_name, resource_yml)
+        file_path = os.path.join(self.env_name, os.path.dirname(yml_child.element_rel_path), generate_filename(resource_kind, resource_name))
+        tmp_resource_writer.store_resource(file_path, resource_yml)
 
     await tmp_resource_writer.write_resources()
 

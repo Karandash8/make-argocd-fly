@@ -4,5 +4,6 @@ kind: Deployment
 metadata:
   labels:
     app: grafana_veeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeery_long_label
+    lbl: 11.11
   name: grafana
   namespace: monitoring

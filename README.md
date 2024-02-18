@@ -1,20 +1,15 @@
 ## Description
-A tool to generate on the user side per environment Kubernetes manifests that can be deployed with ArgoCD.
+`make-argocd-fly` is a tool to generate Kubernetes manifests that can be deployed with ArgoCD in a multi cluster environments. It makes it easier to develop and maintain ArgoCD applications by providing a way to render Jinja2 and Kustomize files, run yaml and kube linters and automatically generate ArgoCD `Application` resources.
 
-ArcoCD resources of type `Application` are generated automatically based on the provided configuration.
-
-## Motivation
-Manifests that are written in kustomize/helm/jsonnet might easily become hard to read and debug. The development lifecycle becomes longer when after each change you need to commit, wait for ArgoCD to pick it up and deploy it. Only after that you see the actual end manifest in ArcoCD UI.
-
-With this tool you can quickly render jinja2/kustomize files, run yaml linter and continue development.
+The idea is that you write your resources in YAML, Jinja2 or Kustomize (including helmCharts), write a configuration file that describes where to deploy then and then run `make-argocd-fly` to generate the final manifests. This way it is transparent what is being deployed and where, it is easier to maintain and develop the resources and it is easier to debug them.
 
 ## Features
 - Jinja2 and Kustomize rendering
 - ArgoCD `Application` resources are generated automatically
+- `App-of-apps` pattern is natively supported
 - Use `include` or `include_raw` in Jinja2 templates to render content of external files
-- Global and per environment Jinja2 variables
-- Single line YAML comments are supported
-- Applications in subdirectories are supported
+- Global, per environment and per application Jinja2 variables
+- Source resources can reside in subdirectories
 
 ## Usage
 ```
@@ -27,7 +22,7 @@ make-argocd-fly
 
 ## Configuration
 ### config.yml
-Expected file structure
+Example:
 ```
 source_dir: source
 output_dir: output
@@ -76,13 +71,13 @@ vars:
   var_3: value_3
 ```
 
-With such configuration file you can have kustomize overlays for `dev/prod` and use jinja2 variables like `{{ var_1.var_2 }} and {{ var_3 }}` in your source files.
+With this configuration file you can have kustomize overlays for `dev/prod` and use jinja2 variables like `{{ var_1.var_2 }} and {{ var_3 }}` in your source files.
 
 ### app parameters
 - `app_deployer` - name of the application that will deploy this application
-- `app_deployer_env` - (OPTIONAL) environment of the application that will deploy this application
 - `project` - ArgoCD project name
 - `destination_namespace` - namespace where the application will be deployed
+- `app_deployer_env` - (OPTIONAL) environment of the application that will deploy this application
 - `vars` - (OPTIONAL) application specific jinja2 variables
 
 ## Jinja2 extensions
@@ -90,7 +85,7 @@ To include an external template in a jinja2 template, use the following block:
 
 ```
 {%- filter indent(width=4) %}
-{% include 'app_4/files/file.json' %}
+{% include 'app_4/files/file.json.j2' %}
 {% endfilter %}
 ```
 
@@ -113,6 +108,9 @@ Ansible filters are supported as well: https://pypi.org/project/jinja2-ansible-f
 ## Caveats
 ### Requirements
 `kustomize` is expected to be installed locally.
+`kube-linter` is expected to be installed locally (https://github.com/stackrox/kube-linter).
+`libyaml` is expected to be installed locally for speeding up YAMLs generation.
+Comments are not rendered in the final output manifests.
 
 ### Currently supported directory structure
 ```
@@ -139,7 +137,7 @@ repo
         file.json(.j2)
 ```
 
-When kustomization overlays are used, kustomization base directory shall be called `base`, overlay directories shall be named after the corresponding environments names.
+When kustomization overlays are used, kustomization base directory shall be named `base`, overlay directories shall be named after the corresponding environments names.
 
 ### kustomization.yml
 Files referenced in the `resources` section shall be named after Kubernetes resource type + `_` + resource name. Example:
