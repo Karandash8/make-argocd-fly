@@ -9,7 +9,7 @@ import yaml
 import yamllint
 
 from make_argocd_fly.config import read_config, get_config
-from make_argocd_fly.utils import multi_resource_parser
+from make_argocd_fly.utils import multi_resource_parser, generate_filename
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.application import application_factory
 
@@ -62,7 +62,8 @@ async def generate(render_envs, render_apps) -> None:
 
   for app in apps:
     for resource_kind, resource_name, resource_yml in multi_resource_parser(app.resources):
-      output_writer.store_resource(app.env_name, app.get_app_rel_path(), resource_kind, resource_name, resource_yml)
+      file_path = os.path.join(app.get_app_rel_path(), generate_filename(resource_kind, resource_name))
+      output_writer.store_resource(file_path, resource_yml)
 
   log.debug('Writing resources files')
   if os.path.exists(config.get_output_dir()):
