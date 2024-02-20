@@ -39,8 +39,8 @@ async def generate(render_envs, render_apps) -> None:
   source_viewer = ResourceViewer(config.get_source_dir())
   source_viewer.build()
 
-  apps_to_render = render_apps.split(',') if render_apps else []
-  envs_to_render = render_envs.split(',') if render_envs else []
+  apps_to_render = render_apps.split(',') if render_apps is not None else []
+  envs_to_render = render_envs.split(',') if render_envs is not None else []
   apps = []
 
   log.debug('Creating applications')
@@ -75,8 +75,8 @@ def main() -> None:
   parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')
   parser.add_argument('--root-dir', type=str, default=os.getcwd(), help='Root directory')
   parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file')
-  parser.add_argument('--render-apps', type=str, default='', help='Comma separate list of applications to render')
-  parser.add_argument('--render-envs', type=str, default='', help='Comma separate list of environments to render')
+  parser.add_argument('--render-apps', type=str, default=None, help='Comma separate list of applications to render')
+  parser.add_argument('--render-envs', type=str, default=None, help='Comma separate list of environments to render')
   parser.add_argument('--skip-generate', action='store_true', help='Skip resource generation')
   parser.add_argument('--preserve-tmp-dir', action='store_true', help='Preserve temporary directory')
   parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
