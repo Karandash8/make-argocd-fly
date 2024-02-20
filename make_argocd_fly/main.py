@@ -68,6 +68,7 @@ async def generate(render_envs, render_apps) -> None:
   log.debug('Writing resources files')
   if os.path.exists(config.get_output_dir()):
     shutil.rmtree(config.get_output_dir())
+  os.makedirs(config.get_output_dir(), exist_ok=True)
   await output_writer.write_resources()
 
 
