@@ -1,7 +1,7 @@
 ## Description
 `make-argocd-fly` is a tool to generate Kubernetes manifests that can be deployed with ArgoCD in a multi cluster environments. It makes it easier to develop and maintain ArgoCD applications by providing a way to render Jinja2 and Kustomize files, run yaml and kube linters and automatically generate ArgoCD `Application` resources.
 
-The idea is that you write your resources in YAML, Jinja2 or Kustomize (including helmCharts), write a configuration file that describes where to deploy then and then run `make-argocd-fly` to generate the final manifests. This way it is transparent what is being deployed and where, it is easier to maintain and develop the resources and it is easier to debug them.
+The idea is that you write your resources in YAML, Jinja2 or Kustomize (including helmCharts), write a configuration file that describes where to deploy them and then run `make-argocd-fly` to generate the final manifests. This way it is transparent what is being deployed and where, it is easier to maintain and develop the resources and it is easier to debug them.
 
 ## Features
 - Jinja2 and Kustomize rendering
@@ -17,7 +17,26 @@ python3 -m venv .venv
 . .venv/bin/activate
 pip install make-argocd-fly
 
-make-argocd-fly
+make-argocd-fly -h
+usage: main.py [-h] [--root-dir ROOT_DIR] [--config-file CONFIG_FILE] [--render-apps RENDER_APPS] [--render-envs RENDER_ENVS] [--skip-generate] [--preserve-tmp-dir] [--yaml-linter] [--kube-linter]
+               [--loglevel LOGLEVEL]
+
+Render ArgoCD Applications.
+
+options:
+  -h, --help            show this help message and exit
+  --root-dir ROOT_DIR   Root directory
+  --config-file CONFIG_FILE
+                        Configuration file
+  --render-apps RENDER_APPS
+                        Comma separate list of applications to render
+  --render-envs RENDER_ENVS
+                        Comma separate list of environments to render
+  --skip-generate       Skip resource generation
+  --preserve-tmp-dir    Preserve temporary directory
+  --yaml-linter         Run yamllint against output directory (https://github.com/adrienverge/yamllint)
+  --kube-linter         Run kube-linter against output directory (https://github.com/stackrox/kube-linter)
+  --loglevel LOGLEVEL   DEBUG, INFO, WARNING, ERROR, CRITICAL
 ```
 
 ## Configuration
@@ -81,7 +100,7 @@ With this configuration file you can have kustomize overlays for `dev/prod` and 
 - `vars` - (OPTIONAL) application specific jinja2 variables
 
 ## Jinja2 extensions
-To include an external template in a jinja2 template, use the following block:
+To render a template in the current jinja2 template, use the following block:
 
 ```
 {%- filter indent(width=4) %}
@@ -89,7 +108,7 @@ To include an external template in a jinja2 template, use the following block:
 {% endfilter %}
 ```
 
-To include an external file without rendering it in a jinja2 template, use the following block:
+To include file content in the current jinja2 template, use the following block:
 
 ```
 {%- filter indent(width=4) %}
@@ -107,10 +126,10 @@ Ansible filters are supported as well: https://pypi.org/project/jinja2-ansible-f
 
 ## Caveats
 ### Requirements
-`kustomize` is expected to be installed locally.
-`kube-linter` is expected to be installed locally (https://github.com/stackrox/kube-linter).
-`libyaml` is expected to be installed locally for speeding up YAMLs generation.
-Comments are not rendered in the final output manifests.
+- `kustomize` and `helm` are expected to be installed locally.
+- `kube-linter` is expected to be installed locally (https://github.com/stackrox/kube-linter).
+- `libyaml` is expected to be installed locally for speeding up YAMLs generation.
+- Comments are not rendered in the final output manifests.
 
 ### Currently supported directory structure
 ```
@@ -151,7 +170,7 @@ resources:
 `bootstrap` application shall be deployed externally
 
 ### Variable names
-The folloving variable names are resenved:
+The folloving variable names are reserved:
 - __application
 
 ### Expected variables
