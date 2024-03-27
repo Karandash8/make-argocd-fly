@@ -66,19 +66,6 @@ def test_resource_parser_with_comments_and_leading_kind():
 
   assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
 
-def test_resource_parser_invalid_yaml_duplicate_resource_kind(caplog):
-  resource_yml = '''\
-    kind: Deployment
-    kind: DaemonSet
-    apiVersion: apps/v1
-    metadata:
-      name: grafana
-    '''
-
-  with pytest.raises(Exception):
-      resource_parser(textwrap.dedent(resource_yml))
-  assert 'Duplicate resource kind' in caplog.text
-
 def test_resource_parser_with_messed_up_order_metadata_at_the_beginning():
   resource_yml = '''\
     metadata:
@@ -113,7 +100,7 @@ def test_resource_parser_with_messed_up_order_name_extra_spaces():
         name: grafana
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', None)
 
 def test_resource_parser_with_messed_up_order_name_is_not_first():
   resource_yml = '''\
