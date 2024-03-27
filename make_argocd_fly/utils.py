@@ -9,17 +9,15 @@ def resource_parser(resource_yml: str) -> tuple[str, str]:
   resource_kind = None
   resource_name = None
 
-  match_list = re.findall('(^kind:|\nkind:)(.+)', resource_yml)
-  if len(match_list) > 1 or (len(match_list) == 1 and len(match_list[0]) != 2):
-    log.error('Duplicate resource kind: \n%s', resource_yml)
-    raise Exception
+  match = re.search(r'(^kind:|\nkind:)(.+)', resource_yml)
+  if match:
+    resource_kind = match.group(2).strip()
 
-  if len(match_list) == 1:
-    resource_kind = match_list[0][1].strip()
-
-  match_list = re.findall(r'(^metadata:|\nmetadata:)((\n\s*#.*|\n\s+.*)*)\n\s+name:(.+)', resource_yml)
-  if len(match_list) == 1 and len(match_list[0]) == 4:
-    resource_name = match_list[0][3].strip()
+  match = re.search(r'(^metadata:|\nmetadata:).*', resource_yml)
+  if match:
+    match = re.search(r'(^\s\sname:|\n\s\sname:)(.+)', resource_yml[match.start():])
+    if match:
+      resource_name = match.group(2).strip()
 
   return (resource_kind, resource_name)
 
