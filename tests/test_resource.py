@@ -103,46 +103,46 @@ def test_ResourceViewer_build_with_directories_and_files(tmp_path):
   assert len(resource_viewer.children) == 3
 
   # dir with a dir
-  assert resource_viewer.children[0].name == "dir_root_1"
-  assert resource_viewer.children[0].element_rel_path == 'dir_root_1'
-  assert resource_viewer.children[0].is_dir is True
-  assert resource_viewer.children[0].content is None
-  assert len(resource_viewer.children[0].children) == 1
+  assert resource_viewer.children[1].name == "dir_root_1"
+  assert resource_viewer.children[1].element_rel_path == 'dir_root_1'
+  assert resource_viewer.children[1].is_dir is True
+  assert resource_viewer.children[1].content is None
+  assert len(resource_viewer.children[1].children) == 1
 
   # dir with files
-  assert resource_viewer.children[0].children[0].name == "dir_root_1_0"
-  assert resource_viewer.children[0].children[0].element_rel_path == 'dir_root_1/dir_root_1_0'
-  assert resource_viewer.children[0].children[0].is_dir is True
-  assert resource_viewer.children[0].children[0].content is None
-  assert len(resource_viewer.children[0].children[0].children) == 2
+  assert resource_viewer.children[1].children[0].name == "dir_root_1_0"
+  assert resource_viewer.children[1].children[0].element_rel_path == 'dir_root_1/dir_root_1_0'
+  assert resource_viewer.children[1].children[0].is_dir is True
+  assert resource_viewer.children[1].children[0].content is None
+  assert len(resource_viewer.children[1].children[0].children) == 2
 
   # empty file
-  assert resource_viewer.children[0].children[0].children[0].name == "file_root_1_0_1.txt"
-  assert resource_viewer.children[0].children[0].children[0].element_rel_path == 'dir_root_1/dir_root_1_0/file_root_1_0_1.txt'
-  assert resource_viewer.children[0].children[0].children[0].is_dir is False
-  assert resource_viewer.children[0].children[0].children[0].content == FILE_2_CONTENT
-  assert len(resource_viewer.children[0].children[0].children[0].children) == 0
+  assert resource_viewer.children[1].children[0].children[1].name == "file_root_1_0_1.txt"
+  assert resource_viewer.children[1].children[0].children[1].element_rel_path == 'dir_root_1/dir_root_1_0/file_root_1_0_1.txt'
+  assert resource_viewer.children[1].children[0].children[1].is_dir is False
+  assert resource_viewer.children[1].children[0].children[1].content == FILE_2_CONTENT
+  assert len(resource_viewer.children[1].children[0].children[1].children) == 0
 
   # file with content
-  assert resource_viewer.children[0].children[0].children[1].name == "file_root_1_0_0.txt"
-  assert resource_viewer.children[0].children[0].children[1].element_rel_path == 'dir_root_1/dir_root_1_0/file_root_1_0_0.txt'
-  assert resource_viewer.children[0].children[0].children[1].is_dir is False
-  assert resource_viewer.children[0].children[0].children[1].content == FILE_1_CONTENT
-  assert len(resource_viewer.children[0].children[0].children[1].children) == 0
+  assert resource_viewer.children[1].children[0].children[0].name == "file_root_1_0_0.txt"
+  assert resource_viewer.children[1].children[0].children[0].element_rel_path == 'dir_root_1/dir_root_1_0/file_root_1_0_0.txt'
+  assert resource_viewer.children[1].children[0].children[0].is_dir is False
+  assert resource_viewer.children[1].children[0].children[0].content == FILE_1_CONTENT
+  assert len(resource_viewer.children[1].children[0].children[0].children) == 0
 
   # file in root dir
-  assert resource_viewer.children[1].name == "file_root_0.txt"
-  assert resource_viewer.children[1].element_rel_path == 'file_root_0.txt'
-  assert resource_viewer.children[1].is_dir is False
-  assert resource_viewer.children[1].content == FILE_0_CONTENT
-  assert len(resource_viewer.children[1].children) == 0
+  assert resource_viewer.children[2].name == "file_root_0.txt"
+  assert resource_viewer.children[2].element_rel_path == 'file_root_0.txt'
+  assert resource_viewer.children[2].is_dir is False
+  assert resource_viewer.children[2].content == FILE_0_CONTENT
+  assert len(resource_viewer.children[2].children) == 0
 
   # empty dir
-  assert resource_viewer.children[2].name == "dir_root_0"
-  assert resource_viewer.children[2].element_rel_path == 'dir_root_0'
-  assert resource_viewer.children[2].is_dir is True
-  assert resource_viewer.children[2].content is None
-  assert len(resource_viewer.children[2].children) == 0
+  assert resource_viewer.children[0].name == "dir_root_0"
+  assert resource_viewer.children[0].element_rel_path == 'dir_root_0'
+  assert resource_viewer.children[0].is_dir is True
+  assert resource_viewer.children[0].content is None
+  assert len(resource_viewer.children[0].children) == 0
 
 def test_ResourceViewer_get_element_simple(tmp_path):
   dir_root = tmp_path / 'dir_root'
