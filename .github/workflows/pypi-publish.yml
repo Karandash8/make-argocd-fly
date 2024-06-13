@@ -21,11 +21,18 @@ jobs:
     runs-on: home-use
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v3
+    - uses: actions/checkout@v4
+   - if: ${{ matrix.arch == 'arm64' }}
+      name: Set up Python
+      uses: deadsnakes/action@v2.1.1
       with:
-        python-version: '3.x'
+        python-version: "3.10"
+    - if: ${{ matrix.arch == 'amd64' }}
+      name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: 'pip'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -33,7 +40,7 @@ jobs:
     - name: Build package
       run: python -m build
     - name: Store the distribution packages
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
@@ -53,7 +60,7 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
@@ -76,7 +83,7 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
