@@ -46,7 +46,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-   - if: ${{ matrix.arch == 'arm64' }}
+    - if: ${{ matrix.arch == 'arm64' }}
       name: Set up Python
       uses: deadsnakes/action@v2.1.1
       with:
