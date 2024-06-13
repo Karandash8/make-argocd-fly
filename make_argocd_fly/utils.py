@@ -23,7 +23,7 @@ def resource_parser(resource_yml: str) -> tuple[str, str]:
 
 
 def multi_resource_parser(multi_resource_yml: str) -> tuple[str, str, str]:
-  for resource_yml in multi_resource_yml.split('---\n'):
+  for resource_yml in multi_resource_yml.split('\n---\n'):
     (resource_kind, resource_name) = resource_parser(resource_yml)
 
     if resource_kind:
