@@ -13,7 +13,7 @@ permissions:
 jobs:
   flake8:
     name: Run flake8
-    runs-on: self-hosted
+    runs-on: home-use
 
     steps:
     - uses: actions/checkout@v3
@@ -35,7 +35,7 @@ jobs:
 
   pytest:
     name: Run pytest
-    runs-on: self-hosted
+    runs-on: home-use
 
     steps:
     - uses: actions/checkout@v3
