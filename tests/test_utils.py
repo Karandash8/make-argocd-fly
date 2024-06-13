@@ -189,8 +189,8 @@ def test_multi_resource_parser_with_valid_yaml():
 
   result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n'),
-      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus\n')
+      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana'),
+      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
   ]
 
   assert result == expected
@@ -210,8 +210,8 @@ def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_top():
 
   result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n'),
-      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus\n')
+      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana'),
+      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
   ]
 
   assert result == expected
@@ -231,8 +231,8 @@ def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_bottom():
 
   result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n'),
-      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus\n')
+      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana'),
+      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
   ]
 
   assert result == expected
@@ -252,8 +252,30 @@ def test_multi_resource_parser_with_valid_yaml_not_an_extra_separator():
 
   result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n  comment: "--- This is not an extra separator"\n'),
-      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus\n')
+      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n  comment: "--- This is not an extra separator"'),
+      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+  ]
+
+  assert result == expected
+
+def test_multi_resource_parser_with_valid_yaml_not_an_extra_separator_2():
+  # Test when valid YAML is provided with multiple resources
+  multi_resource_yml = '''\
+    kind: Deployment
+    metadata:
+      name: grafana
+      comment: |
+        This is not an extra separator ----
+    ---
+    kind: DaemonSet
+    metadata:
+      name: prometheus
+    '''
+
+  result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
+  expected = [
+      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n  comment: |\n    This is not an extra separator ----'),
+      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
   ]
 
   assert result == expected
