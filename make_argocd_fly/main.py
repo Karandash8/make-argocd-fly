@@ -32,7 +32,7 @@ def init_logging(loglevel: str) -> None:
     pass
 
 
-async def generate(render_envs, render_apps) -> None:
+def create_applications(render_apps, render_envs):
   config = get_config()
 
   log.debug('Reading source directory')
@@ -55,19 +55,32 @@ async def generate(render_envs, render_apps) -> None:
       app_viewer = source_viewer.get_element(app_name)
       apps.append(application_factory(app_viewer, app_name, env_name))
 
-  output_writer = ResourceWriter(config.get_output_dir())
+  return apps
+
+
+async def generate(render_envs, render_apps) -> None:
+  config = get_config()
+  apps = create_applications(render_apps, render_envs)
 
   log.debug('Rendering resources')
   await asyncio.gather(*[app.generate_resources() for app in apps])
 
+  output_writer = ResourceWriter(config.get_output_dir())
   for app in apps:
     for resource_kind, resource_name, resource_yml in multi_resource_parser(app.resources):
       file_path = os.path.join(app.get_app_rel_path(), generate_filename(resource_kind, resource_name))
       output_writer.store_resource(file_path, resource_yml)
 
-  log.debug('Writing resources files')
+  if apps:
+    log.debug('The following applications have been updated:')
   if os.path.exists(config.get_output_dir()):
-    shutil.rmtree(config.get_output_dir())
+    for app in apps:
+      app_dir = os.path.join(config.get_output_dir(), app.get_app_rel_path())
+      log.debug('Environment: {}, Application: {}, Path: {}'.format(app.env_name, app.app_name, app_dir))
+      if os.path.exists(app_dir):
+        shutil.rmtree(app_dir)
+
+  log.debug('Writing resources files')
   os.makedirs(config.get_output_dir(), exist_ok=True)
   await output_writer.write_resources()
 
@@ -80,6 +93,7 @@ def main() -> None:
   parser.add_argument('--render-envs', type=str, default=None, help='Comma separate list of environments to render')
   parser.add_argument('--skip-generate', action='store_true', help='Skip resource generation')
   parser.add_argument('--preserve-tmp-dir', action='store_true', help='Preserve temporary directory')
+  parser.add_argument('--clean', action='store_true', help='Clean all applications in output directory')
   parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
   parser.add_argument('--kube-linter', action='store_true', help='Run kube-linter against output directory (https://github.com/stackrox/kube-linter)')
   parser.add_argument('--loglevel', type=str, default='INFO', help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
@@ -93,6 +107,11 @@ def main() -> None:
   tmp_dir = config.get_tmp_dir()
   if os.path.exists(tmp_dir):
     shutil.rmtree(tmp_dir)
+
+  if args.clean:
+    log.info('Cleaning all output directory')
+    if os.path.exists(config.get_output_dir()):
+      shutil.rmtree(config.get_output_dir())
 
   if not args.skip_generate:
     asyncio.run(generate(args.render_envs, args.render_apps))
