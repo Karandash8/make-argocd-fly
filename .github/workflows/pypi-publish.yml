@@ -23,7 +23,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-tags: true
+        # https://github.com/actions/checkout/issues/1471
+        fetch-depth: 0
+        filter: tree:0
     - if: ${{ runner.arch == 'arm64' }}
       name: Set up Python
       uses: deadsnakes/action@v3.1.0
