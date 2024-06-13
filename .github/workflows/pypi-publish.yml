@@ -22,6 +22,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-tags: true
     - if: ${{ runner.arch == 'arm64' }}
       name: Set up Python
       uses: deadsnakes/action@v3.1.0
