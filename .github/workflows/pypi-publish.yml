@@ -50,6 +50,8 @@ jobs:
 
   test-publish:
     name: Test
+    needs:
+      - build
     runs-on: home-use
 
     steps:
