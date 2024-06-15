@@ -92,7 +92,8 @@ jobs:
           chmod +x /app/twine-upload.sh
       - name: Publish package to TestPyPI
         run: |
-          ls -l /home/runner/_work/dist
+          pwd
+          ls -l /home/runner/_work/
           PYTHONPATH=/usr/lib/python3/site-packages \
           INPUT_USER=__token__ \
           INPUT_PASSWORD="" \
