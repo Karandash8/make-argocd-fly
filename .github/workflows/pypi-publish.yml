@@ -48,6 +48,21 @@ jobs:
         name: python-package-distributions
         path: dist/
 
+  test-publish:
+    name: Test
+    runs-on: home-use
+
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+      - name: Clone Repository
+        run: git clone https://github.com/pypa/gh-action-pypi-publish.git
+      - name: ls
+        run: ls
+
   # publish-to-testpypi:
   #   name: Publish make-argocd-fly to TestPyPI
   #   needs:
