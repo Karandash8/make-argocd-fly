@@ -81,7 +81,7 @@ jobs:
         run: |
           cd gh-action-pypi-publish
           chmod +x twine-upload.sh
-          twine-upload.sh --user __token__ --verify-metadata true --skip-existing false --verbose true --print-hash false --repository-url https://test.pypi.org/legacy/ --packages-dir ../dist
+          ./twine-upload.sh --user __token__ --verify-metadata true --skip-existing false --verbose true --print-hash false --repository-url https://test.pypi.org/legacy/ --packages-dir ../dist
 
   # publish-to-testpypi:
   #   name: Publish make-argocd-fly to TestPyPI
