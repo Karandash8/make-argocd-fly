@@ -98,13 +98,12 @@ jobs:
           INPUT_USER=__token__ \
           INPUT_PASSWORD="" \
           INPUT_VERBOSE=false \
-          INPUT_REPOSITORY_URL=https://test.pypi.org/legacy/ \
-          /app/twine-upload.sh \
-            -verify-metadata true \
-            -skip-existing false \
-            -print-hash false \
-            -repository-url https://test.pypi.org/legacy/ \
-            -packages-dir /app/dist
+          repository-url=https://test.pypi.org/legacy/ \
+          verify-metadata=true \
+          skip-existing=false \
+          print-hash=false \
+          packages-dir=/app/dist \
+          /app/twine-upload.sh
 
   # publish-to-testpypi:
   #   name: Publish make-argocd-fly to TestPyPI
