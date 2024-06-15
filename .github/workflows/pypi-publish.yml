@@ -99,6 +99,7 @@ jobs:
           INPUT_PASSWORD="" \
           INPUT_VERBOSE=true \
           INPUT_REPOSITORY_URL=https://test.pypi.org/legacy/ \
+          INPUT_PACKAGES_DIR=dist \
           /app/twine-upload.sh \
             --verify-metadata true \
             --skip-existing false \
