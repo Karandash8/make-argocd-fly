@@ -55,6 +55,8 @@ jobs:
     runs-on: home-use
 
     steps:
+      - name: env
+        run: env
       - name: Download all the dists
         uses: actions/download-artifact@v4
         with:
@@ -80,7 +82,8 @@ jobs:
       - name: prepare upload
         run: |
           sudo mkdir /app
-          sudo chown -R $USER:$USER /app
+          ls -l /
+          sudo chown -R runner:runner /app
           cp gh-action-pypi-publish/twine-upload.sh gh-action-pypi-publish/print-hash.py gh-action-pypi-publish/oidc-exchange.py /app
           chmod +x /app/twine-upload.sh
       - name: Publish package to TestPyPI
