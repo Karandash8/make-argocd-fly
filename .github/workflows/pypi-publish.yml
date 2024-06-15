@@ -107,7 +107,7 @@ jobs:
   publish-to-pypi:
     name: Publish make-argocd-fly to PyPI
     needs:
-      - build
+      - publish-to-testpypi
     runs-on: home-use
 
     environment:
