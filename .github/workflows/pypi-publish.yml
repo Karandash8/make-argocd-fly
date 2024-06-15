@@ -62,8 +62,6 @@ jobs:
       id-token: write
 
     steps:
-      - name: env
-        run: env
       - name: Download all the dists
         uses: actions/download-artifact@v4
         with:
@@ -95,9 +93,6 @@ jobs:
           chmod +x /app/twine-upload.sh
       - name: Publish package to TestPyPI
         run: |
-          pwd
-          ls
-          ls -l /home/runner
           PYTHONPATH=/usr/lib/python3/site-packages \
           INPUT_USER=__token__ \
           INPUT_PASSWORD="" \
@@ -108,7 +103,7 @@ jobs:
             --skip-existing false \
             --print-hash false \
             --repository-url https://test.pypi.org/legacy/ \
-            --packages-dir /home/runner/dist
+            --packages-dir /home/runner/_work/dist
 
 
   # publish-to-testpypi:
