@@ -48,7 +48,8 @@ jobs:
           name: python-package-distributions
           path: dist/
 
-  test-publish:
+  # `pypa/gh-action-pypi-publish@release` runs in docker, which does not work on self-hosted runners in kubernetes mode
+  publish-to-testpypi:
     name: Test
     needs:
       - build
@@ -78,13 +79,13 @@ jobs:
         with:
           python-version: '3.11'
       - name: Clone Repository
-        run: git clone https://github.com/pypa/gh-action-pypi-publish.git
-      - name: pip install
+        run: git clone --depth 1 --branch v1.8.14 https://github.com/pypa/gh-action-pypi-publish.git
+      - name: Install pip packages
         run: |
           cd gh-action-pypi-publish
           PIP_CONSTRAINT=requirements/runtime-prerequisites.txt pip install -r requirements/runtime-prerequisites.in
           PIP_CONSTRAINT=requirements/runtime.txt pip install -r requirements/runtime.in
-      - name: prepare upload
+      - name: Prepare scripts
         run: |
           sudo mkdir /app
           sudo chown -R runner:runner /app
@@ -93,21 +94,16 @@ jobs:
           chmod +x /app/twine-upload.sh
       - name: Publish package to TestPyPI
         run: |
-          ls -l /app/dist
           PYTHONPATH=/usr/lib/python3/site-packages \
           INPUT_USER=__token__ \
           INPUT_PASSWORD="" \
-          INPUT_VERBOSE=true \
-          INPUT_REPOSITORY_URL=https://test.pypi.org/legacy/ \
-          INPUT_PACKAGES_DIR=dist \
+          INPUT_VERBOSE=false \
           /app/twine-upload.sh \
             -verify-metadata true \
             -skip-existing false \
             -print-hash false \
             -repository-url https://test.pypi.org/legacy/ \
             -packages-dir /app/dist
-
-
 
   # publish-to-testpypi:
   #   name: Publish make-argocd-fly to TestPyPI
