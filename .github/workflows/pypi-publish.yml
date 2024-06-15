@@ -54,6 +54,13 @@ jobs:
       - build
     runs-on: home-use
 
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/make-argocd-fly
+
+    permissions:
+      id-token: write
+
     steps:
       - name: env
         run: env
