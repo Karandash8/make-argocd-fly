@@ -101,11 +101,11 @@ jobs:
           INPUT_REPOSITORY_URL=https://test.pypi.org/legacy/ \
           INPUT_PACKAGES_DIR=dist \
           /app/twine-upload.sh \
-            --verify-metadata true \
-            --skip-existing false \
-            --print-hash false \
-            --repository-url https://test.pypi.org/legacy/ \
-            --packages-dir dist/*
+            -verify-metadata true \
+            -skip-existing false \
+            -print-hash false \
+            -repository-url https://test.pypi.org/legacy/ \
+            -packages-dir /app/dist
 
 
 
