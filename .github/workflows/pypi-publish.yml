@@ -81,7 +81,7 @@ jobs:
         run: |
           cd gh-action-pypi-publish
           chmod +x twine-upload.sh
-          PYTHONPATH=/usr/lib/python3/site-packages INPUT_USER=__token__ INPUT_VERBOSE=true ./twine-upload.sh --verify-metadata true --skip-existing false --print-hash false --repository-url https://test.pypi.org/legacy/ --packages-dir ../dist
+          PYTHONPATH=/usr/lib/python3/site-packages INPUT_USER=__token__ INPUT_PASSWORD="" INPUT_VERBOSE=true ./twine-upload.sh --verify-metadata true --skip-existing false --print-hash false --repository-url https://test.pypi.org/legacy/ --packages-dir ../dist
 
 
   # publish-to-testpypi:
