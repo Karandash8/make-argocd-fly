@@ -93,7 +93,8 @@ jobs:
       - name: Publish package to TestPyPI
         run: |
           pwd
-          ls -l /home/runner/_work/
+          ls -l /home/runner/_work/make-argocd-fly/make-argocd-fly
+          ls dist
           PYTHONPATH=/usr/lib/python3/site-packages \
           INPUT_USER=__token__ \
           INPUT_PASSWORD="" \
