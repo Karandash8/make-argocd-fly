@@ -8,9 +8,10 @@
 
 name: Release
 
-on:
-  release:
-    types: [published]
+# on:
+#   release:
+#     types: [published]
+on: workflow_dispatch
 
 permissions:
   contents: read
@@ -47,47 +48,47 @@ jobs:
         name: python-package-distributions
         path: dist/
 
-  publish-to-testpypi:
-    name: Publish make-argocd-fly to TestPyPI
-    needs:
-    - build
-    runs-on: home-use
+  # publish-to-testpypi:
+  #   name: Publish make-argocd-fly to TestPyPI
+  #   needs:
+  #   - build
+  #   runs-on: home-use
 
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/make-argocd-fly
+  #   environment:
+  #     name: testpypi
+  #     url: https://test.pypi.org/p/make-argocd-fly
 
-    permissions:
-      id-token: write
+  #   permissions:
+  #     id-token: write
 
-    steps:
-    - name: Download all the dists
-      uses: actions/download-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
-    - name: Publish package to TestPyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        repository-url: https://test.pypi.org/legacy/
+  #   steps:
+  #   - name: Download all the dists
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       name: python-package-distributions
+  #       path: dist/
+  #   - name: Publish package to TestPyPI
+  #     uses: pypa/gh-action-pypi-publish@release/v1
+  #     with:
+  #       repository-url: https://test.pypi.org/legacy/
 
-  publish-to-pypi:
-    name: Publish make-argocd-fly to PyPI
-    needs:
-    - publish-to-testpypi
-    runs-on: home-use
+  # publish-to-pypi:
+  #   name: Publish make-argocd-fly to PyPI
+  #   needs:
+  #   - publish-to-testpypi
+  #   runs-on: home-use
 
-    environment:
-      name: pypi
-      url: https://pypi.org/p/make-argocd-fly
-    permissions:
-      id-token: write
+  #   environment:
+  #     name: pypi
+  #     url: https://pypi.org/p/make-argocd-fly
+  #   permissions:
+  #     id-token: write
 
-    steps:
-    - name: Download all the dists
-      uses: actions/download-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
-    - name: Publish package to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+  #   steps:
+  #   - name: Download all the dists
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       name: python-package-distributions
+  #       path: dist/
+  #   - name: Publish package to PyPI
+  #     uses: pypa/gh-action-pypi-publish@release/v1
