@@ -77,11 +77,15 @@ jobs:
           cd gh-action-pypi-publish
           PIP_CONSTRAINT=requirements/runtime-prerequisites.txt pip install -r requirements/runtime-prerequisites.in
           PIP_CONSTRAINT=requirements/runtime.txt pip install -r requirements/runtime.in
+      - name: prepare upload
+        run: |
+          sudo mkdir /app
+          sudo chown -R $USER /app
+          cp gh-action-pypi-publish/twine-upload.sh gh-action-pypi-publish/print-hash.py gh-action-pypi-publish/oidc-exchange.py /app
+          chmod +x /app/twine-upload.sh
       - name: Publish package to TestPyPI
         run: |
-          cd gh-action-pypi-publish
-          chmod +x twine-upload.sh
-          PYTHONPATH=/usr/lib/python3/site-packages INPUT_USER=__token__ INPUT_PASSWORD="" INPUT_VERBOSE=true ./twine-upload.sh --verify-metadata true --skip-existing false --print-hash false --repository-url https://test.pypi.org/legacy/ --packages-dir ../dist
+          PYTHONPATH=/usr/lib/python3/site-packages INPUT_USER=__token__ INPUT_PASSWORD="" INPUT_VERBOSE=true /app/twine-upload.sh --verify-metadata true --skip-existing false --print-hash false --repository-url https://test.pypi.org/legacy/ --packages-dir ../dist
 
 
   # publish-to-testpypi:
