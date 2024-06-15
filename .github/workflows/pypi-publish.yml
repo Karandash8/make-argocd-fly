@@ -22,31 +22,31 @@ jobs:
     runs-on: home-use
 
     steps:
-    - uses: actions/checkout@v4
-      # https://github.com/actions/checkout/issues/335
-    - name: Get tags
-      run: git fetch --tags origin
-    - if: ${{ runner.arch == 'arm64' }}
-      name: Set up Python
-      uses: deadsnakes/action@v3.1.0
-      with:
-        python-version: "3.11"
-    - if: ${{ runner.arch == 'amd64' }}
-      name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install build
-    - name: Build package
-      run: python -m build
-    - name: Store the distribution packages
-      uses: actions/upload-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
+      - uses: actions/checkout@v4
+        # https://github.com/actions/checkout/issues/335
+      - name: Get tags
+        run: git fetch --tags origin
+      - if: ${{ runner.arch == 'arm64' }}
+        name: Set up Python
+        uses: deadsnakes/action@v3.1.0
+        with:
+          python-version: "3.11"
+      - if: ${{ runner.arch == 'amd64' }}
+        name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install build
+      - name: Build package
+        run: python -m build
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
 
   test-publish:
     name: Test
@@ -60,10 +60,28 @@ jobs:
         with:
           name: python-package-distributions
           path: dist/
+      - if: ${{ runner.arch == 'arm64' }}
+        name: Set up Python
+        uses: deadsnakes/action@v3.1.0
+        with:
+          python-version: "3.11"
+      - if: ${{ runner.arch == 'amd64' }}
+        name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
       - name: Clone Repository
         run: git clone https://github.com/pypa/gh-action-pypi-publish.git
-      - name: ls
-        run: ls
+      - name: pip install
+        run: |
+          cd gh-action-pypi-publish
+          PIP_CONSTRAINT=requirements/runtime-prerequisites.txt pip install -r requirements/runtime-prerequisites.in
+          PIP_CONSTRAINT=requirements/runtime.txt pip install -r requirements/runtime.in
+      - name: Publish package to TestPyPI
+        run: |
+          cd gh-action-pypi-publish
+          chmod +x twine-upload.sh
+          twine-upload.sh --user __token__ --verify-metadata true --skip-existing false --verbose true --print-hash false --repository-url https://test.pypi.org/legacy/ --packages-dir ../dist
 
   # publish-to-testpypi:
   #   name: Publish make-argocd-fly to TestPyPI
