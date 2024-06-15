@@ -98,11 +98,11 @@ jobs:
           INPUT_USER=__token__ \
           INPUT_PASSWORD="" \
           INPUT_VERBOSE=false \
-          repository-url=https://test.pypi.org/legacy/ \
-          verify-metadata=true \
-          skip-existing=false \
-          print-hash=false \
-          packages-dir=/app/dist \
+          INPUT_REPOSITORY_URL=https://test.pypi.org/legacy/ \
+          INPUT_PACKAGES_DIR=/app/dist \
+          INPUT_VERIFY_METADATA=true \
+          INPUT_SKIP_EXISTING=false \
+          INPUT_PRINT_HASH=false \
           /app/twine-upload.sh
 
   # publish-to-testpypi:
