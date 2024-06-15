@@ -87,12 +87,12 @@ jobs:
       - name: prepare upload
         run: |
           sudo mkdir /app
-          ls -l /
           sudo chown -R runner:runner /app
           cp gh-action-pypi-publish/twine-upload.sh gh-action-pypi-publish/print-hash.py gh-action-pypi-publish/oidc-exchange.py /app
           chmod +x /app/twine-upload.sh
       - name: Publish package to TestPyPI
         run: |
+          ls -l /home/runner/_work/dist
           PYTHONPATH=/usr/lib/python3/site-packages \
           INPUT_USER=__token__ \
           INPUT_PASSWORD="" \
