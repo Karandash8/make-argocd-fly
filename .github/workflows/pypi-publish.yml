@@ -89,12 +89,11 @@ jobs:
           sudo mkdir /app
           sudo chown -R runner:runner /app
           cp gh-action-pypi-publish/twine-upload.sh gh-action-pypi-publish/print-hash.py gh-action-pypi-publish/oidc-exchange.py /app
+          cp -r dist /app/dist
           chmod +x /app/twine-upload.sh
       - name: Publish package to TestPyPI
         run: |
-          pwd
-          ls -l /home/runner/_work/make-argocd-fly/make-argocd-fly
-          ls dist
+          ls -l /app
           PYTHONPATH=/usr/lib/python3/site-packages \
           INPUT_USER=__token__ \
           INPUT_PASSWORD="" \
@@ -105,7 +104,7 @@ jobs:
             --skip-existing false \
             --print-hash false \
             --repository-url https://test.pypi.org/legacy/ \
-            --packages-dir /home/runner/_work/make-argocd-fly/make-argocd-fly/dist
+            --packages-dir dist
 
 
 
