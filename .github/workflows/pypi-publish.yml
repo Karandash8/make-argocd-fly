@@ -80,7 +80,7 @@ jobs:
       - name: prepare upload
         run: |
           sudo mkdir /app
-          sudo chown -R $USER /app
+          sudo chown -r $USER:$USER /app
           cp gh-action-pypi-publish/twine-upload.sh gh-action-pypi-publish/print-hash.py gh-action-pypi-publish/oidc-exchange.py /app
           chmod +x /app/twine-upload.sh
       - name: Publish package to TestPyPI
