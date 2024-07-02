@@ -1,7 +1,3 @@
-source_dir: source
-output_dir: output
-tmp_dir: .tmp
-
 # caveat: the folloving variable names are resenved: __application
 vars:
   argocd:

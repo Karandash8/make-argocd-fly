@@ -161,3 +161,4 @@ cython_debug/
 
 **/.tmp/
 .vscode
+.DS_store
