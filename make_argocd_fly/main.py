@@ -8,13 +8,12 @@ import subprocess
 import yaml
 import yamllint
 
-from make_argocd_fly.config import read_config, get_config
+from make_argocd_fly.config import read_config, get_config, LOG_CONFIG_FILE, CONFIG_FILE, \
+  SOURCE_DIR, OUTPUT_DIR, TMP_DIR
 from make_argocd_fly.utils import multi_resource_parser, generate_filename
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.application import application_factory
 
-LOG_CONFIG_FILE = 'log_config.yml'
-CONFIG_FILE = 'config.yml'
 
 logging.basicConfig(level='INFO')
 
@@ -87,8 +86,11 @@ async def generate(render_envs, render_apps) -> None:
 
 def main() -> None:
   parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')
-  parser.add_argument('--root-dir', type=str, default=os.getcwd(), help='Root directory')
-  parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file')
+  parser.add_argument('--root-dir', type=str, default=os.getcwd(), help='Root directory (default: current directory)')
+  parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file (default: config.yaml)')
+  parser.add_argument('--source-dir', type=str, default=SOURCE_DIR, help='Source files directory (default: source)')
+  parser.add_argument('--output-dir', type=str, default=OUTPUT_DIR, help='Output files directory (default: output)')
+  parser.add_argument('--tmp-dir', type=str, default=TMP_DIR, help='Temporary files directory (default: .tmp)')
   parser.add_argument('--render-apps', type=str, default=None, help='Comma separate list of applications to render')
   parser.add_argument('--render-envs', type=str, default=None, help='Comma separate list of environments to render')
   parser.add_argument('--skip-generate', action='store_true', help='Skip resource generation')
@@ -101,8 +103,7 @@ def main() -> None:
 
   init_logging(args.loglevel)
 
-  log.debug('Root directory path: {}'.format(os.path.abspath(args.root_dir)))
-  config = read_config(os.path.abspath(args.root_dir), args.config_file)
+  config = read_config(os.path.abspath(args.root_dir), args.config_file, args.source_dir, args.output_dir, args.tmp_dir)
 
   tmp_dir = config.get_tmp_dir()
   if os.path.exists(tmp_dir):

@@ -2,6 +2,8 @@ import logging
 import os
 import yaml
 
+LOG_CONFIG_FILE = 'log_config.yml'
+CONFIG_FILE = 'config.yml'
 SOURCE_DIR = 'source'
 OUTPUT_DIR = 'output'
 TMP_DIR = '.tmp'
@@ -19,35 +21,23 @@ class Config:
     self.envs = None
     self.vars = None
 
-  def init_config(self, root_dir: str, config: dict) -> None:
+  def init_config(self, root_dir: str, config: dict, source_dir: str, output_dir: str, tmp_dir: str) -> None:
     self.root_dir = root_dir
 
-    self.source_dir = config['source_dir'] if 'source_dir' in config else SOURCE_DIR
-    self.output_dir = config['output_dir'] if 'output_dir' in config else OUTPUT_DIR
-    self.tmp_dir = config['tmp_dir'] if 'tmp_dir' in config else TMP_DIR
+    self.source_dir = source_dir
+    self.output_dir = output_dir
+    self.tmp_dir = tmp_dir
     self.envs = config['envs'] if 'envs' in config else ENVS
     self.vars = config['vars'] if 'vars' in config else VARS
 
   def get_source_dir(self) -> str:
-    if not self.source_dir:
-      log.error('Config was not initialized.')
-      raise Exception
-
-    return os.path.join(self.root_dir, self.source_dir)
+    return get_abs_path(self.root_dir, self.source_dir)
 
   def get_output_dir(self) -> str:
-    if not self.output_dir:
-      log.error('Config was not initialized.')
-      raise Exception
-
-    return os.path.join(self.root_dir, self.output_dir)
+    return get_abs_path(self.root_dir, self.output_dir, allow_missing=True)
 
   def get_tmp_dir(self) -> str:
-    if not self.tmp_dir:
-      log.error('Config was not initialized.')
-      raise Exception
-
-    return os.path.join(self.root_dir, self.tmp_dir)
+    return get_abs_path(self.root_dir, self.tmp_dir, allow_missing=True)
 
   def get_envs(self) -> dict:
     if not self.envs:
@@ -87,17 +77,35 @@ class Config:
 config = Config()
 
 
-def read_config(root_dir: str, config_file: str) -> Config:
-  config_content = {}
-  try:
-    with open(os.path.join(root_dir, config_file)) as f:
-      config_content = yaml.safe_load(f.read())
-  except FileNotFoundError as error:
-    log.error('Config file is missing')
-    log.fatal(error)
-    raise
+def get_abs_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
+  if not path:
+    log.error('Path is empty.')
+    raise Exception
 
-  config.init_config(root_dir, config_content)
+  if os.path.isabs(path):
+    abs_path = path
+  else:
+    abs_path = os.path.join(root_dir, path)
+
+  if (not allow_missing) and (not os.path.exists(abs_path)):
+    log.error('Path does not exist: {}'.format(abs_path))
+    raise Exception
+
+  return abs_path
+
+
+def read_config(root_dir: str, config_file: str, source_dir: str, output_dir: str, tmp_dir: str) -> Config:
+  config_content = {}
+  with open(get_abs_path(root_dir, config_file)) as f:
+    config_content = yaml.safe_load(f.read())
+
+  config.init_config(root_dir, config_content, source_dir, output_dir, tmp_dir)
+
+  log.debug('Root directory: {}'.format(root_dir))
+  log.debug('Config file: {}'.format(get_abs_path(root_dir, config_file)))
+  log.debug('Source directory: {}'.format(config.get_source_dir()))
+  log.debug('Output directory: {}'.format(config.get_output_dir()))
+  log.debug('Temporary directory: {}'.format(config.get_tmp_dir()))
 
   return config
 
