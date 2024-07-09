@@ -132,17 +132,22 @@ class KustomizeApplication(AbstractApplication):
 
     log.debug('Created application {} of type {} for environment {}'.format(app_name, __class__.__name__, env_name))
 
-  async def _run_kustomize(self, dir_path: str) -> str:
-    proc = await asyncio.create_subprocess_shell(
-      'kustomize build --enable-helm {}'.format(dir_path),
-      stdout=asyncio.subprocess.PIPE,
-      stderr=asyncio.subprocess.PIPE)
+  async def _run_kustomize(self, dir_path: str, retries: int = 3) -> str:
+    for attempt in range(retries):
+      proc = await asyncio.create_subprocess_shell(
+        'kustomize build --enable-helm {}'.format(dir_path),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE)
 
-    stdout, stderr = await proc.communicate()
+      stdout, stderr = await proc.communicate()
 
-    if stderr:
-      log.error('Kustomize error: {}'.format(stderr))
-      raise Exception
+      if stderr:
+        log.error('Kustomize error: {}'.format(stderr))
+        log.info('Retrying {}/{}'.format(attempt + 1, retries))
+        continue
+      break
+    else:
+      raise Exception('Kustomize run failed')
 
     return stdout.decode("utf-8")
 
