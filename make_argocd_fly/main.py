@@ -34,7 +34,7 @@ def init_logging(loglevel: str) -> None:
 def create_applications(render_apps, render_envs):
   config = get_config()
 
-  log.debug('Reading source directory')
+  log.info('Reading source directory')
   source_viewer = ResourceViewer(config.get_source_dir())
   source_viewer.build()
 
@@ -42,7 +42,7 @@ def create_applications(render_apps, render_envs):
   envs_to_render = render_envs.split(',') if render_envs is not None else []
   apps = []
 
-  log.debug('Creating applications')
+  log.info('Creating applications')
   for env_name, env_data in config.get_envs().items():
     if envs_to_render and env_name not in envs_to_render:
       continue
@@ -62,10 +62,10 @@ async def generate(render_envs, render_apps) -> None:
   apps = create_applications(render_apps, render_envs)
 
   try:
-    log.debug('Generating temporary files')
+    log.info('Generating temporary files')
     await asyncio.gather(*[asyncio.create_task(app.prepare()) for app in apps])
 
-    log.debug('Rendering resources')
+    log.info('Rendering resources')
     await asyncio.gather(*[asyncio.create_task(app.generate_resources()) for app in apps])
   except Exception:
     raise
@@ -77,15 +77,15 @@ async def generate(render_envs, render_apps) -> None:
       output_writer.store_resource(file_path, resource_yml)
 
   if apps:
-    log.debug('The following applications have been updated:')
+    log.info('The following applications have been updated:')
   if os.path.exists(config.get_output_dir()):
     for app in apps:
       app_dir = os.path.join(config.get_output_dir(), app.get_app_rel_path())
-      log.debug('Environment: {}, Application: {}, Path: {}'.format(app.env_name, app.app_name, app_dir))
+      log.info('Environment: {}, Application: {}, Path: {}'.format(app.env_name, app.app_name, app_dir))
       if os.path.exists(app_dir):
         shutil.rmtree(app_dir)
 
-  log.debug('Writing resources files')
+  log.info('Writing resources files')
   os.makedirs(config.get_output_dir(), exist_ok=True)
   await output_writer.write_resources()
 

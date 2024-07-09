@@ -101,11 +101,11 @@ def read_config(root_dir: str, config_file: str, source_dir: str, output_dir: st
 
   config.init_config(root_dir, config_content, source_dir, output_dir, tmp_dir)
 
-  log.debug('Root directory: {}'.format(root_dir))
-  log.debug('Config file: {}'.format(get_abs_path(root_dir, config_file)))
-  log.debug('Source directory: {}'.format(config.get_source_dir()))
-  log.debug('Output directory: {}'.format(config.get_output_dir()))
-  log.debug('Temporary directory: {}'.format(config.get_tmp_dir()))
+  log.info('Root directory: {}'.format(root_dir))
+  log.info('Config file: {}'.format(get_abs_path(root_dir, config_file)))
+  log.info('Source directory: {}'.format(config.get_source_dir()))
+  log.info('Output directory: {}'.format(config.get_output_dir()))
+  log.info('Temporary directory: {}'.format(config.get_tmp_dir()))
 
   return config
 
