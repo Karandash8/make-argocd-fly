@@ -22,6 +22,9 @@ class AbstractApplication(ABC):
     self.config = get_config()
     self.resources = None
 
+  async def prepare(self) -> str:
+    pass
+
   @abstractmethod
   async def generate_resources(self) -> None:
     pass
@@ -143,7 +146,7 @@ class KustomizeApplication(AbstractApplication):
 
     return stdout.decode("utf-8")
 
-  async def _prepare_kustomization_directory(self) -> str:
+  async def prepare(self) -> str:
     config = get_config()
     tmp_dir = config.get_tmp_dir()
 
@@ -156,7 +159,11 @@ class KustomizeApplication(AbstractApplication):
       if yml_child.element_rel_path.endswith('.j2'):
         template_vars = merge_dicts({}, self.config.get_vars(), self.config.get_env_vars(self.env_name),
                                     self.config.get_app_vars(self.env_name, self.app_name))
-        content = renderer.render(content, template_vars, yml_child.element_rel_path)
+        try:
+          content = renderer.render(content, template_vars, yml_child.element_rel_path)
+        except Exception as e:
+          log.error('Error rendering template {}: {}'.format(yml_child.element_rel_path, e))
+          raise
 
       for resource_kind, resource_name, resource_yml in multi_resource_parser(content):
         file_path = os.path.join(self.env_name, os.path.dirname(yml_child.element_rel_path), generate_filename(resource_kind, resource_name))
@@ -164,12 +171,13 @@ class KustomizeApplication(AbstractApplication):
 
     await tmp_resource_writer.write_resources()
 
-    return os.path.join(tmp_dir, self.get_app_rel_path())
-
   async def generate_resources(self) -> None:
     log.debug('Generating resources for application {} in environment {}'.format(self.app_name, self.env_name))
 
-    tmp_source_viewer = ResourceViewer(await self._prepare_kustomization_directory())
+    config = get_config()
+    tmp_dir = config.get_tmp_dir()
+
+    tmp_source_viewer = ResourceViewer(os.path.join(tmp_dir, self.get_app_rel_path()))
     tmp_source_viewer.build()
 
     yml_child = tmp_source_viewer.get_element(os.path.join(self.env_name, 'kustomization.yml'))

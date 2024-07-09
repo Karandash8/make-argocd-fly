@@ -61,8 +61,14 @@ async def generate(render_envs, render_apps) -> None:
   config = get_config()
   apps = create_applications(render_apps, render_envs)
 
-  log.debug('Rendering resources')
-  await asyncio.gather(*[app.generate_resources() for app in apps])
+  try:
+    log.debug('Generating temporary files')
+    await asyncio.gather(*[asyncio.create_task(app.prepare()) for app in apps])
+
+    log.debug('Rendering resources')
+    await asyncio.gather(*[asyncio.create_task(app.generate_resources()) for app in apps])
+  except Exception:
+    raise
 
   output_writer = ResourceWriter(config.get_output_dir())
   for app in apps:
