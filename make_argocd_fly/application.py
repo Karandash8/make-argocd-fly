@@ -97,7 +97,7 @@ class AppOfApps(AbstractApplication):
       resources.append(content)
 
     self.resources = '\n---\n'.join(resources)
-    log.info('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
+    log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
 
 
 class Application(AbstractApplication):
@@ -123,7 +123,7 @@ class Application(AbstractApplication):
       resources.append(content)
 
     self.resources = '\n---\n'.join(resources)
-    log.info('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
+    log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
 
 
 class KustomizeApplication(AbstractApplication):
@@ -147,7 +147,7 @@ class KustomizeApplication(AbstractApplication):
         continue
       break
     else:
-      raise Exception('Kustomize run failed')
+      raise Exception('Kustomize execution failed for application {} in environment {}'.format(self.app_name, self.env_name))
 
     return stdout.decode("utf-8")
 
@@ -188,19 +188,19 @@ class KustomizeApplication(AbstractApplication):
     yml_child = tmp_source_viewer.get_element(os.path.join(self.env_name, 'kustomization.yml'))
     if yml_child:
       self.resources = await self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, os.path.dirname(yml_child.element_rel_path)))
-      log.info('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
+      log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
       return
 
     yml_child = tmp_source_viewer.get_element(os.path.join('base', 'kustomization.yml'))
     if yml_child:
       self.resources = await self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, os.path.dirname(yml_child.element_rel_path)))
-      log.info('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
+      log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
       return
 
     yml_child = tmp_source_viewer.get_element('kustomization.yml')
     if yml_child:
       self.resources = await self._run_kustomize(os.path.join(tmp_source_viewer.root_element_abs_path, os.path.dirname(yml_child.element_rel_path)))
-      log.info('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
+      log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
       return
 
     log.error('Missing kustomization.yml in the application directory. Skipping application')
