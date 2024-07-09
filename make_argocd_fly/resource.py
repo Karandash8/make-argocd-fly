@@ -147,6 +147,9 @@ class ResourceWriter:
                 explicit_start=True)
 
   async def write_resources(self) -> None:
-    await asyncio.gather(
-      *[self._write_resource(file_path, resource_yml) for file_path, resource_yml in self.resources.items()]
-    )
+    try:
+      await asyncio.gather(
+        *[asyncio.create_task(self._write_resource(file_path, resource_yml)) for file_path, resource_yml in self.resources.items()]
+      )
+    except Exception:
+      raise
