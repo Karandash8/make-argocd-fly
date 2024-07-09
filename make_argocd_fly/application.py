@@ -145,10 +145,11 @@ class KustomizeApplication(AbstractApplication):
         log.error('Kustomize error: {}'.format(stderr))
         log.info('Retrying {}/{}'.format(attempt + 1, retries))
         continue
-
-      return stdout.decode("utf-8")
+      break
     else:
       raise Exception('Kustomize run failed')
+
+    return stdout.decode("utf-8")
 
   async def prepare(self) -> str:
     config = get_config()
