@@ -16,6 +16,7 @@ vars:
       - resources-finalizer.argocd.argoproj.io
   namespace: kube-system
   version: 0.1.0
+  # reference_version: '["vars"]["version"]'
   app:
     resource: Deployment_thanos.yml
   json_var: json
@@ -60,6 +61,7 @@ envs:
       subdirectory_2/app_8: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       app_9: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       app_10: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      app_11: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
     vars:
       argocd:
         api_server: management-api-server
