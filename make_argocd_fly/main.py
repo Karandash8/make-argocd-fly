@@ -73,7 +73,7 @@ async def generate(render_envs, render_apps) -> None:
   output_writer = ResourceWriter(config.get_output_dir())
   for app in apps:
     for resource_kind, resource_name, resource_yml in multi_resource_parser(app.resources):
-      file_path = os.path.join(app.get_app_rel_path(), generate_filename(resource_kind, resource_name))
+      file_path = os.path.join(app.get_app_rel_path(), generate_filename([resource_kind, resource_name]))
       output_writer.store_resource(file_path, resource_yml)
 
   if apps:

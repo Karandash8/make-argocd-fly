@@ -6,7 +6,7 @@ import textwrap
 
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.renderer import JinjaRenderer
-from make_argocd_fly.utils import multi_resource_parser, merge_dicts, generate_filename
+from make_argocd_fly.utils import multi_resource_parser, resource_parser, merge_dicts, generate_filename
 from make_argocd_fly.config import get_config
 
 log = logging.getLogger(__name__)
@@ -170,9 +170,17 @@ class KustomizeApplication(AbstractApplication):
           log.error('Error rendering template {}: {}'.format(yml_child.element_rel_path, e))
           raise
 
-      for resource_kind, resource_name, resource_yml in multi_resource_parser(content):
-        file_path = os.path.join(self.env_name, os.path.dirname(yml_child.element_rel_path), generate_filename(resource_kind, resource_name))
-        tmp_resource_writer.store_resource(file_path, resource_yml)
+      # TODO: (None, None) is not a good way to check if the content is a k8s resource
+      if resource_parser(content) != (None, None):
+        for resource_kind, resource_name, resource_yml in multi_resource_parser(content):
+          file_path = os.path.join(self.env_name, os.path.dirname(yml_child.element_rel_path), generate_filename([resource_kind, resource_name]))
+          tmp_resource_writer.store_resource(file_path, resource_yml)
+      else:
+        file_path = os.path.join(
+          self.env_name, os.path.dirname(yml_child.element_rel_path),
+          generate_filename([os.path.basename(yml_child.element_rel_path.split('.')[0])])
+        )
+        tmp_resource_writer.store_resource(file_path, content)
 
     await tmp_resource_writer.write_resources()
 

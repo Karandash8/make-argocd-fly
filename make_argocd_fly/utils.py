@@ -13,11 +13,12 @@ def resource_parser(resource_yml: str) -> tuple[str, str]:
   if match:
     resource_kind = match.group(2).strip()
 
-  match = re.search(r'(^metadata:|\nmetadata:).*', resource_yml)
-  if match:
-    match = re.search(r'(^\s\sname:|\n\s\sname:)(.+)', resource_yml[match.start():])
+  if resource_kind:
+    match = re.search(r'(^metadata:|\nmetadata:).*', resource_yml)
     if match:
-      resource_name = match.group(2).strip()
+      match = re.search(r'(^\s\sname:|\n\s\sname:)(.+)', resource_yml[match.start():])
+      if match:
+        resource_name = match.group(2).strip()
 
   return (resource_kind, resource_name)
 
@@ -31,16 +32,12 @@ def multi_resource_parser(multi_resource_yml: str) -> tuple[str, str, str]:
       yield (resource_kind, resource_name, resource_yml)
 
 
-def generate_filename(resource_kind: str, resource_name: str) -> str:
-    if not resource_kind:
-      log.error('Parameter `resource_kind` is undefined')
+def generate_filename(filename_parts: list) -> str:
+    if not filename_parts:
+      log.error('Filename cannot be constructed')
       raise Exception
 
-    if resource_name:
-      return '{}_{}.yml'.format(resource_kind, resource_name)
-    else:
-      # kustomize expects one of the following files to be present: 'kustomization.yaml', 'kustomization.yml' or 'Kustomization'
-      return '{}.yml'.format(resource_kind).lower()
+    return '_'.join([filename_part for filename_part in filename_parts if filename_part]).lower() + '.yml'
 
 
 def merge_dicts(*dicts):

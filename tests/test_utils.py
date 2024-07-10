@@ -284,20 +284,25 @@ def test_multi_resource_parser_with_valid_yaml_not_an_extra_separator_2():
 ### generate_filename
 #####################
 
-def test_generate_filename_undefined_resource_kind(tmp_path, caplog):
+def test_generate_filename_undefined_parts(caplog):
   with pytest.raises(Exception):
-    generate_filename(None, 'key_1')
-  assert 'Parameter `resource_kind` is undefined' in caplog.text
+    generate_filename([])
+  assert 'Filename cannot be constructed' in caplog.text
 
   with pytest.raises(Exception):
-    generate_filename('', 'key_1')
-  assert 'Parameter `resource_kind` is undefined' in caplog.text
+    generate_filename(None)
+  assert 'Filename cannot be constructed' in caplog.text
+
+def test_generate_filename_undefined_first_elements(caplog):
+  assert generate_filename([None, 'key_1']) == 'key_1.yml'
+
+  assert generate_filename(['', 'key_1']) == 'key_1.yml'
 
 def test_generate_filename(tmp_path):
-  assert generate_filename('key_1', 'key_2') == 'key_1_key_2.yml'
+  assert generate_filename(['key_1', 'key_2']) == 'key_1_key_2.yml'
 
-def test_generate_filename_undefined_resource_name(tmp_path):
-  assert generate_filename('key_1', None) == 'key_1.yml'
+def test_generate_filename_undefined_end_element(tmp_path):
+  assert generate_filename(['key_1', None]) == 'key_1.yml'
 
 ###############
 ### merge_dicts
