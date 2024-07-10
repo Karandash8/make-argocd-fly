@@ -25,42 +25,42 @@ vars:
 envs:
   management:
     apps:
-      # bootstrap: {}
-      # core_deployer: {app_deployer: bootstrap, project: default, destination_namespace: kube-system}
-      # service_deployer: {app_deployer: bootstrap, project: default, destination_namespace: kube-system}
-      # app_1:
-      #   app_deployer: core_deployer
-      #   project: management
-      #   destination_namespace: kube-default
-      #   vars:
-      #     argocd:
-      #       target_revision: custom_revision
-      # app_2:
-      #   app_deployer: core_deployer
-      #   project: management
-      #   destination_namespace: kube-default
-      #   vars:
-      #     argocd:
-      #       ignoreDifferences:
-      #         - group: apps
-      #           kind: Deployment
-      #           name: guestbook
-      #           namespace: default
-      #           jsonPointers:
-      #             - /spec/replicas
-      #         - group: storage.k8s.io
-      #           kind: CSIDriver
-      #           jqPathExpressions:
-      #             - .spec.seLinuxMount
-      #       finalizers: null
-      # app_3: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      # app_4: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      # app_5: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      # app_6: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      # subdirectory/app_7: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      # subdirectory_2/app_8: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      # app_9: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      # app_10: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      bootstrap: {}
+      core_deployer: {app_deployer: bootstrap, project: default, destination_namespace: kube-system}
+      service_deployer: {app_deployer: bootstrap, project: default, destination_namespace: kube-system}
+      app_1:
+        app_deployer: core_deployer
+        project: management
+        destination_namespace: kube-default
+        vars:
+          argocd:
+            target_revision: custom_revision
+      app_2:
+        app_deployer: core_deployer
+        project: management
+        destination_namespace: kube-default
+        vars:
+          argocd:
+            ignoreDifferences:
+              - group: apps
+                kind: Deployment
+                name: guestbook
+                namespace: default
+                jsonPointers:
+                  - /spec/replicas
+              - group: storage.k8s.io
+                kind: CSIDriver
+                jqPathExpressions:
+                  - .spec.seLinuxMount
+            finalizers: null
+      app_3: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      app_4: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      app_5: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      app_6: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      subdirectory/app_7: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      subdirectory_2/app_8: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      app_9: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      app_10: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       app_11: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
     vars:
       argocd:
