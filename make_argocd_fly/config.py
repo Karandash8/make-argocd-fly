@@ -3,6 +3,7 @@ import os
 import yaml
 
 from make_argocd_fly.utils import VarsResolver
+from make_argocd_fly.cli_args import CLIArgs
 
 LOG_CONFIG_FILE = 'log_config.yml'
 CONFIG_FILE = 'config.yml'
@@ -25,7 +26,6 @@ class Config:
 
   def init_config(self, root_dir: str, config: dict, source_dir: str, output_dir: str, tmp_dir: str) -> None:
     self.root_dir = root_dir
-
     self.source_dir = source_dir
     self.output_dir = output_dir
     self.tmp_dir = tmp_dir
@@ -45,14 +45,12 @@ class Config:
     if not self.envs:
       log.error('Config was not initialized.')
       raise Exception
-
     return self.envs
 
   def get_vars(self) -> dict:
     if not self.envs:
       log.error('Config was not initialized.')
       raise Exception
-
     return self.vars
 
   def get_env_vars(self, env_name: str) -> dict:
@@ -60,7 +58,6 @@ class Config:
     if env_name not in envs:
       log.error('Environment {} is not defined'.format(env_name))
       raise Exception
-
     return envs[env_name]['vars'] if 'vars' in envs[env_name] else {}
 
   def get_app_vars(self, env_name: str, app_name: str) -> dict:
@@ -96,12 +93,14 @@ def get_abs_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
   return abs_path
 
 
-def read_config(root_dir: str, config_file: str, source_dir: str, output_dir: str, tmp_dir: str) -> Config:
+def read_config(root_dir: str, config_file: str, cli_args: CLIArgs) -> Config:
+  root_dir = os.path.abspath(root_dir)
   config_content = {}
+
   with open(get_abs_path(root_dir, config_file)) as f:
     config_content = yaml.safe_load(f.read())
 
-  config.init_config(root_dir, config_content, source_dir, output_dir, tmp_dir)
+  config.init_config(root_dir, config_content, cli_args.get_source_dir(), cli_args.get_output_dir(), cli_args.get_tmp_dir())
 
   log.info('Root directory: {}'.format(root_dir))
   log.info('Config file: {}'.format(get_abs_path(root_dir, config_file)))

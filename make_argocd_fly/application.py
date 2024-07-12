@@ -3,11 +3,13 @@ import os
 import asyncio
 from abc import ABC, abstractmethod
 import textwrap
+from pprint import pformat
 
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.renderer import JinjaRenderer
 from make_argocd_fly.utils import multi_resource_parser, resource_parser, merge_dicts, generate_filename
 from make_argocd_fly.config import get_config
+from make_argocd_fly.cli_args import get_cli_args
 
 log = logging.getLogger(__name__)
 
@@ -20,6 +22,7 @@ class AbstractApplication(ABC):
     self.env_name = env_name
     self.app_viewer = app_viewer
     self.config = get_config()
+    self.cli_args = get_cli_args()
     self.resources = None
 
   async def prepare(self) -> str:
@@ -91,7 +94,9 @@ class AppOfApps(AbstractApplication):
           'path': os.path.join(os.path.basename(self._config.get_output_dir()), env_name, app_name),
           'project': project,
           'destination_namespace': destination_namespace
-        }
+        },
+        'env_name': env_name,
+        'app_name': app_name
       })
       content = renderer.render(textwrap.dedent(self.APPLICATION_RESOUCE_TEMPLATE), template_vars)
       resources.append(content)
@@ -111,13 +116,16 @@ class Application(AbstractApplication):
 
     resources = []
     renderer = JinjaRenderer(self.app_viewer)
+    template_vars = merge_dicts(self.config.get_vars(), self.config.get_env_vars(self.env_name),
+                                self.config.get_app_vars(self.env_name, self.app_name), {'env_name': self.env_name, 'app_name': self.app_name}
+                                )
+    if self.cli_args.get_print_vars():
+      log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml|\.yml\.j2)$')
     for yml_child in yml_children:
       content = yml_child.content
       if yml_child.element_rel_path.endswith('.j2'):
-        template_vars = merge_dicts({}, self.config.get_vars(), self.config.get_env_vars(self.env_name),
-                                    self.config.get_app_vars(self.env_name, self.app_name))
         content = renderer.render(content, template_vars, yml_child.element_rel_path)
 
       resources.append(content)
@@ -157,13 +165,16 @@ class KustomizeApplication(AbstractApplication):
 
     tmp_resource_writer = ResourceWriter(tmp_dir)
     renderer = JinjaRenderer(self.app_viewer)
+    template_vars = merge_dicts(self.config.get_vars(), self.config.get_env_vars(self.env_name),
+                                self.config.get_app_vars(self.env_name, self.app_name), {'env_name': self.env_name, 'app_name': self.app_name}
+                                )
+    if self.cli_args.get_print_vars():
+      log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml|\.yml\.j2)$', ['base', self.env_name])
     for yml_child in yml_children:
       content = yml_child.content
       if yml_child.element_rel_path.endswith('.j2'):
-        template_vars = merge_dicts({}, self.config.get_vars(), self.config.get_env_vars(self.env_name),
-                                    self.config.get_app_vars(self.env_name, self.app_name))
         try:
           content = renderer.render(content, template_vars, yml_child.element_rel_path)
         except Exception as e:
