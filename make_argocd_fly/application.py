@@ -94,7 +94,9 @@ class AppOfApps(AbstractApplication):
           'path': os.path.join(os.path.basename(self._config.get_output_dir()), env_name, app_name),
           'project': project,
           'destination_namespace': destination_namespace
-        }
+        },
+        'env_name': env_name,
+        'app_name': app_name
       })
       content = renderer.render(textwrap.dedent(self.APPLICATION_RESOUCE_TEMPLATE), template_vars)
       resources.append(content)
@@ -114,8 +116,9 @@ class Application(AbstractApplication):
 
     resources = []
     renderer = JinjaRenderer(self.app_viewer)
-    template_vars = merge_dicts({}, self.config.get_vars(), self.config.get_env_vars(self.env_name),
-                                self.config.get_app_vars(self.env_name, self.app_name))
+    template_vars = merge_dicts(self.config.get_vars(), self.config.get_env_vars(self.env_name),
+                                self.config.get_app_vars(self.env_name, self.app_name), {'env_name': self.env_name, 'app_name': self.app_name}
+                                )
     if self.cli_args.get_print_vars():
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 
@@ -162,8 +165,9 @@ class KustomizeApplication(AbstractApplication):
 
     tmp_resource_writer = ResourceWriter(tmp_dir)
     renderer = JinjaRenderer(self.app_viewer)
-    template_vars = merge_dicts({}, self.config.get_vars(), self.config.get_env_vars(self.env_name),
-                                self.config.get_app_vars(self.env_name, self.app_name))
+    template_vars = merge_dicts(self.config.get_vars(), self.config.get_env_vars(self.env_name),
+                                self.config.get_app_vars(self.env_name, self.app_name), {'env_name': self.env_name, 'app_name': self.app_name}
+                                )
     if self.cli_args.get_print_vars():
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 

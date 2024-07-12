@@ -1,7 +1,7 @@
 ## Description
 `make-argocd-fly` is a tool to generate Kubernetes manifests that can be deployed with ArgoCD in a multi cluster environments. It makes it easier to develop and maintain ArgoCD applications by providing a way to render Jinja2 and Kustomize files, run yaml and kube linters and automatically generate ArgoCD `Application` resources.
 
-The idea is that you write your resources in YAML, Jinja2 or Kustomize (including helmCharts), write a configuration file that describes where to deploy them and then run `make-argocd-fly` to generate the final manifests. This way it is transparent what is being deployed and where, it is easier to maintain and develop the resources and it is easier to debug them.
+The idea is that you write your resources in YAML, Jinja2 or Kustomize (including helmCharts), write a configuration file that describes where to deploy them and then run `make-argocd-fly` to generate the final manifests. This way it is transparent what is being deployed and where, it is easier to maintain and develop the resources and it is easier to debug issues.
 
 ## Features
 - Jinja2 and Kustomize rendering
@@ -18,22 +18,28 @@ python3 -m venv .venv
 pip install make-argocd-fly
 
 make-argocd-fly -h
-usage: main.py [-h] [--root-dir ROOT_DIR] [--config-file CONFIG_FILE] [--render-apps RENDER_APPS] [--render-envs RENDER_ENVS] [--skip-generate] [--preserve-tmp-dir] [--yaml-linter] [--kube-linter]
-               [--loglevel LOGLEVEL]
+usage: main.py [-h] [--root-dir ROOT_DIR] [--config-file CONFIG_FILE] [--source-dir SOURCE_DIR] [--output-dir OUTPUT_DIR] [--tmp-dir TMP_DIR] [--render-apps RENDER_APPS] [--render-envs RENDER_ENVS] [--skip-generate] [--preserve-tmp-dir] [--clean] [--print-vars] [--yaml-linter] [--kube-linter] [--loglevel LOGLEVEL]
 
 Render ArgoCD Applications.
 
 options:
   -h, --help            show this help message and exit
-  --root-dir ROOT_DIR   Root directory
+  --root-dir ROOT_DIR   Root directory (default: current directory)
   --config-file CONFIG_FILE
-                        Configuration file
+                        Configuration file (default: config.yaml)
+  --source-dir SOURCE_DIR
+                        Source files directory (default: source)
+  --output-dir OUTPUT_DIR
+                        Output files directory (default: output)
+  --tmp-dir TMP_DIR     Temporary files directory (default: .tmp)
   --render-apps RENDER_APPS
                         Comma separate list of applications to render
   --render-envs RENDER_ENVS
                         Comma separate list of environments to render
   --skip-generate       Skip resource generation
   --preserve-tmp-dir    Preserve temporary directory
+  --clean               Clean all applications in output directory
+  --print-vars          Print variables for each application
   --yaml-linter         Run yamllint against output directory (https://github.com/adrienverge/yamllint)
   --kube-linter         Run kube-linter against output directory (https://github.com/stackrox/kube-linter)
   --loglevel LOGLEVEL   DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -41,56 +47,8 @@ options:
 
 ## Configuration
 ### config.yml
-Example:
-```
-source_dir: source
-output_dir: output
-tmp_dir: .tmp
-
-envs:
-  dev:
-    apps:
-      bootstrap: {}
-      extra_app_deployer: {app_deployer: bootstrap, project: default, destination_namespace: namespace_1}
-      app_1:
-        app_deployer: bootstrap
-        project: default
-        destination_namespace: namespace_1
-        vars:
-          argocd:
-            target_revision: custom_branch
-      subdirectory/app_2: {app_deployer: extra_app_deployer, project: default, destination_namespace: namespace_2}
-    vars:
-      argocd:
-        api_server: dev-api-server
-      var_3: value_X
-  prod:
-    apps:
-      app_1: {app_deployer: bootstrap, project: default, destination_namespace: namespace_1}
-    vars:
-      argocd:
-        api_server: prod-api-server
-vars:
-  argocd:
-    namespace: argocd
-    repo_url: https://example.com/repo.git
-    target_revision: HEAD
-    sync_policy:
-      automated:
-        selfHeal: true
-        prune: true
-        allowEmpty: true
-      # https://www.arthurkoziel.com/fixing-argocd-crd-too-long-error/
-      syncOptions:
-        - ServerSideApply=true
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-  var_1:
-    var_2: value_2
-  var_3: value_3
-```
-
-With this configuration file you can have kustomize overlays for `dev/prod` and use jinja2 variables like `{{ var_1.var_2 }} and {{ var_3 }}` in your source files.
+Example configuration file:
+```tests/manual/config.yml```
 
 ### app parameters
 - `app_deployer` - name of the application that will deploy this application
@@ -125,36 +83,16 @@ To perform a DNS lookup, use the following filter:
 Ansible filters are supported as well: https://pypi.org/project/jinja2-ansible-filters/
 
 ## Caveats
-### Requirements
+### Expectations
 - `kustomize` and `helm` are expected to be installed locally.
 - `kube-linter` is expected to be installed locally (https://github.com/stackrox/kube-linter).
 - `libyaml` is expected to be installed locally for speeding up YAMLs generation.
 - Comments are not rendered in the final output manifests.
 
-### Currently supported directory structure
-```
-repo
-  source
-    (subdirectory/)app_1
-      base
-        yaml.yml(.j2)
-        kustomization.yml(.j2)
-      dev
-        yaml.yml(.j2)
-        kustomization.yml(.j2)
-      prod
-        yaml.yml(.j2)
-        kustomization.yml(.j2)
-    (subdirectory/)app_2
-      yaml.yml(.j2)
-      kustomization.yml(.j2)
-    (subdirectory/)app_3
-      yaml.yml(.j2)
-    (subdirectory/)app_4
-      yaml.yml(.j2)
-      files
-        file.json(.j2)
-```
+### Source directory structure
+
+Example directory structure:
+```tests/manual/source```
 
 When kustomization overlays are used, kustomization base directory shall be named `base`, overlay directories shall be named after the corresponding environments names.
 
@@ -163,18 +101,20 @@ Files referenced in the `resources` section shall be named after Kubernetes reso
 
 ```
 resources:
-  - Deployment_nginx.yml
-  - ServiceAccount_nginx-prod.yml
+  - deployment_nginx.yml
+  - serviceaccount_nginx-prod.yml
 ```
 ### Initial app-of-apps application
 `bootstrap` application shall be deployed externally
 
 ### Variable names
-The folloving variable names are reserved:
+The folloving variable names are reserved (at the root level) and shall not be used in the configuration file:
 - __application
+- env_name
+- app_name
 
 ### Expected variables
-The folloving variables are expected to be present:
+The folloving variables are expected to be provided:
 - argocd.api_server
 - argocd.namespace
 - argocd.repo_url
