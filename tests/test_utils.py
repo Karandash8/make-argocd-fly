@@ -304,6 +304,9 @@ def test_generate_filename(tmp_path):
 def test_generate_filename_undefined_end_element(tmp_path):
   assert generate_filename(['key_1', None]) == 'key_1.yml'
 
+def test_generate_filename_capital_letter(tmp_path):
+  assert generate_filename(['KEY-1', 'KEY-2']) == 'key-1_key-2.yml'
+
 ###############
 ### merge_dicts
 ###############

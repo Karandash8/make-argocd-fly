@@ -1,27 +1,3 @@
-# caveat: the folloving variable names are resenved: __application
-vars:
-  argocd:
-    namespace: argocd
-    repo_url: url
-    target_revision: revision
-    sync_policy:
-      automated:
-        selfHeal: true
-        prune: true
-        allowEmpty: true
-      # https://www.arthurkoziel.com/fixing-argocd-crd-too-long-error/
-      syncOptions:
-        - ServerSideApply=true
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-  namespace: kube-system
-  version: 0.1.0
-  # reference_version: '["vars"]["version"]'
-  app:
-    resource: Deployment_thanos.yml
-  json_var: json
-
-# caveat: 'bootstrap' application shall be deployed externally
 envs:
   management:
     apps:
@@ -85,3 +61,25 @@ envs:
   external_2:
     apps: {}
     vars: {}
+
+vars:
+  argocd:
+    namespace: argocd
+    repo_url: url
+    target_revision: revision
+    sync_policy:
+      automated:
+        selfHeal: true
+        prune: true
+        allowEmpty: true
+      # https://www.arthurkoziel.com/fixing-argocd-crd-too-long-error/
+      syncOptions:
+        - ServerSideApply=true
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+  namespace: kube-system
+  version: 0.1.0
+  # reference_version: '["vars"]["version"]'
+  app:
+    resource: Deployment_thanos.yml
+  json_var: json
