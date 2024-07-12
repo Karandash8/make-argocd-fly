@@ -8,6 +8,7 @@ import subprocess
 import yaml
 import yamllint
 
+from make_argocd_fly.cli_args import populate_cli_args, get_cli_args
 from make_argocd_fly.config import read_config, get_config, LOG_CONFIG_FILE, CONFIG_FILE, \
   SOURCE_DIR, OUTPUT_DIR, TMP_DIR
 from make_argocd_fly.utils import multi_resource_parser, generate_filename
@@ -57,9 +58,11 @@ def create_applications(render_apps, render_envs):
   return apps
 
 
-async def generate(render_envs, render_apps) -> None:
+async def generate() -> None:
+  cli_args = get_cli_args()
   config = get_config()
-  apps = create_applications(render_apps, render_envs)
+
+  apps = create_applications(cli_args.get_render_apps(), cli_args.get_render_envs())
 
   try:
     log.info('Generating temporary files')
@@ -102,6 +105,7 @@ def main() -> None:
   parser.add_argument('--skip-generate', action='store_true', help='Skip resource generation')
   parser.add_argument('--preserve-tmp-dir', action='store_true', help='Preserve temporary directory')
   parser.add_argument('--clean', action='store_true', help='Clean all applications in output directory')
+  parser.add_argument('--print-vars', action='store_true', help='Print variables for each application')
   parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
   parser.add_argument('--kube-linter', action='store_true', help='Run kube-linter against output directory (https://github.com/stackrox/kube-linter)')
   parser.add_argument('--loglevel', type=str, default='INFO', help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
@@ -109,25 +113,26 @@ def main() -> None:
 
   init_logging(args.loglevel)
 
-  config = read_config(os.path.abspath(args.root_dir), args.config_file, args.source_dir, args.output_dir, args.tmp_dir)
+  cli_args = populate_cli_args(**vars(args))
+  config = read_config(args.root_dir, args.config_file, cli_args)
 
   tmp_dir = config.get_tmp_dir()
   if os.path.exists(tmp_dir):
     shutil.rmtree(tmp_dir)
 
-  if args.clean:
+  if cli_args.get_clean():
     log.info('Cleaning all output directory')
     if os.path.exists(config.get_output_dir()):
       shutil.rmtree(config.get_output_dir())
 
-  if not args.skip_generate:
-    asyncio.run(generate(args.render_envs, args.render_apps))
+  if not cli_args.get_skip_generate():
+    asyncio.run(generate())
 
-  if not args.preserve_tmp_dir and os.path.exists(tmp_dir):
+  if not cli_args.get_preserve_tmp_dir() and os.path.exists(tmp_dir):
     shutil.rmtree(tmp_dir)
 
   # TODO: it does not make sense to write yamls on disk and then read them again to run through linters
-  if args.yaml_linter:
+  if cli_args.get_yaml_linter():
     log.info('Running yamllint')
     process = subprocess.Popen(['yamllint', '-d', '{extends: default, rules: {line-length: disable}}', config.get_output_dir()],
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -136,7 +141,7 @@ def main() -> None:
 
     log.info('{} {}\n\n{}'.format(yamllint.APP_NAME, yamllint.APP_VERSION, stdout))
 
-  if args.kube_linter:
+  if cli_args.get_kube_linter():
     log.info('Running kube-linter')
     process = subprocess.Popen(['kube-linter', 'lint', config.get_output_dir()],
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
