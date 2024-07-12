@@ -1,7 +1,57 @@
 import logging
 import re
+import copy
 
 log = logging.getLogger(__name__)
+
+
+class VarsResolver:
+  def __init__(self, var_identifier: str = '$') -> None:
+    self.var_identifier = var_identifier
+    self.resolution_counter = 0
+
+  def _resolve_var(self, vars: dict, value: str) -> str:
+    if value.startswith(self.var_identifier):
+      try:
+        resolved_value = value[len(self.var_identifier):].format(**vars)
+
+        if value != resolved_value:
+          self.resolution_counter += 1
+      except KeyError:
+        resolved_value = value
+
+      return resolved_value
+    return value
+
+  def _iterate(self, vars: dict, value=None, initial=True):
+    value = value or vars if initial else value
+    if isinstance(value, dict):
+      for k, v in value.items():
+        value[k] = self._iterate(vars, v, False)
+    elif isinstance(value, list):
+      for idx, i in enumerate(value):
+        value[idx] = self._iterate(vars, i, False)
+    elif isinstance(value, str):
+      value = self._resolve_var(vars, value)
+    return value
+
+  def get_resolutions(self) -> int:
+    return self.resolution_counter
+
+  def resolve(self, vars: dict) -> dict:
+    self.resolution_counter = 0
+
+    return self._iterate(copy.deepcopy(vars))
+
+  @staticmethod
+  def resolve_all(vars: dict, var_identifier: str = '$') -> dict:
+      resolver = VarsResolver(var_identifier)
+
+      resolved_vars = resolver.resolve(vars)
+      while resolver.get_resolutions() > 0:
+        resolved_vars = resolver.resolve(resolved_vars)
+
+      return resolved_vars
 
 
 # TODO: rename this, logic does not align with multi_resource_parser
@@ -61,4 +111,4 @@ def merge_dicts(*dicts):
       else:
         merged[key] = value
 
-  return merged
+  return VarsResolver.resolve_all(merged)

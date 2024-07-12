@@ -2,6 +2,8 @@ import logging
 import os
 import yaml
 
+from make_argocd_fly.utils import VarsResolver
+
 LOG_CONFIG_FILE = 'log_config.yml'
 CONFIG_FILE = 'config.yml'
 SOURCE_DIR = 'source'

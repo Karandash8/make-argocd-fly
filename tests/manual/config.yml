@@ -16,7 +16,10 @@ vars:
       - resources-finalizer.argocd.argoproj.io
   namespace: kube-system
   version: 0.1.0
-  # reference_version: '["vars"]["version"]'
+  double_reference_version: ${reference_version}
+  reference_version: ${version}
+  non_existing_reference_version: ${non_existing_version}
+
   app:
     resource: Deployment_thanos.yml
   json_var: json
