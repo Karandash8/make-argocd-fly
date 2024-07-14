@@ -71,6 +71,8 @@ async def generate() -> None:
     log.info('Rendering resources')
     await asyncio.gather(*[asyncio.create_task(app.generate_resources()) for app in apps])
   except Exception:
+    for task in asyncio.all_tasks():
+      task.cancel()
     raise
 
   output_writer = ResourceWriter(config.get_output_dir())
@@ -106,6 +108,7 @@ def main() -> None:
   parser.add_argument('--preserve-tmp-dir', action='store_true', help='Preserve temporary directory')
   parser.add_argument('--clean', action='store_true', help='Clean all applications in output directory')
   parser.add_argument('--print-vars', action='store_true', help='Print variables for each application')
+  parser.add_argument('--var-identifier', type=str, default='$', help='Variable prefix in config.yml file (default: $)')
   parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
   parser.add_argument('--kube-linter', action='store_true', help='Run kube-linter against output directory (https://github.com/stackrox/kube-linter)')
   parser.add_argument('--loglevel', type=str, default='INFO', help='DEBUG, INFO, WARNING, ERROR, CRITICAL')

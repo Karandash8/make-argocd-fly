@@ -17,6 +17,7 @@ class CLIArgs:
     self.preserve_tmp_dir = None
     self.clean = None
     self.print_vars = None
+    self.var_identifier = None
     self.yaml_linter = None
     self.kube_linter = None
     self.loglevel = None
@@ -74,6 +75,11 @@ class CLIArgs:
     if self.print_vars is None:
       raise Exception("print_vars is not set")
     return self.print_vars
+
+  def get_var_identifier(self):
+    if self.var_identifier is None:
+      raise Exception("var_identifier is not set")
+    return self.var_identifier
 
   def get_yaml_linter(self):
     if self.yaml_linter is None:

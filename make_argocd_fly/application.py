@@ -7,7 +7,8 @@ from pprint import pformat
 
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.renderer import JinjaRenderer
-from make_argocd_fly.utils import multi_resource_parser, resource_parser, merge_dicts, generate_filename
+from make_argocd_fly.utils import multi_resource_parser, resource_parser, merge_dicts, generate_filename, \
+  VarsResolver
 from make_argocd_fly.config import get_config
 from make_argocd_fly.cli_args import get_cli_args
 
@@ -88,16 +89,20 @@ class AppOfApps(AbstractApplication):
     renderer = JinjaRenderer()
 
     for (app_name, env_name, project, destination_namespace) in self._find_deploying_apps(self.app_name, self.env_name):
-      template_vars = merge_dicts(self.config.get_vars(), self.config.get_env_vars(env_name), self.config.get_app_vars(env_name, app_name), {
-        '__application': {
-          'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
-          'path': os.path.join(os.path.basename(self._config.get_output_dir()), env_name, app_name),
-          'project': project,
-          'destination_namespace': destination_namespace
-        },
-        'env_name': env_name,
-        'app_name': app_name
-      })
+      template_vars = VarsResolver.resolve_all(merge_dicts(self.config.get_vars(), self.config.get_env_vars(env_name),
+                                                           self.config.get_app_vars(env_name, app_name), {
+                                                           '__application': {
+                                                             'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
+                                                             'path': os.path.join(os.path.basename(self._config.get_output_dir()),
+                                                                                  env_name, app_name
+                                                                                  ),
+                                                             'project': project,
+                                                             'destination_namespace': destination_namespace
+                                                           },
+                                                           'env_name': env_name,
+                                                           'app_name': app_name}),
+                                               var_identifier=self.cli_args.get_var_identifier())
+
       content = renderer.render(textwrap.dedent(self.APPLICATION_RESOUCE_TEMPLATE), template_vars)
       resources.append(content)
 
@@ -116,9 +121,10 @@ class Application(AbstractApplication):
 
     resources = []
     renderer = JinjaRenderer(self.app_viewer)
-    template_vars = merge_dicts(self.config.get_vars(), self.config.get_env_vars(self.env_name),
-                                self.config.get_app_vars(self.env_name, self.app_name), {'env_name': self.env_name, 'app_name': self.app_name}
-                                )
+    template_vars = VarsResolver.resolve_all(merge_dicts(self.config.get_vars(), self.config.get_env_vars(self.env_name),
+                                                         self.config.get_app_vars(self.env_name, self.app_name),
+                                                         {'env_name': self.env_name, 'app_name': self.app_name}),
+                                             var_identifier=self.cli_args.get_var_identifier())
     if self.cli_args.get_print_vars():
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 
@@ -148,7 +154,6 @@ class KustomizeApplication(AbstractApplication):
         stderr=asyncio.subprocess.PIPE)
 
       stdout, stderr = await proc.communicate()
-
       if stderr:
         log.error('Kustomize error: {}'.format(stderr))
         log.info('Retrying {}/{}'.format(attempt + 1, retries))
@@ -165,9 +170,11 @@ class KustomizeApplication(AbstractApplication):
 
     tmp_resource_writer = ResourceWriter(tmp_dir)
     renderer = JinjaRenderer(self.app_viewer)
-    template_vars = merge_dicts(self.config.get_vars(), self.config.get_env_vars(self.env_name),
-                                self.config.get_app_vars(self.env_name, self.app_name), {'env_name': self.env_name, 'app_name': self.app_name}
-                                )
+    template_vars = VarsResolver.resolve_all(merge_dicts(self.config.get_vars(), self.config.get_env_vars(self.env_name),
+                                                         self.config.get_app_vars(self.env_name, self.app_name),
+                                                         {'env_name': self.env_name, 'app_name': self.app_name}),
+                                             var_identifier=self.cli_args.get_var_identifier()
+                                             )
     if self.cli_args.get_print_vars():
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 

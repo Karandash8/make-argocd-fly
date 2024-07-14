@@ -70,7 +70,7 @@ def test_ResourceViewer_build_with_non_existing_path(tmp_path, caplog):
   resource_viewer = ResourceViewer(str(dir_root), element_path)
 
   with pytest.raises(Exception):
-      resource_viewer.build()
+    resource_viewer.build()
   assert 'Path does not exist' in caplog.text
 
 def test_ResourceViewer_build_with_directories_and_files(tmp_path):

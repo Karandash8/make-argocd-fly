@@ -29,8 +29,8 @@ envs:
                 jqPathExpressions:
                   - .spec.seLinuxMount
             finalizers: null
-      app_3: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      app_4: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
+      app_3: {app_deployer: service_deployer, project: management, destination_namespace: "${namespace}"}
+      app_4: {app_deployer: service_deployer, project: management, destination_namespace: kube-default, vars: {argocd: {ignoreDifferences: "${argocd_ignore_diff}"}}}
       app_5: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       app_6: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
       subdirectory/app_7: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
@@ -77,9 +77,19 @@ vars:
         - ServerSideApply=true
     finalizers:
       - resources-finalizer.argocd.argoproj.io
-  namespace: kube-system
+  namespace: kube-default
   version: 0.1.0
-  # reference_version: '["vars"]["version"]'
+  double_reference_version: ${reference_version}
+  reference_version: ${app[version]}
+  resource: Deployment_thanos.yml
   app:
-    resource: Deployment_thanos.yml
+    resource: ${resource}
+    version: 0.1.0
   json_var: json
+  argocd_ignore_diff:
+    - group: apps
+      kind: Deployment
+      name: guestbook
+      namespace: default
+      jsonPointers:
+        - /spec/replicas

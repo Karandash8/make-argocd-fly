@@ -18,3 +18,10 @@ spec:
   syncPolicy:
     syncOptions:
       - ServerSideApply=true
+  ignoreDifferences:
+    - group: apps
+      jsonPointers:
+        - /spec/replicas
+      kind: Deployment
+      name: guestbook
+      namespace: default
