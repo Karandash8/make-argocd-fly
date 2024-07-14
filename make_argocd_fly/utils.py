@@ -1,6 +1,7 @@
 import logging
 import re
 import copy
+import ast
 
 log = logging.getLogger(__name__)
 
@@ -10,18 +11,47 @@ class VarsResolver:
     self.var_identifier = var_identifier
     self.resolution_counter = 0
 
-  def _resolve_var(self, vars: dict, value: str) -> str:
-    if value.startswith(self.var_identifier):
-      try:
-        resolved_value = value[len(self.var_identifier):].format(**vars)
+  def _find_var_position(self, value: str, start: int = 0) -> tuple[int, int]:
+    var_start = value.find(self.var_identifier, start)
+    if var_start == -1 or value[var_start + 1] != '{':
+      return (-1, -1)
 
-        if value != resolved_value:
-          self.resolution_counter += 1
-      except KeyError:
-        resolved_value = value
+    var_end = value.find('}', var_start)
+    if var_end == -1:
+      return (-1, -1)
+
+    return (var_start + 1, var_end)
+
+  def _resolve_value(self, vars: dict, value: str) -> str:
+    resolved_value = ''
+    try:
+      start = 0
+      (var_start, var_end) = self._find_var_position(value, start)
+
+      if (var_start, var_end) == (-1, -1):
+        return value
+
+      while (var_start, var_end) != (-1, -1):
+        if (var_start - 1) > start:
+          resolved_value += value[start:var_start - 1]
+
+        resolved_value += value[var_start:var_end + 1].format(**vars)
+        self.resolution_counter += 1
+        start = var_end + 1
+
+        (var_start, var_end) = self._find_var_position(value, start)
+
+      resolved_value += value[start:]
+
+      try:
+        resolved_value = ast.literal_eval(resolved_value)
+      except (SyntaxError, ValueError):
+        pass
 
       return resolved_value
-    return value
+    except KeyError:
+      log.error('Variable {} not found in vars'.format(value[var_start - 1:var_end + 1]))
+      raise
 
   def _iterate(self, vars: dict, value=None, initial=True):
     value = value or vars if initial else value
@@ -32,7 +62,7 @@ class VarsResolver:
       for idx, i in enumerate(value):
         value[idx] = self._iterate(vars, i, False)
     elif isinstance(value, str):
-      value = self._resolve_var(vars, value)
+      value = self._resolve_value(vars, value)
     return value
 
   def get_resolutions(self) -> int:
@@ -111,4 +141,4 @@ def merge_dicts(*dicts):
       else:
         merged[key] = value
 
-  return VarsResolver.resolve_all(merged)
+  return merged

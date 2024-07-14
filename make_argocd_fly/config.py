@@ -2,7 +2,6 @@ import logging
 import os
 import yaml
 
-from make_argocd_fly.utils import VarsResolver
 from make_argocd_fly.cli_args import CLIArgs
 
 LOG_CONFIG_FILE = 'log_config.yml'

@@ -9,6 +9,7 @@ The idea is that you write your resources in YAML, Jinja2 or Kustomize (includin
 - `App-of-apps` pattern is natively supported
 - Use `include` or `include_raw` in Jinja2 templates to render content of external files
 - Global, per environment and per application Jinja2 variables
+- Variables referencing other variables are supported
 - Source resources can reside in subdirectories
 
 ## Usage
@@ -18,7 +19,9 @@ python3 -m venv .venv
 pip install make-argocd-fly
 
 make-argocd-fly -h
-usage: main.py [-h] [--root-dir ROOT_DIR] [--config-file CONFIG_FILE] [--source-dir SOURCE_DIR] [--output-dir OUTPUT_DIR] [--tmp-dir TMP_DIR] [--render-apps RENDER_APPS] [--render-envs RENDER_ENVS] [--skip-generate] [--preserve-tmp-dir] [--clean] [--print-vars] [--yaml-linter] [--kube-linter] [--loglevel LOGLEVEL]
+usage: main.py [-h] [--root-dir ROOT_DIR] [--config-file CONFIG_FILE] [--source-dir SOURCE_DIR] [--output-dir OUTPUT_DIR] [--tmp-dir TMP_DIR] [--render-apps RENDER_APPS]
+               [--render-envs RENDER_ENVS] [--skip-generate] [--preserve-tmp-dir] [--clean] [--print-vars] [--var-identifier VAR_IDENTIFIER] [--yaml-linter] [--kube-linter]
+               [--loglevel LOGLEVEL]
 
 Render ArgoCD Applications.
 
@@ -40,6 +43,8 @@ options:
   --preserve-tmp-dir    Preserve temporary directory
   --clean               Clean all applications in output directory
   --print-vars          Print variables for each application
+  --var-identifier VAR_IDENTIFIER
+                        Variable prefix in config.yml file (default: $)
   --yaml-linter         Run yamllint against output directory (https://github.com/adrienverge/yamllint)
   --kube-linter         Run kube-linter against output directory (https://github.com/stackrox/kube-linter)
   --loglevel LOGLEVEL   DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -50,6 +55,12 @@ options:
 Example configuration file:
 ```tests/manual/config.yml```
 
+### Source directory structure
+Example directory structure:
+```tests/manual/source```
+
+When kustomization overlays are used, kustomization base directory shall be named `base`, overlay directories shall be named after the corresponding environments names.
+
 ### app parameters
 - `app_deployer` - name of the application that will deploy this application
 - `project` - ArgoCD project name
@@ -57,7 +68,7 @@ Example configuration file:
 - `app_deployer_env` - (OPTIONAL) environment of the application that will deploy this application
 - `vars` - (OPTIONAL) application specific jinja2 variables
 
-## Jinja2 extensions
+### Jinja2 extensions
 To render a template in the current jinja2 template, use the following block:
 
 ```
@@ -82,20 +93,6 @@ To perform a DNS lookup, use the following filter:
 
 Ansible filters are supported as well: https://pypi.org/project/jinja2-ansible-filters/
 
-## Caveats
-### Expectations
-- `kustomize` and `helm` are expected to be installed locally.
-- `kube-linter` is expected to be installed locally (https://github.com/stackrox/kube-linter).
-- `libyaml` is expected to be installed locally for speeding up YAMLs generation.
-- Comments are not rendered in the final output manifests.
-
-### Source directory structure
-
-Example directory structure:
-```tests/manual/source```
-
-When kustomization overlays are used, kustomization base directory shall be named `base`, overlay directories shall be named after the corresponding environments names.
-
 ### kustomization.yml
 Files referenced in the `resources` section shall be named after Kubernetes resource type + `_` + resource name. Example:
 
@@ -113,6 +110,14 @@ The folloving variable names are reserved (at the root level) and shall not be u
 - env_name
 - app_name
 
+### Referencing variables in config.yml
+Variables can be referenced in the configuration file (including *app parameters*) using the following syntax:
+```${var_name}``` and  ```${var_name[subvar_name][...]}```.
+
+Variables can also be used as substring values:
+```prefix-${var_name}-suffix```.
+
+
 ### Expected variables
 The folloving variables are expected to be provided:
 - argocd.api_server
@@ -124,6 +129,12 @@ The folloving variables are expected to be provided:
 - argocd.sync_policy
 - argocd.finalizers
 - argocd.ignoreDifferences
+
+## Caveats
+- `kustomize` and `helm` are expected to be installed locally.
+- `kube-linter` is expected to be installed locally (https://github.com/stackrox/kube-linter).
+- `libyaml` is expected to be installed locally for speeding up YAMLs generation.
+- Comments are not rendered in the final output manifests.
 
 ## For developers
 ### Build instructions

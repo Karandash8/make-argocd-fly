@@ -1,7 +1,7 @@
 import pytest
 import textwrap
 
-from make_argocd_fly.utils import resource_parser, multi_resource_parser, generate_filename, merge_dicts
+from make_argocd_fly.utils import resource_parser, multi_resource_parser, generate_filename, merge_dicts, VarsResolver
 
 ###################
 ### resource_parser
@@ -500,3 +500,106 @@ def test_merge_dicts_empty_nested_and_none_values():
     dict3 = {'a': {'b': {'g': None}}, 'c': {'d': None, 'h': 4}}
     result = merge_dicts(dict1, dict2, dict3)
     assert result == {'a': {'b': {}}, 'c': {'e': 3, 'h': 4}}
+
+################
+### VarsResolver
+################
+
+
+def test_vars_resolver_empty_vars():
+  resolver = VarsResolver()
+  vars = {}
+  result = resolver.resolve(vars)
+  assert result == {}
+  assert resolver.get_resolutions() == 0
+
+def test_vars_resolver_single_var():
+  resolver = VarsResolver()
+  vars = {'var1': 'value1'}
+  result = resolver.resolve(vars)
+  assert result == {'var1': 'value1'}
+  assert resolver.get_resolutions() == 0
+
+def test_vars_resolver_multiple_vars():
+  resolver = VarsResolver()
+  vars = {'var1': 'value1', 'var2': 'value2', 'var3': 'value3'}
+  result = resolver.resolve(vars)
+  assert result == {'var1': 'value1', 'var2': 'value2', 'var3': 'value3'}
+  assert resolver.get_resolutions() == 0
+
+def test_vars_resolver_nested_vars():
+  resolver = VarsResolver()
+  vars = {'var1': 'value1', 'var2': {'var3': 'value3'}}
+  result = resolver.resolve(vars)
+  assert result == {'var1': 'value1', 'var2': {'var3': 'value3'}}
+  assert resolver.get_resolutions() == 0
+
+def test_vars_resolver_var_with_resolvable_var():
+  resolver = VarsResolver()
+  vars = {'var1': '${var2}', 'var2': 'value2'}
+  result = resolver.resolve(vars)
+  assert result == {'var1': 'value2', 'var2': 'value2'}
+  assert resolver.get_resolutions() == 1
+
+def test_vars_resolver_var_with_multiple_resolvable_var_with_concat():
+  resolver = VarsResolver()
+  vars = {'var1': '${var2}/${var3}', 'var2': 'value2', 'var3': 'value3'}
+  result = resolver.resolve(vars)
+  assert result == {'var1': 'value2/value3', 'var2': 'value2', 'var3': 'value3'}
+  assert resolver.get_resolutions() == 2
+
+def test_vars_resolver_var_with_resolvable_var_with_concat_left():
+  resolver = VarsResolver()
+  vars = {'var1': ' ${var2}', 'var2': 'value2'}
+  result = resolver.resolve(vars)
+  assert result == {'var1': ' value2', 'var2': 'value2'}
+  assert resolver.get_resolutions() == 1
+
+def test_vars_resolver_var_with_resolvable_var_with_concat_right():
+  resolver = VarsResolver()
+  vars = {'var1': '${var2} ', 'var2': 'value2'}
+  result = resolver.resolve(vars)
+  assert result == {'var1': 'value2 ', 'var2': 'value2'}
+  assert resolver.get_resolutions() == 1
+
+def test_vars_resolver_var_with_multiple_resolvable_vars():
+  resolver = VarsResolver()
+  vars = {'var1': '${var2}', 'var2': 'value2', 'var3': '${var4}', 'var4': 'value4'}
+  result = resolver.resolve(vars)
+  assert result == {'var1': 'value2', 'var2': 'value2', 'var3': 'value4', 'var4': 'value4'}
+  assert resolver.get_resolutions() == 2
+
+def test_vars_resolver_value_with_unresolvable_var(caplog):
+  resolver = VarsResolver()
+  vars = {'var1': '${var2}'}
+  with pytest.raises(KeyError):
+    resolver.resolve(vars)
+  assert 'Variable ${var2} not found in vars' in caplog.text
+
+def test_vars_resolver_var_with_resolvable_var_dict():
+  resolver = VarsResolver()
+  vars = {'var1': '${var2}', 'var2': {'var3': 'value3'}}
+  result = resolver.resolve(vars)
+  assert result == {'var1': {'var3': 'value3'}, 'var2': {'var3': 'value3'}}
+  assert resolver.get_resolutions() == 1
+
+def test_vars_resolver_var_with_resolvable_var_list():
+  resolver = VarsResolver()
+  vars = {'var1': '${var2}', 'var2': ['value2']}
+  result = resolver.resolve(vars)
+  assert result == {'var1': ['value2'], 'var2': ['value2']}
+  assert resolver.get_resolutions() == 1
+
+def test_vars_resolver_var_with_nested_resolvable_vars():
+  resolver = VarsResolver()
+  vars = {'var1': '${var2}', 'var2': '${var3}', 'var3': 'value3'}
+  result = VarsResolver().resolve_all(vars)
+  assert result == {'var1': 'value3', 'var2': 'value3', 'var3': 'value3'}
+
+def test_vars_resolver_var_with_resolvable_var_complex_key():
+  resolver = VarsResolver()
+  vars = {'var1': '${var2[var3]}', 'var2': {'var3': 'value3'}}
+  result = resolver.resolve(vars)
+  assert result == {'var1': 'value3', 'var2': {'var3': 'value3'}}
+  assert resolver.get_resolutions() == 1
+

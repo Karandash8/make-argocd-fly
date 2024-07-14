@@ -3,4 +3,4 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: thanos-sidecar
-  namespace: kube-system
+  namespace: kube-default
