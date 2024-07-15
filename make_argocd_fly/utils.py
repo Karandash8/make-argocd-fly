@@ -2,6 +2,12 @@ import logging
 import re
 import copy
 import ast
+import json
+import urllib.request
+from importlib.metadata import version, PackageNotFoundError
+from packaging.version import Version
+
+PACKAGE_NAME = 'make_argocd_fly'
 
 log = logging.getLogger(__name__)
 
@@ -142,3 +148,23 @@ def merge_dicts(*dicts):
         merged[key] = value
 
   return merged
+
+
+def latest_version_check():
+  try:
+    current_version = Version(version(PACKAGE_NAME))
+  except PackageNotFoundError:
+    raise
+
+  pypi_url = 'https://pypi.org/pypi/{}/json'.format(PACKAGE_NAME)
+  response = urllib.request.urlopen(pypi_url).read().decode()
+  latest_version = max(Version(s) for s in json.loads(response)['releases'].keys())
+
+  if current_version < latest_version:
+    log.warning('You are running {} ({}) but there is a newer version of the package available ({})'.format(PACKAGE_NAME, current_version,
+                                                                                                            latest_version))
+    answer = input("Are you sure you want to continue? [y/n] (default: n) ")
+    if answer.lower() not in ["y", "yes"]:
+      exit()
+  else:
+    log.info('You are using the latest version of {} ({})'.format(PACKAGE_NAME, current_version))
