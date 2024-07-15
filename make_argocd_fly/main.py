@@ -11,7 +11,7 @@ import yamllint
 from make_argocd_fly.cli_args import populate_cli_args, get_cli_args
 from make_argocd_fly.config import read_config, get_config, LOG_CONFIG_FILE, CONFIG_FILE, \
   SOURCE_DIR, OUTPUT_DIR, TMP_DIR
-from make_argocd_fly.utils import multi_resource_parser, generate_filename
+from make_argocd_fly.utils import multi_resource_parser, generate_filename, latest_version_check
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.application import application_factory
 
@@ -83,7 +83,6 @@ async def generate() -> None:
 
   if apps:
     log.info('The following applications have been updated:')
-  if os.path.exists(config.get_output_dir()):
     for app in apps:
       app_dir = os.path.join(config.get_output_dir(), app.get_app_rel_path())
       log.info('Environment: {}, Application: {}, Path: {}'.format(app.env_name, app.app_name, app_dir))
@@ -115,6 +114,7 @@ def main() -> None:
   args = parser.parse_args()
 
   init_logging(args.loglevel)
+  latest_version_check()
 
   cli_args = populate_cli_args(**vars(args))
   config = read_config(args.root_dir, args.config_file, cli_args)
