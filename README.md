@@ -101,9 +101,6 @@ resources:
   - deployment_nginx.yml
   - serviceaccount_nginx-prod.yml
 ```
-### Initial app-of-apps application
-`bootstrap` application shall be deployed externally
-
 ### Variable names
 The folloving variable names are reserved (at the root level) and shall not be used in the configuration file:
 - __application
@@ -111,8 +108,8 @@ The folloving variable names are reserved (at the root level) and shall not be u
 - app_name
 
 ### Referencing variables in config.yml
-Variables can be referenced in the configuration file (including *app parameters*) using the following syntax:
-```${var_name}``` and  ```${var_name[subvar_name][...]}```.
+Variables can be referenced in the configuration file (including in *app parameters*) using the following syntax:
+```${var_name}``` and  ```${var_name[dict_key][...]}```.
 
 Variables can also be used as substring values:
 ```prefix-${var_name}-suffix```.
@@ -135,6 +132,7 @@ The folloving variables are expected to be provided:
 - `kube-linter` is expected to be installed locally (https://github.com/stackrox/kube-linter).
 - `libyaml` is expected to be installed locally for speeding up YAMLs generation.
 - Comments are not rendered in the final output manifests.
+- Initial App-of-Apps application (`bootstrap`) shall be deployed externally.
 
 ## For developers
 ### Build instructions
