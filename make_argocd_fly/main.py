@@ -108,15 +108,18 @@ def main() -> None:
   parser.add_argument('--clean', action='store_true', help='Clean all applications in output directory')
   parser.add_argument('--print-vars', action='store_true', help='Print variables for each application')
   parser.add_argument('--var-identifier', type=str, default='$', help='Variable prefix in config.yml file (default: $)')
+  parser.add_argument('--skip-latest-version-check', action='store_true', help='Skip latest version check')
   parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
   parser.add_argument('--kube-linter', action='store_true', help='Run kube-linter against output directory (https://github.com/stackrox/kube-linter)')
   parser.add_argument('--loglevel', type=str, default='INFO', help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
   args = parser.parse_args()
 
   init_logging(args.loglevel)
-  latest_version_check()
-
   cli_args = populate_cli_args(**vars(args))
+  if not cli_args.get_skip_latest_version_check():
+    latest_version_check()
+  else:
+    log.warn('Skipping latest version check')
   config = read_config(args.root_dir, args.config_file, cli_args)
 
   tmp_dir = config.get_tmp_dir()

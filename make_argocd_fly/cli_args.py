@@ -18,6 +18,7 @@ class CLIArgs:
     self.clean = None
     self.print_vars = None
     self.var_identifier = None
+    self.skip_latest_version_check = None
     self.yaml_linter = None
     self.kube_linter = None
     self.loglevel = None
@@ -80,6 +81,11 @@ class CLIArgs:
     if self.var_identifier is None:
       raise Exception("var_identifier is not set")
     return self.var_identifier
+
+  def get_skip_latest_version_check(self):
+    if self.skip_latest_version_check is None:
+      raise Exception("skip_latest_version_check is not set")
+    return self.skip_latest_version_check
 
   def get_yaml_linter(self):
     if self.yaml_linter is None:
