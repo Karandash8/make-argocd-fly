@@ -1,0 +1,11 @@
+envs:
+  example:
+    apps:
+      01_yaml_app: {}
+      02_jinja2_app: {}
+      03_kustomize_app: {}
+      04_kustomize_helm_app: {}
+
+vars:
+  namespace: kube-default
+  version: 0.1.0
