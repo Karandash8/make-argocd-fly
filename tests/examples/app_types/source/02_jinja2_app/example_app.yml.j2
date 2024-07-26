@@ -1,0 +1,11 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: example-app
+  namespace: {{ namespace }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: example-app
+  namespace: {{ namespace }}
