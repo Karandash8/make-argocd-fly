@@ -36,7 +36,7 @@ class AppOfAppsWorkflow(AbstractWorkflow):
     kind: Application
     metadata:
       name: {{ __application.application_name }}
-      namespace: {{ argocd.namespace }}
+      namespace: {{ argocd.namespace | default('argocd') }}
     {%- if argocd.finalizers | default([]) %}
       finalizers:
       {{ argocd.finalizers | to_nice_yaml | trim }}
@@ -44,14 +44,14 @@ class AppOfAppsWorkflow(AbstractWorkflow):
       finalizers: []
     {%- endif %}
     spec:
-      project: {{ __application.project }}
+      project: {{ argocd.project | default('default') }}
       source:
-        repoURL: {{ argocd.repo_url }}
-        targetRevision: {{ argocd.target_revision }}
+        repoURL: {{ argocd.source.repo_url }}
+        targetRevision: {{ argocd.source.target_revision }}
         path: {{ __application.path }}
       destination:
-        server: {{ argocd.api_server }}
-        namespace: {{ __application.destination_namespace }}
+        server: {{ argocd.destination.server }}
+        namespace: {{ argocd.destination.namespace | default('argocd') }}
       syncPolicy:
         {{ argocd.sync_policy | default({}) | to_nice_yaml(indent=2) | trim | indent(4) }}
       {%- if argocd.ignoreDifferences | default([]) %}
@@ -74,16 +74,14 @@ class AppOfAppsWorkflow(AbstractWorkflow):
     self.find_apps_step.configure(self.app_name, self.env_name)
     await self.find_apps_step.run()
 
-    for (app_name, env_name, project, destination_namespace) in self.find_apps_step.get_apps():
+    for (app_name, env_name) in self.find_apps_step.get_apps():
       template_vars = VarsResolver.resolve_all(merge_dicts(self.config.get_vars(), self.config.get_env_vars(env_name),
                                                            self.config.get_app_vars(env_name, app_name), {
                                                            '__application': {
                                                              'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
                                                              'path': os.path.join(os.path.basename(self.config.get_output_dir()),
                                                                                   env_name, app_name
-                                                                                  ),
-                                                             'project': project,
-                                                             'destination_namespace': destination_namespace
+                                                                                  )
                                                            },
                                                            'env_name': env_name,
                                                            'app_name': app_name}),

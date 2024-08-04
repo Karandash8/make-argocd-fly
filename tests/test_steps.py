@@ -40,8 +40,11 @@ async def test_find_apps_step_run_single_app_same_env(tmp_path):
         bootstrap: {}
         app_1:
           app_deployer: bootstrap
-          project: my_project
-          destination_namespace: my_namespace
+          vars:
+            argocd:
+              project: my_project
+              destination:
+                namespace: my_namespace
   '''
 
   root_dir = tmp_path
@@ -62,7 +65,7 @@ async def test_find_apps_step_run_single_app_same_env(tmp_path):
 
   assert isinstance(apps, list)
   assert len(apps) == 1
-  assert ('app_1', 'test_env', 'my_project', 'my_namespace') in apps
+  assert ('app_1', 'test_env') in apps
 
 @pytest.mark.asyncio
 async def test_find_apps_step_run_multiple_apps_same_env(tmp_path):
@@ -73,12 +76,18 @@ async def test_find_apps_step_run_multiple_apps_same_env(tmp_path):
         bootstrap: {}
         app_1:
           app_deployer: bootstrap
-          project: my_project
-          destination_namespace: my_namespace
+          vars:
+            argocd:
+              project: my_project
+              destination:
+                namespace: my_namespace
         app_2:
           app_deployer: bootstrap
-          project: my_project
-          destination_namespace: my_namespace
+          vars:
+            argocd:
+              project: my_project
+              destination:
+                namespace: my_namespace
   '''
 
   root_dir = tmp_path
@@ -99,8 +108,8 @@ async def test_find_apps_step_run_multiple_apps_same_env(tmp_path):
 
   assert isinstance(apps, list)
   assert len(apps) == 2
-  assert ('app_1', 'test_env', 'my_project', 'my_namespace') in apps
-  assert ('app_2', 'test_env', 'my_project', 'my_namespace') in apps
+  assert ('app_1', 'test_env') in apps
+  assert ('app_2', 'test_env') in apps
 
 @pytest.mark.asyncio
 async def test_find_apps_step_run_multiple_apps_different_envs(tmp_path):
@@ -111,15 +120,21 @@ async def test_find_apps_step_run_multiple_apps_different_envs(tmp_path):
         bootstrap: {}
         app_1:
           app_deployer: bootstrap
-          project: my_project
-          destination_namespace: my_namespace
+          vars:
+            argocd:
+              project: my_project
+              destination:
+                namespace: my_namespace
     test_env_2:
       apps:
         app_2:
           app_deployer: bootstrap
           app_deployer_env: test_env
-          project: my_project
-          destination_namespace: my_namespace
+          vars:
+            argocd:
+              project: my_project
+              destination:
+                namespace: my_namespace
   '''
 
   root_dir = tmp_path
@@ -140,5 +155,5 @@ async def test_find_apps_step_run_multiple_apps_different_envs(tmp_path):
 
   assert isinstance(apps, list)
   assert len(apps) == 2
-  assert ('app_1', 'test_env', 'my_project', 'my_namespace') in apps
-  assert ('app_2', 'test_env_2', 'my_project', 'my_namespace') in apps
+  assert ('app_1', 'test_env') in apps
+  assert ('app_2', 'test_env_2') in apps
