@@ -84,7 +84,7 @@ options:
 
 ## Advanced usage
 ### ArgoCD integration
-ArgoCD app-of-apps pattern (https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) is one of the ways to deploy applications in a Kubernetes cluster. `make-argocd-fly` supports this pattern by generating ArgoCD `Application` resources for each application in the configuration file. The generated resources can be deployed in the cluster using ArgoCD, which will automatically deploy the applications specified in the `Application` resources. The app-of-apps pattern can be nested, which allows for organizing applications in a hierarchical structure, where only the top-level application is deployed externally.
+ArgoCD app-of-apps pattern (https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) is one of the ways to deploy applications in a Kubernetes cluster. `make-argocd-fly` supports this pattern by generating ArgoCD `Application` resources for each application in the configuration file. The generated resources can be deployed in the cluster using ArgoCD, which will automatically deploy the applications specified in the `Application` resources. The app-of-apps pattern can be nested, which allows for organizing applications in a hierarchical structure, where only the top-level application needs to be deployed externally.
 
 To make use of ArgoCD app-of-apps pattern in `make-argocd-fly`, specify the following variables and application parameters:
 ```
@@ -96,16 +96,18 @@ envs:
         app_deployer: <bootstrap_application>  ## application that will deploy this application
         app_deployer_env: <environment_name>  ## (OPTIONAL) for multi-environments with single ArgoCD deployment
         non_k8s_files_to_render: [<filename>]  ## (OPTIONAL) list of files to render that are not Kubernetes resources (e.g., values.yml)
-        project: <project_name>  ## ArgoCD project name
-        destination_namespace: <namespace>  ## default namespace where the application resources will be deployed
 vars:
   argocd:
-    api_server: <argocd_api_server>  ## kube-apiserver address
-    namespace: <argocd_namespace>  ## namespace for ArgoCD `Application` resources
-    repo_url: <argocd_repo_url>  ## URL to the Git repository
-    target_revision: <argocd_target_revision>  ## target revision for the Git repository
-    sync_policy: <argocd_sync_policy>  ## (OPTIONAL) default: {}
+    namespace: <argocd_namespace>  ## (OPTIONAL) namespace for ArgoCD `Application` resource, default: argocd
     finalizers: <argocd_finalizers>  ## (OPTIONAL) default: []
+    project: <project_name>  ## (OPTIONAL) ArgoCD project name, default: default
+    source:
+      repo_url: <argocd_repo_url>  ## URL to the Git repository
+      target_revision: <argocd_target_revision>  ## target revision for the Git repository
+    destination:
+      server: <kube_apiserver>  ## kube-apiserver address
+      namespace: <namespace>  ## (OPTIONAL) default namespace where the application resources will be deployed, default: argocd
+    sync_policy: <argocd_sync_policy>  ## (OPTIONAL) default: {}
     ignoreDifferences: <argocd_ignoreDifferences>  ## (OPTIONAL) default: []
 ```
 

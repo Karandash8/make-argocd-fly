@@ -2,21 +2,24 @@ envs:
   management:
     apps:
       bootstrap: {}
-      core_deployer: {app_deployer: bootstrap, project: default, destination_namespace: kube-system}
-      service_deployer: {app_deployer: bootstrap, project: default, destination_namespace: kube-system}
+      core_deployer: {app_deployer: bootstrap, vars: {argocd: {project: default, destination: {namespace: kube-system}}}}
+      service_deployer: {app_deployer: bootstrap, vars: {argocd: {project: default, destination: {namespace: kube-system}}}}
       app_1:
         app_deployer: core_deployer
-        project: management
-        destination_namespace: kube-default
         vars:
           argocd:
-            target_revision: custom_revision
+            project: management
+            source:
+              target_revision: custom_revision
+            destination:
+              namespace: kube-default
       app_2:
         app_deployer: core_deployer
-        project: management
-        destination_namespace: kube-default
         vars:
           argocd:
+            project: management
+            destination:
+              namespace: kube-default
             ignoreDifferences:
               - group: apps
                 kind: Deployment
@@ -29,19 +32,20 @@ envs:
                 jqPathExpressions:
                   - .spec.seLinuxMount
             finalizers: null
-      app_3: {app_deployer: service_deployer, project: management, destination_namespace: "${namespace}"}
-      app_4: {app_deployer: service_deployer, project: management, destination_namespace: kube-default, vars: {argocd: {ignoreDifferences: "${argocd_ignore_diff}"}}}
-      app_5: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      app_6: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      subdirectory/app_7: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      subdirectory_2/app_8: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      app_9: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      app_10: {app_deployer: service_deployer, project: management, destination_namespace: kube-default}
-      app_11: {app_deployer: service_deployer, non_k8s_files_to_render: ['values.yml.j2'], project: management, destination_namespace: kube-default}
+      app_3: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: "${namespace}"}}}}
+      app_4: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
+      app_5: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      app_6: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      subdirectory/app_7: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      subdirectory_2/app_8: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      app_9: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      app_10: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      app_11: {app_deployer: service_deployer, non_k8s_files_to_render: ['values.yml.j2'], vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
       app_12: {vars: {version: 1.1.1}}
     vars:
       argocd:
-        api_server: management-api-server
+        destination:
+          server: management-api-server
         sync_policy:
           automated: null
       json_var: json_management
@@ -50,15 +54,16 @@ envs:
   external_1:
     apps:
       bootstrap: {}
-      unused_deployer: {app_deployer: bootstrap, project: default, destination_namespace: kube-system}
-      app_1: {app_deployer: core_deployer, app_deployer_env: management, project: external_1, destination_namespace: kube-default}
-      app_2: {app_deployer: core_deployer, app_deployer_env: management, project: management, destination_namespace: kube-default}
-      app_5: {app_deployer: service_deployer, app_deployer_env: management, project: external_1, destination_namespace: kube-default}
-      subdirectory/app_7: {app_deployer: service_deployer, app_deployer_env: management, project: management, destination_namespace: kube-default}
-      app_9: {app_deployer: service_deployer, app_deployer_env: management, project: management, destination_namespace: kube-default}
+      unused_deployer: {app_deployer: bootstrap, vars: {argocd: {project: default, destination: {namespace: kube-system}}}}
+      app_1: {app_deployer: core_deployer, app_deployer_env: management, vars: {argocd: {project: external_1, destination: {namespace: kube-default}}}}
+      app_2: {app_deployer: core_deployer, app_deployer_env: management, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      app_5: {app_deployer: service_deployer, app_deployer_env: management, vars: {argocd: {project: external_1, destination: {namespace: kube-default}}}}
+      subdirectory/app_7: {app_deployer: service_deployer, app_deployer_env: management, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      app_9: {app_deployer: service_deployer, app_deployer_env: management, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
     vars:
       argocd:
-        api_server: external_1-api-server
+        destination:
+          server: external_1-api-server
   external_2:
     apps: {}
     vars: {}
@@ -66,8 +71,11 @@ envs:
 vars:
   argocd:
     namespace: argocd
-    repo_url: url
-    target_revision: revision
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    source:
+      repo_url: url
+      target_revision: revision
     sync_policy:
       automated:
         selfHeal: true
@@ -76,8 +84,6 @@ vars:
       # https://www.arthurkoziel.com/fixing-argocd-crd-too-long-error/
       syncOptions:
         - ServerSideApply=true
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
   namespace: kube-default
   version: 0.1.0
   double_reference_version: ${reference_version}

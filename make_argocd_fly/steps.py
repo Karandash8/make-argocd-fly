@@ -39,11 +39,11 @@ class FindAppsStep(AbstractStep):
       for app_name in env_data['apps'].keys():
         app_params = self.config.get_app_params(env_name, app_name)
 
-        if 'app_deployer' in app_params and 'project' in app_params and 'destination_namespace' in app_params:
+        if 'app_deployer' in app_params:
           if (self.app_deployer_name == app_params['app_deployer'] and
               (('app_deployer_env' not in app_params and env_name == self.app_deployer_env_name) or
                ('app_deployer_env' in app_params and self.app_deployer_env_name == app_params['app_deployer_env']))):
-            self.apps.append((app_name, env_name, app_params['project'], app_params['destination_namespace']))
+            self.apps.append((app_name, env_name))
 
   def get_apps(self) -> list:
     return self.apps
@@ -149,8 +149,8 @@ class RenderJinjaFromMemoryStep(BaseResourceGenerationStep):
           self.resources.append((file_path, resource_yml))
         except ValueError:
           pass
-    except Exception as e:
-      log.error('Error rendering template: {}'.format(e))
+    except Exception:
+      log.error('Error rendering template Application for application {} in environment {}'.format(self.app_name, self.env_name))
       raise
 
 

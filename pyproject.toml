@@ -9,7 +9,7 @@ name = "make-argocd-fly"
 authors = [
     {name = "Andrei Lapin", email = "karandash8@gmail.com"},
 ]
-description = "A project to generate ArgoCD application resources"
+description = "A tool to generate Kubernetes manifests from templates"
 requires-python = ">=3.11"
 keywords = ["argocd", "kustomize", "jinja2"]
 license = {text = "GPLv3+"}
