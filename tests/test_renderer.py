@@ -64,7 +64,8 @@ def test_JinjaRenderer_base_loader_render_with_var():
   Template content {{ line_2 }}
   '''
 
-  assert renderer.render(TEMPLATE, {'line_2': 'line 2'}) == \
+  renderer.set_template_vars({'line_2': 'line 2'})
+  assert renderer.render(TEMPLATE) == \
   '''\
   Template content line 1
   Template content line 2
@@ -101,13 +102,13 @@ def test_JinjaRenderer_function_loader_render_with_include_raw(tmp_path):
   template_0 = dir_0 / 'template.txt.j2'
   template_0.write_text(TEMPLATE_0)
 
-  resource_viewer = ResourceViewer(str(dir_root))
+  resource_viewer = ResourceViewer(str(dir_0))
   resource_viewer.build()
   renderer = JinjaRenderer(resource_viewer)
 
   TEMPLATE = '''\
   Template content line 1
-  {% include_raw 'dir_0/template.txt.j2' %}
+  {% include_raw 'template.txt.j2' %}
   '''
 
   assert renderer.render(TEMPLATE) == \
@@ -125,16 +126,17 @@ def test_JinjaRenderer_function_loader_render_with_include(tmp_path):
   template_0 = dir_0 / 'template.txt.j2'
   template_0.write_text(TEMPLATE_0)
 
-  resource_viewer = ResourceViewer(str(dir_root))
+  resource_viewer = ResourceViewer(str(dir_0))
   resource_viewer.build()
   renderer = JinjaRenderer(resource_viewer)
 
   TEMPLATE = '''\
   Template content line 1
-  {% include 'dir_0/template.txt.j2' %}
+  {% include 'template.txt.j2' %}
   '''
 
-  assert renderer.render(TEMPLATE, {'content': 'content 0'}) == \
+  renderer.set_template_vars({'content': 'content 0'})
+  assert renderer.render(TEMPLATE) == \
   '''\
   Template content line 1
   Template content 0
@@ -145,23 +147,24 @@ def test_JinjaRenderer_function_loader_render_with_include_inception(tmp_path):
   dir_root.mkdir()
   dir_0 = dir_root / 'dir_0'
   dir_0.mkdir()
-  TEMPLATE_0 = "{% include 'dir_0/template_inception.txt.j2' %}"
+  TEMPLATE_0 = "{% include 'template_inception.txt.j2' %}"
   template_0 = dir_0 / 'template.txt.j2'
   template_0.write_text(TEMPLATE_0)
   TEMPLATE_1 = 'Template {{ content }}'
   template_1 = dir_0 / 'template_inception.txt.j2'
   template_1.write_text(TEMPLATE_1)
 
-  resource_viewer = ResourceViewer(str(dir_root))
+  resource_viewer = ResourceViewer(str(dir_0))
   resource_viewer.build()
   renderer = JinjaRenderer(resource_viewer)
 
   TEMPLATE = '''\
   Template content line 1
-  {% include 'dir_0/template.txt.j2' %}
+  {% include 'template.txt.j2' %}
   '''
 
-  assert renderer.render(TEMPLATE, {'content': 'content 0'}) == \
+  renderer.set_template_vars({'content': 'content 0'})
+  assert renderer.render(TEMPLATE) == \
   '''\
   Template content line 1
   Template content 0

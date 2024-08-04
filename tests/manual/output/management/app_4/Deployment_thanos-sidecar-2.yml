@@ -9,3 +9,5 @@ data: |-
     "test": "jsoninclude",
     "test_2": "{{ variable }}"
   }
+data_2: 'hello: world'
+data_3: 'hello: kube-default'

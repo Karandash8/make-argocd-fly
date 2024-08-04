@@ -3,10 +3,13 @@ import os
 import re
 import asyncio
 import yaml
+import yaml.composer
 try:
   from yaml import CSafeLoader as SafeLoader
 except ImportError:
   from yaml import SafeLoader
+
+from make_argocd_fly.exceptions import MissingSourceResourcesError
 
 log = logging.getLogger(__name__)
 
@@ -29,10 +32,6 @@ yaml.add_representer(str, str_presenter, Dumper=SafeDumper)
 
 class ResourceViewer:
   def __init__(self, root_element_abs_path: str, element_rel_path: str = '.', is_dir: bool = True) -> None:
-    if not os.path.exists(root_element_abs_path):
-      log.error('Path does not exist {}'.format(root_element_abs_path))
-      raise Exception
-
     self.root_element_abs_path = root_element_abs_path
     self.element_rel_path = os.path.normpath(element_rel_path)
     self.is_dir = is_dir
@@ -46,6 +45,9 @@ class ResourceViewer:
     self.children = []
 
   def build(self) -> None:
+    if not os.path.exists(self.root_element_abs_path):
+      raise MissingSourceResourcesError('Path does not exist {}'.format(self.root_element_abs_path))
+
     path = os.path.join(self.root_element_abs_path, self.element_rel_path)
     if not os.path.exists(path):
       log.error('Path does not exist {}'.format(path))
@@ -137,7 +139,13 @@ class ResourceWriter:
 
     with open(os.path.join(self.output_dir_abs_path, file_path), 'w') as f:
       f.write(resource_yml)
-    yaml_obj = yaml.load(resource_yml, Loader=SafeLoader)
+
+    try:
+      yaml_obj = yaml.load(resource_yml, Loader=SafeLoader)
+    except yaml.composer.ComposerError:
+      log.error('Error parsing yaml to write as file {}. Yaml:\n{}'.format(file_path, resource_yml))
+      raise
+
     with open(os.path.join(self.output_dir_abs_path, file_path), 'w') as f:
       yaml.dump(yaml_obj, f, Dumper=SafeDumper,
                 default_flow_style=False,
@@ -152,4 +160,6 @@ class ResourceWriter:
         *[asyncio.create_task(self._write_resource(file_path, resource_yml)) for file_path, resource_yml in self.resources.items()]
       )
     except Exception:
+      for task in asyncio.all_tasks():
+        task.cancel()
       raise

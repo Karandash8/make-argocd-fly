@@ -1,5 +1,6 @@
 import logging
 import re
+import os
 import copy
 import ast
 import json
@@ -90,14 +91,15 @@ class VarsResolver:
       return resolved_vars
 
 
-# TODO: rename this, logic does not align with multi_resource_parser
-def resource_parser(resource_yml: str) -> tuple[str, str]:
+def get_filename_elements(resource_yml: str) -> list:
+  filename_elements = []
   resource_kind = None
   resource_name = None
 
   match = re.search(r'(^kind:|\nkind:)(.+)', resource_yml)
   if match:
     resource_kind = match.group(2).strip()
+    filename_elements.append(resource_kind)
 
   if resource_kind:
     match = re.search(r'(^metadata:|\nmetadata:).*', resource_yml)
@@ -105,25 +107,29 @@ def resource_parser(resource_yml: str) -> tuple[str, str]:
       match = re.search(r'(^\s\sname:|\n\s\sname:)(.+)', resource_yml[match.start():])
       if match:
         resource_name = match.group(2).strip()
+        filename_elements.append(resource_name)
 
-  return (resource_kind, resource_name)
+  return filename_elements
 
 
-def multi_resource_parser(multi_resource_yml: str) -> tuple[str, str, str]:
+def extract_single_resource(multi_resource_yml: str) -> str:
   for resource_yml in multi_resource_yml.split('\n---\n'):
     resource_yml = resource_yml.strip().lstrip('---\n')
-    (resource_kind, resource_name) = resource_parser(resource_yml)
 
-    if resource_kind:
-      yield (resource_kind, resource_name, resource_yml)
+    if resource_yml:
+      yield resource_yml
 
 
 def generate_filename(filename_parts: list) -> str:
-    if not filename_parts:
-      log.error('Filename cannot be constructed')
-      raise Exception
+  if not filename_parts:
+    log.error('Filename cannot be constructed')
+    raise Exception
 
-    return '_'.join([filename_part for filename_part in filename_parts if filename_part]).lower() + '.yml'
+  return '_'.join([filename_part for filename_part in filename_parts if filename_part]).lower() + '.yml'
+
+
+def get_app_rel_path(app_name: str, env_name: str) -> str:
+  return os.path.join(env_name, app_name)
 
 
 def merge_dicts(*dicts):

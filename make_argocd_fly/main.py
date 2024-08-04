@@ -11,9 +11,8 @@ import yamllint
 from make_argocd_fly.cli_args import populate_cli_args, get_cli_args
 from make_argocd_fly.config import read_config, get_config, LOG_CONFIG_FILE, CONFIG_FILE, \
   SOURCE_DIR, OUTPUT_DIR, TMP_DIR
-from make_argocd_fly.utils import multi_resource_parser, generate_filename, latest_version_check
-from make_argocd_fly.resource import ResourceViewer, ResourceWriter
-from make_argocd_fly.application import application_factory
+from make_argocd_fly.utils import latest_version_check
+from make_argocd_fly.application import workflow_factory, Application
 
 
 logging.basicConfig(level='INFO')
@@ -32,12 +31,11 @@ def init_logging(loglevel: str) -> None:
     pass
 
 
-def create_applications(render_apps, render_envs):
+async def generate() -> None:
   config = get_config()
-
-  log.info('Reading source directory')
-  source_viewer = ResourceViewer(config.get_source_dir())
-  source_viewer.build()
+  cli_args = get_cli_args()
+  render_apps = cli_args.get_render_apps()
+  render_envs = cli_args.get_render_envs()
 
   apps_to_render = render_apps.split(',') if render_apps is not None else []
   envs_to_render = render_envs.split(',') if render_envs is not None else []
@@ -52,46 +50,16 @@ def create_applications(render_apps, render_envs):
       if apps_to_render and app_name not in apps_to_render:
         continue
 
-      app_viewer = source_viewer.get_element(app_name)
-      apps.append(application_factory(app_viewer, app_name, env_name))
+      workflow = await workflow_factory(app_name, env_name, os.path.join(config.get_source_dir(), app_name))
+      apps.append(Application(app_name, env_name, workflow))
 
-  return apps
-
-
-async def generate() -> None:
-  cli_args = get_cli_args()
-  config = get_config()
-
-  apps = create_applications(cli_args.get_render_apps(), cli_args.get_render_envs())
-
+  log.info('Processing applications')
   try:
-    log.info('Generating temporary files')
-    await asyncio.gather(*[asyncio.create_task(app.prepare()) for app in apps])
-
-    log.info('Rendering resources')
-    await asyncio.gather(*[asyncio.create_task(app.generate_resources()) for app in apps])
+    await asyncio.gather(*[asyncio.create_task(app.process()) for app in apps])
   except Exception:
     for task in asyncio.all_tasks():
       task.cancel()
     raise
-
-  output_writer = ResourceWriter(config.get_output_dir())
-  for app in apps:
-    for resource_kind, resource_name, resource_yml in multi_resource_parser(app.resources):
-      file_path = os.path.join(app.get_app_rel_path(), generate_filename([resource_kind, resource_name]))
-      output_writer.store_resource(file_path, resource_yml)
-
-  if apps:
-    log.info('The following applications have been updated:')
-    for app in apps:
-      app_dir = os.path.join(config.get_output_dir(), app.get_app_rel_path())
-      log.info('Environment: {}, Application: {}, Path: {}'.format(app.env_name, app.app_name, app_dir))
-      if os.path.exists(app_dir):
-        shutil.rmtree(app_dir)
-
-  log.info('Writing resources files')
-  os.makedirs(config.get_output_dir(), exist_ok=True)
-  await output_writer.write_resources()
 
 
 def main() -> None:

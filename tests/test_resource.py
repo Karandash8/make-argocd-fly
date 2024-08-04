@@ -1,5 +1,6 @@
 import pytest
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
+from make_argocd_fly.exceptions import MissingSourceResourcesError
 
 ##################
 ### ResourceViewer
@@ -58,12 +59,13 @@ def test_ResourceViewer_constructor_with_non_normalized_path(tmp_path):
   assert resource_viewer.content is None
   assert resource_viewer.children == []
 
-def test_ResourceViewer_constructor_with_non_existing_path(caplog):
-  with pytest.raises(Exception):
-      ResourceViewer('/non/existing/path')
-  assert 'Path does not exist' in caplog.text
+def test_ResourceViewer_build_with_non_existing_root_path(caplog):
+  resource_viewer = ResourceViewer('/non/existing/path')
 
-def test_ResourceViewer_build_with_non_existing_path(tmp_path, caplog):
+  with pytest.raises(MissingSourceResourcesError):
+    resource_viewer.build()
+
+def test_ResourceViewer_build_with_non_existing_child_path(tmp_path, caplog):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
   element_path = 'other_element'
