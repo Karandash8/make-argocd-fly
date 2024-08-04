@@ -6,7 +6,7 @@ metadata:
 data:
   prometheus.yml: |-
 {%- filter indent(width=4) %}
-{% include 'app_5/files/file.json.j2' %}
+{% include 'files/file.json.j2' %}
 {% endfilter %}
 
   ip: {{ 'localhost' | dig }}

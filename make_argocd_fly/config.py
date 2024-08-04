@@ -41,13 +41,13 @@ class Config:
     return get_abs_path(self.root_dir, self.tmp_dir, allow_missing=True)
 
   def get_envs(self) -> dict:
-    if not self.envs:
+    if not isinstance(self.envs, dict):
       log.error('Config was not initialized.')
       raise Exception
     return self.envs
 
   def get_vars(self) -> dict:
-    if not self.envs:
+    if not isinstance(self.vars, dict):
       log.error('Config was not initialized.')
       raise Exception
     return self.vars
@@ -70,6 +70,23 @@ class Config:
       raise Exception
 
     return envs[env_name]['apps'][app_name]['vars'] if 'vars' in envs[env_name]['apps'][app_name] else {}
+
+  def get_app_params(self, env_name: str, app_name: str) -> dict:
+    envs = self.get_envs()
+    if env_name not in envs:
+      log.error('Environment {} is not defined'.format(env_name))
+      raise Exception
+
+    if app_name not in envs[env_name]['apps']:
+      log.error('Application {} is not defined in environment {}'.format(app_name, env_name))
+      raise Exception
+
+    params = {}
+    for key, value in envs[env_name]['apps'][app_name].items():
+      if key != 'vars':
+        params[key] = value
+
+    return params
 
 
 config = Config()

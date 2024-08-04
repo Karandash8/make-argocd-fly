@@ -1,0 +1,2 @@
+class MissingSourceResourcesError(Exception):
+  pass

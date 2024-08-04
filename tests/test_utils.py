@@ -1,11 +1,17 @@
 import pytest
 import textwrap
 
-from make_argocd_fly.utils import resource_parser, multi_resource_parser, generate_filename, merge_dicts, VarsResolver
+from make_argocd_fly.utils import get_filename_elements, extract_single_resource, generate_filename, merge_dicts, VarsResolver
 
 ###################
-### resource_parser
+### get_filename_elements
 ###################
+
+def test_resource_parser_empty():
+  resource_yml = '''\
+    '''
+
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == []
 
 def test_resource_parser_simple():
   resource_yml = '''\
@@ -15,7 +21,7 @@ def test_resource_parser_simple():
       name: grafana
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
 def test_resource_parser_missing_name():
   resource_yml = '''\
@@ -25,7 +31,7 @@ def test_resource_parser_missing_name():
       namespace: monitoring
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', None)
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment']
 
 def test_resource_parser_with_comments():
   resource_yml = '''\
@@ -38,7 +44,7 @@ def test_resource_parser_with_comments():
       name: grafana
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
 def test_resource_parser_with_leading_comments():
   resource_yml = '''\
@@ -51,7 +57,7 @@ def test_resource_parser_with_leading_comments():
       name: grafana
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
 def test_resource_parser_with_comments_and_leading_kind():
   resource_yml = '''\
@@ -64,7 +70,7 @@ def test_resource_parser_with_comments_and_leading_kind():
       name: grafana
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
 def test_resource_parser_with_messed_up_order_metadata_at_the_beginning():
   resource_yml = '''\
@@ -76,7 +82,7 @@ def test_resource_parser_with_messed_up_order_metadata_at_the_beginning():
       name: notgrafana
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
 def test_resource_parser_with_messed_up_order_metadata_in_the_middle():
   resource_yml = '''\
@@ -88,7 +94,7 @@ def test_resource_parser_with_messed_up_order_metadata_in_the_middle():
       name: grafana
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
 def test_resource_parser_with_messed_up_order_name_extra_spaces():
   resource_yml = '''\
@@ -100,7 +106,7 @@ def test_resource_parser_with_messed_up_order_name_extra_spaces():
         name: grafana
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', None)
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment']
 
 def test_resource_parser_with_messed_up_order_name_is_not_first():
   resource_yml = '''\
@@ -113,7 +119,7 @@ def test_resource_parser_with_messed_up_order_name_is_not_first():
       name: grafana
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
 def test_resource_parser_with_messed_up_order_name_is_not_first_with_comment_1():
   resource_yml = '''\
@@ -127,7 +133,7 @@ def test_resource_parser_with_messed_up_order_name_is_not_first_with_comment_1()
       name: grafana
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
 def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_2():
   resource_yml = '''\
@@ -141,7 +147,7 @@ def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_2(
       name: grafana
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
 def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_3():
   resource_yml = '''\
@@ -155,7 +161,7 @@ def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_3(
       name: grafana
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
 def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_4():
   resource_yml = '''\
@@ -169,10 +175,10 @@ def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_4(
       name: grafana
     '''
 
-  assert resource_parser(textwrap.dedent(resource_yml)) == ('Deployment', 'grafana')
+  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
 ###################
-### multi_resource_parser
+### extract_single_resource
 ###################
 
 def test_multi_resource_parser_with_valid_yaml():
@@ -187,10 +193,10 @@ def test_multi_resource_parser_with_valid_yaml():
       name: prometheus
     '''
 
-  result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
+  result = list(extract_single_resource(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana'),
-      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+      ('kind: Deployment\nmetadata:\n  name: grafana'),
+      ('kind: DaemonSet\nmetadata:\n  name: prometheus')
   ]
 
   assert result == expected
@@ -208,10 +214,10 @@ def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_top():
       name: prometheus
     '''
 
-  result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
+  result = list(extract_single_resource(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana'),
-      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+      ('kind: Deployment\nmetadata:\n  name: grafana'),
+      ('kind: DaemonSet\nmetadata:\n  name: prometheus')
   ]
 
   assert result == expected
@@ -229,10 +235,10 @@ def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_bottom():
     ---
     '''
 
-  result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
+  result = list(extract_single_resource(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana'),
-      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+      ('kind: Deployment\nmetadata:\n  name: grafana'),
+      ('kind: DaemonSet\nmetadata:\n  name: prometheus')
   ]
 
   assert result == expected
@@ -250,10 +256,10 @@ def test_multi_resource_parser_with_valid_yaml_not_an_extra_separator():
       name: prometheus
     '''
 
-  result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
+  result = list(extract_single_resource(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n  comment: "--- This is not an extra separator"'),
-      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+      ('kind: Deployment\nmetadata:\n  name: grafana\n  comment: "--- This is not an extra separator"'),
+      ('kind: DaemonSet\nmetadata:\n  name: prometheus')
   ]
 
   assert result == expected
@@ -272,10 +278,10 @@ def test_multi_resource_parser_with_valid_yaml_not_an_extra_separator_2():
       name: prometheus
     '''
 
-  result = list(multi_resource_parser(textwrap.dedent(multi_resource_yml)))
+  result = list(extract_single_resource(textwrap.dedent(multi_resource_yml)))
   expected = [
-      ('Deployment', 'grafana', 'kind: Deployment\nmetadata:\n  name: grafana\n  comment: |\n    This is not an extra separator ----'),
-      ('DaemonSet', 'prometheus', 'kind: DaemonSet\nmetadata:\n  name: prometheus')
+      ('kind: Deployment\nmetadata:\n  name: grafana\n  comment: |\n    This is not an extra separator ----'),
+      ('kind: DaemonSet\nmetadata:\n  name: prometheus')
   ]
 
   assert result == expected

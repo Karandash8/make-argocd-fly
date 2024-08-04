@@ -13,5 +13,15 @@ metadata:
   namespace: {{ namespace }}
 data: |-
 {%- filter indent(width=4) %}
-{% include_raw 'app_4/files/file.json' %}
+{% include_raw 'files/file.json' %}
+{% endfilter %}
+
+data_2: |-
+{%- filter indent(width=4) %}
+{% include_raw 'files/file_2.yml' %}
+{% endfilter %}
+
+data_3: |-
+{%- filter indent(width=4) %}
+{% include 'files/file_3.yml.j2' %}
 {% endfilter %}

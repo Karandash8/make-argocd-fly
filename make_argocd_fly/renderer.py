@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 class AbstractRenderer(ABC):
   @abstractmethod
-  def render(self, content: str, template_vars: dict = None) -> str:
+  def render(self, content: str) -> str:
     pass
 
 
@@ -21,7 +21,7 @@ class DummyRenderer(AbstractRenderer):
   def __init__(self) -> None:
     pass
 
-  def render(self, content: str, template_vars: dict = None) -> str:
+  def render(self, content: str) -> str:
     return content
 
 
@@ -63,6 +63,9 @@ class JinjaRenderer(AbstractRenderer):
                                        'jinja2_ansible_filters.AnsibleCoreFiltersExtension'],
                            loader=self.loader, undefined=StrictUndefined)
 
+    self.template_vars = {}
+    self.filename = '<template>'
+
   def _get_template(self, path: str):
     files_children = self.viewer.get_files_children(os.path.basename(path))
     for file_child in files_children:
@@ -72,8 +75,14 @@ class JinjaRenderer(AbstractRenderer):
     log.error('Missing template {}'.format(path))
     return None
 
-  def render(self, content: str, template_vars: dict = None, filename: str = '<template>') -> str:
-    template = self.env.from_string(content)
-    template.filename = filename
+  def set_template_vars(self, template_vars: dict) -> None:
+    self.template_vars = template_vars
 
-    return template.render(template_vars if template_vars else {})
+  def set_filename(self, filename: str) -> None:
+    self.filename = filename
+
+  def render(self, content: str) -> str:
+    template = self.env.from_string(content)
+    template.filename = self.filename
+
+    return template.render(self.template_vars)

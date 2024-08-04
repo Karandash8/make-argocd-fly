@@ -95,6 +95,7 @@ envs:
       <application_name>:
         app_deployer: <bootstrap_application>  ## application that will deploy this application
         app_deployer_env: <environment_name>  ## (OPTIONAL) for multi-environments with single ArgoCD deployment
+        non_k8s_files_to_render: [<filename>]  ## (OPTIONAL) list of files to render that are not Kubernetes resources (e.g., values.yml)
         project: <project_name>  ## ArgoCD project name
         destination_namespace: <namespace>  ## default namespace where the application resources will be deployed
 vars:
@@ -136,7 +137,7 @@ vars:
 ```
 
 ### Variables in `config.yml`
-Variables can be referenced in the configuration file (including in the application parameters section) using the following syntax:
+Variables can be referenced in the configuration file using the following syntax:
 ```${var_name}``` and  ```${var_name[dict_key][...]}```.
 
 Variables can also be used as substring values:
@@ -147,7 +148,7 @@ To include file content in the current Jinja2 template, use the following block:
 
 ```
 {%- filter indent(width=4) %}
-{% include_raw 'app_4/files/file.json' %}
+{% include_raw 'files/file.json' %}
 {% endfilter %}
 ```
 
@@ -158,7 +159,7 @@ To render a template in the current jinja2 template, use the following block:
 
 ```
 {%- filter indent(width=4) %}
-{% include 'app_5/files/file.json.j2' %}
+{% include 'files/file.json.j2' %}
 {% endfilter %}
 ```
 
