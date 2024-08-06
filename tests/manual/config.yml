@@ -9,6 +9,7 @@ envs:
         vars:
           argocd:
             project: management
+            sync_wave: -1
             source:
               target_revision: custom_revision
             destination:

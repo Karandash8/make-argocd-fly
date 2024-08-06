@@ -4,6 +4,8 @@ kind: Application
 metadata:
   name: app-1-management
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
