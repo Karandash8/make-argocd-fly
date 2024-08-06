@@ -37,6 +37,10 @@ class AppOfAppsWorkflow(AbstractWorkflow):
     metadata:
       name: {{ __application.application_name }}
       namespace: {{ argocd.namespace | default('argocd') }}
+    {% if 'sync_wave' in argocd %}
+      annotations:
+        argocd.argoproj.io/sync-wave: "{{ argocd.sync_wave }}"
+    {% endif %}
     {%- if argocd.finalizers | default([]) %}
       finalizers:
       {{ argocd.finalizers | to_nice_yaml | trim }}

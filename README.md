@@ -99,6 +99,7 @@ envs:
 vars:
   argocd:
     namespace: <argocd_namespace>  ## (OPTIONAL) namespace for ArgoCD `Application` resource, default: argocd
+    sync_wave: <application_sync_wave>  ## (OPTIONAL) `sync_wave` annotation for ArgoCD `Application` resource
     finalizers: <argocd_finalizers>  ## (OPTIONAL) default: []
     project: <project_name>  ## (OPTIONAL) ArgoCD project name, default: default
     source:
