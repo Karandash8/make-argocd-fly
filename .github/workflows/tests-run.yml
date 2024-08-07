@@ -48,7 +48,7 @@ jobs:
       matrix:
         python-version:
           - "3.11"
-          - "3.12"
+          # - "3.12" # there is no 3.12 for noble yet (https://github.com/deadsnakes/python3.12)
 
     steps:
       - uses: actions/checkout@v4
