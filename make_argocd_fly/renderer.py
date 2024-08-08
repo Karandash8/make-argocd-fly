@@ -64,7 +64,7 @@ class JinjaRenderer(AbstractRenderer):
                            loader=self.loader, undefined=StrictUndefined)
 
     self.template_vars = {}
-    self.filename = 'Application'
+    self.filename = '<template>'
 
   def _get_template(self, path: str):
     files_children = self.viewer.get_files_children(os.path.basename(path))
