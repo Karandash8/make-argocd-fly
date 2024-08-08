@@ -80,7 +80,7 @@ jobs:
           path: .coverage.*
 
   coverage:
-    name: Coverage
+    name: Run coverage
     needs: pytest
     runs-on: home-use
     steps:
