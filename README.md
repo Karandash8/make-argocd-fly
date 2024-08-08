@@ -1,4 +1,5 @@
-[![cov]([https://<you>.github.io/<repo>/badges/coverage.svg](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Karandash8/26eb92c97bbfac22b938afebac85e7cd/raw/covbadge.json))](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Karandash8/26eb92c97bbfac22b938afebac85e7cd/raw/covbadge.json)
+# make-argocd-fly
+  [![cov](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Karandash8/26eb92c97bbfac22b938afebac85e7cd/raw/covbadge.json)](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Karandash8/26eb92c97bbfac22b938afebac85e7cd/raw/covbadge.json)
 
 ## Description
 `make-argocd-fly` is a tool designed to simplify the generation of Kubernetes manifests for deployment in complex, multi-cluster, and multi-application environments. By leveraging YAML, Jinja2 templates, Kustomize files, and Helm charts via Kustomize. This tool streamlines the process of creating and maintaining Kubernetes resources. While the generated manifests can be deployed using any external deployment tool, such as kubectl, `make-argocd-fly` offers native integration with ArgoCD, enhancing the deployment experience.
