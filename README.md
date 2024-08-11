@@ -98,7 +98,6 @@ envs:
       <application_name>:
         app_deployer: <bootstrap_application>  ## application that will deploy this application
         app_deployer_env: <environment_name>  ## (OPTIONAL) for multi-environments with single ArgoCD deployment
-        non_k8s_files_to_render: [<filename>]  ## (OPTIONAL) list of files to render that are not Kubernetes resources (e.g., values.yml)
 vars:
   argocd:
     namespace: <argocd_namespace>  ## (OPTIONAL) namespace for ArgoCD `Application` resource, default: argocd
@@ -137,9 +136,20 @@ envs:
           <variable_name>: <variable_value>
     vars:
       <variable_name>: <variable_value>
-
 vars:
   <variable_name>: <variable_value>
+```
+
+In order to unset a key of a dictionary variable that is set at a higher level, use the `null` value:
+```
+envs:
+  <environment_name>:
+    vars:
+      <variable_name>:
+        <key>: null
+vars:
+  <variable_name>:
+    <key>: <value>
 ```
 
 ### Variables in `config.yml`
@@ -148,6 +158,11 @@ Variables can be referenced in the configuration file using the following syntax
 
 Variables can also be used as substring values:
 ```prefix-${var_name}-suffix```.
+
+The following variable resolution rules apply:
+- Variable referenced in global scope is resolved using global variables.
+- Variable referenced in per-environment scope is resolved using global and per-environment variables.
+- Variable referenced in per-application scope is resolved using global, per-environment, and per-application variables.
 
 ### Jinja2 templates
 To include file content in the current Jinja2 template, use the following block:
@@ -195,6 +210,16 @@ Example:
 When kustomization overlays are used, kustomization base directory shall be named `base`, overlay directories shall be named after the corresponding environments names.
 Example:
 ```tests/manual/source/app_2```
+
+When Helm `values.yml` file is used, the file shall be named `values.yml` and reside in the application directory.
+On top of that the file shall be explicitly set for rendering in the configuration file:
+```
+envs:
+  <environment_name>:
+    apps:
+      <application_name>:
+        non_k8s_files_to_render: [<filename>]  ## (OPTIONAL) list of files to render that are not Kubernetes resources (e.g., values.yml)
+```
 
 ## Caveats
 - Comments are not rendered in the final output manifests.

@@ -79,17 +79,23 @@ class AppOfAppsWorkflow(AbstractWorkflow):
     await self.find_apps_step.run()
 
     for (app_name, env_name) in self.find_apps_step.get_apps():
-      template_vars = VarsResolver.resolve_all(merge_dicts(self.config.get_vars(), self.config.get_env_vars(env_name),
-                                                           self.config.get_app_vars(env_name, app_name), {
-                                                           '__application': {
-                                                             'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
-                                                             'path': os.path.join(os.path.basename(self.config.get_output_dir()),
-                                                                                  env_name, app_name
-                                                                                  )
-                                                           },
-                                                           'env_name': env_name,
-                                                           'app_name': app_name}),
-                                               var_identifier=self.cli_args.get_var_identifier())
+      global_vars_resolved = VarsResolver.resolve_all(self.config.get_vars(), self.config.get_vars(), var_identifier=self.cli_args.get_var_identifier())
+      env_vars_resolved = merge_dicts(global_vars_resolved,
+                                      VarsResolver.resolve_all(self.config.get_env_vars(env_name),
+                                                               global_vars_resolved,
+                                                               var_identifier=self.cli_args.get_var_identifier()))
+      app_vars_resolved = merge_dicts(env_vars_resolved,
+                                      VarsResolver.resolve_all(self.config.get_app_vars(env_name, app_name),
+                                                               env_vars_resolved,
+                                                               var_identifier=self.cli_args.get_var_identifier()))
+      template_vars = merge_dicts(app_vars_resolved,
+                                  {'__application': {
+                                    'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
+                                    'path': os.path.join(os.path.basename(self.config.get_output_dir()),
+                                                         env_name, app_name)
+                                  },
+                                  'env_name': env_name,
+                                  'app_name': app_name})
 
       self.render_jinja_step.configure(textwrap.dedent(self.APPLICATION_RESOUCE_TEMPLATE), self.app_name, self.env_name, template_vars)
       await self.render_jinja_step.run()
@@ -113,10 +119,19 @@ class SimpleWorkflow(AbstractWorkflow):
   async def process(self) -> None:
     log.debug('Starting to process application {} in environment {}'.format(self.app_name, self.env_name))
 
-    template_vars = VarsResolver.resolve_all(merge_dicts(self.config.get_vars(), self.config.get_env_vars(self.env_name),
-                                                         self.config.get_app_vars(self.env_name, self.app_name),
-                                                         {'env_name': self.env_name, 'app_name': self.app_name}),
-                                             var_identifier=self.cli_args.get_var_identifier())
+    global_vars_resolved = VarsResolver.resolve_all(self.config.get_vars(), self.config.get_vars(), var_identifier=self.cli_args.get_var_identifier())
+    env_vars_resolved = merge_dicts(global_vars_resolved,
+                                    VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
+                                                              global_vars_resolved,
+                                                              var_identifier=self.cli_args.get_var_identifier()))
+    app_vars_resolved = merge_dicts(env_vars_resolved,
+                                    VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
+                                                              env_vars_resolved,
+                                                              var_identifier=self.cli_args.get_var_identifier()))
+    template_vars = merge_dicts(app_vars_resolved,
+                                {'env_name': self.env_name,
+                                'app_name': self.app_name})
+
     if self.cli_args.get_print_vars():
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 
@@ -151,11 +166,19 @@ class KustomizeWorkflow(AbstractWorkflow):
   async def process(self) -> None:
     log.debug('Starting to process application {} in environment {}'.format(self.app_name, self.env_name))
 
-    template_vars = VarsResolver.resolve_all(merge_dicts(self.config.get_vars(), self.config.get_env_vars(self.env_name),
-                                                         self.config.get_app_vars(self.env_name, self.app_name),
-                                                         {'env_name': self.env_name, 'app_name': self.app_name}),
-                                             var_identifier=self.cli_args.get_var_identifier()
-                                             )
+    global_vars_resolved = VarsResolver.resolve_all(self.config.get_vars(), self.config.get_vars(), var_identifier=self.cli_args.get_var_identifier())
+    env_vars_resolved = merge_dicts(global_vars_resolved,
+                                    VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
+                                                              global_vars_resolved,
+                                                              var_identifier=self.cli_args.get_var_identifier()))
+    app_vars_resolved = merge_dicts(env_vars_resolved,
+                                    VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
+                                                              env_vars_resolved,
+                                                              var_identifier=self.cli_args.get_var_identifier()))
+    template_vars = merge_dicts(app_vars_resolved,
+                                {'env_name': self.env_name,
+                                'app_name': self.app_name})
+
     if self.cli_args.get_print_vars():
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 

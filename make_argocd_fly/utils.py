@@ -29,7 +29,7 @@ class VarsResolver:
 
     return (var_start + 1, var_end)
 
-  def _resolve_value(self, vars: dict, value: str) -> str:
+  def _resolve_value(self, value: str, source: dict) -> str:
     resolved_value = ''
     try:
       start = 0
@@ -42,7 +42,7 @@ class VarsResolver:
         if (var_start - 1) > start:
           resolved_value += value[start:var_start - 1]
 
-        resolved_value += value[var_start:var_end + 1].format(**vars)
+        resolved_value += value[var_start:var_end + 1].format(**source)
         self.resolution_counter += 1
         start = var_end + 1
 
@@ -60,33 +60,33 @@ class VarsResolver:
       log.error('Variable {} not found in vars'.format(value[var_start - 1:var_end + 1]))
       raise
 
-  def _iterate(self, vars: dict, value=None, initial=True):
-    value = value or vars if initial else value
+  def _iterate(self, to_resolve: dict, source: dict, value=None, initial=True):
+    value = value or to_resolve if initial else value
     if isinstance(value, dict):
       for k, v in value.items():
-        value[k] = self._iterate(vars, v, False)
+        value[k] = self._iterate(to_resolve, source, v, False)
     elif isinstance(value, list):
       for idx, i in enumerate(value):
-        value[idx] = self._iterate(vars, i, False)
+        value[idx] = self._iterate(to_resolve, source, i, False)
     elif isinstance(value, str):
-      value = self._resolve_value(vars, value)
+      value = self._resolve_value(value, source)
     return value
 
   def get_resolutions(self) -> int:
     return self.resolution_counter
 
-  def resolve(self, vars: dict) -> dict:
+  def resolve(self, to_resolve: dict, source: dict) -> dict:
     self.resolution_counter = 0
 
-    return self._iterate(copy.deepcopy(vars))
+    return self._iterate(copy.deepcopy(to_resolve), source)
 
   @staticmethod
-  def resolve_all(vars: dict, var_identifier: str = '$') -> dict:
+  def resolve_all(to_resolve: dict, source: dict, var_identifier: str = '$') -> dict:
       resolver = VarsResolver(var_identifier)
 
-      resolved_vars = resolver.resolve(vars)
+      resolved_vars = resolver.resolve(to_resolve, source)
       while resolver.get_resolutions() > 0:
-        resolved_vars = resolver.resolve(resolved_vars)
+        resolved_vars = resolver.resolve(resolved_vars, source)
 
       return resolved_vars
 
@@ -147,8 +147,8 @@ def merge_dicts(*dicts):
         merged[key] = merge_dicts(merged[key], value)
       elif isinstance(value, dict):
         merged[key] = merge_dicts({}, value)
-      elif value is None:
-        # If the value on the right is None, delete the key on the left
+      elif value is None and key in merged:
+        # If the value on the right is None and key exists on the left, delete the key on the left
         merged.pop(key, None)
       else:
         merged[key] = value

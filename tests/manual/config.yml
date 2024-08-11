@@ -2,7 +2,7 @@ envs:
   management:
     apps:
       bootstrap: {}
-      core_deployer: {app_deployer: bootstrap, vars: {argocd: {project: default, destination: {namespace: kube-system}}}}
+      core_deployer: {app_deployer: bootstrap, vars: {argocd: "${argocd_app_presets[default]}"}}
       service_deployer: {app_deployer: bootstrap, vars: {argocd: {project: default, destination: {namespace: kube-system}}}}
       app_1:
         app_deployer: core_deployer
@@ -85,6 +85,11 @@ vars:
       # https://www.arthurkoziel.com/fixing-argocd-crd-too-long-error/
       syncOptions:
         - ServerSideApply=true
+  argocd_app_presets:
+    default:
+      project: default
+      destination:
+        namespace: ${namespace}
   namespace: kube-default
   version: 0.1.0
   double_reference_version: ${reference_version}
