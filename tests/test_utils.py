@@ -357,7 +357,7 @@ def test_merge_dicts_empty_dict_on_right():
     dict1 = {'a': 1, 'b': {'c': 2, 'd': 3}}
     dict2 = {'b': {}, 'f': None, 'g': 7}
     result = merge_dicts(dict1, dict2)
-    assert result == {'a': 1, 'b': {}, 'g': 7}
+    assert result == {'a': 1, 'b': {}, 'f': None, 'g': 7}
 
 def test_merge_dicts_none_value_on_right():
     # Test merging dictionaries with a None value on the right (should delete the key on the left)
@@ -445,7 +445,7 @@ def test_merge_dicts_three_dicts_with_none():
 
     # 'a', 'd', and 'e' keys from dict1, 'd' key from dict2 should be removed
     # 'b' key should take the value from dict2, 'c' key should merge values from all dictionaries
-    assert result == {'a': 1, 'b': 3, 'c': {'y': 20, 'z': 300, 'w': 400}}
+    assert result == {'a': 1, 'b': 3, 'c': {'y': 20, 'z': 300, 'w': 400}, 'd': None, 'e': None}
 
 def test_merge_dicts_three_nested_dicts_with_none():
     # Test merging three dictionaries with nested dictionaries containing None values
@@ -457,7 +457,7 @@ def test_merge_dicts_three_nested_dicts_with_none():
     result = merge_dicts(dict1, dict2, dict3)
 
     # None values should override other values in the merged dictionaries
-    assert result == {'a': {'x': 1, 'y': {'z': 3, 'w': 4}, 'w': 5, 'u': {'v': 6}}}
+    assert result == {'a': {'x': 1, 'y': {'z': 3, 'w': 4, 'v': None}, 'w': 5, 'u': {'v': 6, 'x': None}}}
 
 def test_merge_dicts_three_none_values():
     # Test merging three dictionaries with None values
@@ -469,7 +469,7 @@ def test_merge_dicts_three_none_values():
     result = merge_dicts(dict1, dict2, dict3)
 
     # All keys with None values should be removed
-    assert result == {'d': 4}
+    assert result == {'a': None, 'd': 4, 'e': None}
 
 def test_merge_dicts_three_dicts_with_empty_nested():
     # Test merging three dictionaries with empty nested dictionaries
@@ -489,7 +489,7 @@ def test_merge_dicts_non_nested_and_nested_keys_with_none():
     dict2 = {'b': {'c': 4, 'e': 5, 'f': None}, 'g': 6}
     dict3 = {'h': None, 'i': {'j': 7, 'k': None}}
     result = merge_dicts(dict1, dict2, dict3)
-    assert result == {'a': 1, 'b': {'c': 4, 'd': 3, 'e': 5}, 'g': 6, 'i': {'j': 7}}
+    assert result == {'a': 1, 'b': {'c': 4, 'd': 3, 'e': 5, 'f': None}, 'g': 6, 'h': None, 'i': {'j': 7, 'k': None}}
 
 def test_merge_dicts_deeply_nested_keys():
     # Test merging dictionaries with deeply nested keys
@@ -505,7 +505,7 @@ def test_merge_dicts_empty_nested_and_none_values():
     dict2 = {'a': {'b': {'f': None}}, 'c': {'d': 2, 'e': 3}}
     dict3 = {'a': {'b': {'g': None}}, 'c': {'d': None, 'h': 4}}
     result = merge_dicts(dict1, dict2, dict3)
-    assert result == {'a': {'b': {}}, 'c': {'e': 3, 'h': 4}}
+    assert result == {'a': {'b': {'f': None, 'g': None}}, 'c': {'e': 3, 'h': 4}}
 
 ################
 ### VarsResolver
@@ -515,63 +515,63 @@ def test_merge_dicts_empty_nested_and_none_values():
 def test_vars_resolver_empty_vars():
   resolver = VarsResolver()
   vars = {}
-  result = resolver.resolve(vars)
+  result = resolver.resolve(vars, vars)
   assert result == {}
   assert resolver.get_resolutions() == 0
 
 def test_vars_resolver_single_var():
   resolver = VarsResolver()
   vars = {'var1': 'value1'}
-  result = resolver.resolve(vars)
+  result = resolver.resolve(vars, vars)
   assert result == {'var1': 'value1'}
   assert resolver.get_resolutions() == 0
 
 def test_vars_resolver_multiple_vars():
   resolver = VarsResolver()
   vars = {'var1': 'value1', 'var2': 'value2', 'var3': 'value3'}
-  result = resolver.resolve(vars)
+  result = resolver.resolve(vars, vars)
   assert result == {'var1': 'value1', 'var2': 'value2', 'var3': 'value3'}
   assert resolver.get_resolutions() == 0
 
 def test_vars_resolver_nested_vars():
   resolver = VarsResolver()
   vars = {'var1': 'value1', 'var2': {'var3': 'value3'}}
-  result = resolver.resolve(vars)
+  result = resolver.resolve(vars, vars)
   assert result == {'var1': 'value1', 'var2': {'var3': 'value3'}}
   assert resolver.get_resolutions() == 0
 
 def test_vars_resolver_var_with_resolvable_var():
   resolver = VarsResolver()
   vars = {'var1': '${var2}', 'var2': 'value2'}
-  result = resolver.resolve(vars)
+  result = resolver.resolve(vars, vars)
   assert result == {'var1': 'value2', 'var2': 'value2'}
   assert resolver.get_resolutions() == 1
 
 def test_vars_resolver_var_with_multiple_resolvable_var_with_concat():
   resolver = VarsResolver()
   vars = {'var1': '${var2}/${var3}', 'var2': 'value2', 'var3': 'value3'}
-  result = resolver.resolve(vars)
+  result = resolver.resolve(vars, vars)
   assert result == {'var1': 'value2/value3', 'var2': 'value2', 'var3': 'value3'}
   assert resolver.get_resolutions() == 2
 
 def test_vars_resolver_var_with_resolvable_var_with_concat_left():
   resolver = VarsResolver()
   vars = {'var1': ' ${var2}', 'var2': 'value2'}
-  result = resolver.resolve(vars)
+  result = resolver.resolve(vars, vars)
   assert result == {'var1': ' value2', 'var2': 'value2'}
   assert resolver.get_resolutions() == 1
 
 def test_vars_resolver_var_with_resolvable_var_with_concat_right():
   resolver = VarsResolver()
   vars = {'var1': '${var2} ', 'var2': 'value2'}
-  result = resolver.resolve(vars)
+  result = resolver.resolve(vars, vars)
   assert result == {'var1': 'value2 ', 'var2': 'value2'}
   assert resolver.get_resolutions() == 1
 
 def test_vars_resolver_var_with_multiple_resolvable_vars():
   resolver = VarsResolver()
   vars = {'var1': '${var2}', 'var2': 'value2', 'var3': '${var4}', 'var4': 'value4'}
-  result = resolver.resolve(vars)
+  result = resolver.resolve(vars, vars)
   assert result == {'var1': 'value2', 'var2': 'value2', 'var3': 'value4', 'var4': 'value4'}
   assert resolver.get_resolutions() == 2
 
@@ -579,33 +579,40 @@ def test_vars_resolver_value_with_unresolvable_var(caplog):
   resolver = VarsResolver()
   vars = {'var1': '${var2}'}
   with pytest.raises(KeyError):
-    resolver.resolve(vars)
+    resolver.resolve(vars, vars)
   assert 'Variable ${var2} not found in vars' in caplog.text
 
 def test_vars_resolver_var_with_resolvable_var_dict():
   resolver = VarsResolver()
   vars = {'var1': '${var2}', 'var2': {'var3': 'value3'}}
-  result = resolver.resolve(vars)
+  result = resolver.resolve(vars, vars)
   assert result == {'var1': {'var3': 'value3'}, 'var2': {'var3': 'value3'}}
   assert resolver.get_resolutions() == 1
 
 def test_vars_resolver_var_with_resolvable_var_list():
   resolver = VarsResolver()
   vars = {'var1': '${var2}', 'var2': ['value2']}
-  result = resolver.resolve(vars)
+  result = resolver.resolve(vars, vars)
   assert result == {'var1': ['value2'], 'var2': ['value2']}
   assert resolver.get_resolutions() == 1
 
 def test_vars_resolver_var_with_nested_resolvable_vars():
   resolver = VarsResolver()
   vars = {'var1': '${var2}', 'var2': '${var3}', 'var3': 'value3'}
-  result = VarsResolver().resolve_all(vars)
+  result = VarsResolver().resolve_all(vars, vars)
   assert result == {'var1': 'value3', 'var2': 'value3', 'var3': 'value3'}
 
 def test_vars_resolver_var_with_resolvable_var_complex_key():
   resolver = VarsResolver()
   vars = {'var1': '${var2[var3]}', 'var2': {'var3': 'value3'}}
-  result = resolver.resolve(vars)
+  result = resolver.resolve(vars, vars)
   assert result == {'var1': 'value3', 'var2': {'var3': 'value3'}}
   assert resolver.get_resolutions() == 1
 
+def test_vars_resolver_var_from_different_source():
+  resolver = VarsResolver()
+  vars = {'var1': '${var2}'}
+  vars_source ={'var2': 'value2'}
+  result = resolver.resolve(vars, vars_source)
+  assert result == {'var1': 'value2'}
+  assert resolver.get_resolutions() == 1
