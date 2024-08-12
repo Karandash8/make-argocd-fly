@@ -107,6 +107,8 @@ vars:
     source:
       repo_url: <argocd_repo_url>  ## URL to the Git repository
       target_revision: <argocd_target_revision>  ## target revision for the Git repository
+      directory:
+        recurse: <true|false>  ## (OPTIONAL) not set by default
     destination:
       server: <kube_apiserver>  ## kube-apiserver address
       namespace: <namespace>  ## (OPTIONAL) default namespace where the application resources will be deployed, default: argocd
