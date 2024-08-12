@@ -53,6 +53,10 @@ class AppOfAppsWorkflow(AbstractWorkflow):
         repoURL: {{ argocd.source.repo_url }}
         targetRevision: {{ argocd.source.target_revision }}
         path: {{ __application.path }}
+    {% if 'directory' in argocd.source and 'recurse' in argocd.source.directory %}
+        directory:
+          recurse: {{ argocd.source.directory.recurse }}
+    {% endif %}
       destination:
         server: {{ argocd.destination.server }}
         namespace: {{ argocd.destination.namespace | default('argocd') }}

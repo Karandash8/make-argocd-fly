@@ -1,0 +1,22 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-13-management
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: management
+  source:
+    repoURL: url
+    targetRevision: revision
+    path: output/management/app_13
+    directory:
+      recurse: true
+  destination:
+    server: management-api-server
+    namespace: kube-default
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true
