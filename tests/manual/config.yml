@@ -47,7 +47,7 @@ envs:
     vars:
       argocd:
         destination:
-          server: management-api-server
+          server: ${env_name}-api-server
         sync_policy:
           automated: null
       json_var: json_management
@@ -65,7 +65,7 @@ envs:
     vars:
       argocd:
         destination:
-          server: external_1-api-server
+          server: ${env_name}-api-server
   external_2:
     apps: {}
     vars: {}
