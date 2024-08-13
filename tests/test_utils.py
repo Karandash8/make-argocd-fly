@@ -7,13 +7,13 @@ from make_argocd_fly.utils import get_filename_elements, extract_single_resource
 ### get_filename_elements
 ###################
 
-def test_resource_parser_empty():
+def test_get_filename_elements_empty():
   resource_yml = '''\
     '''
 
   assert get_filename_elements(textwrap.dedent(resource_yml)) == []
 
-def test_resource_parser_simple():
+def test_get_filename_elements_simple():
   resource_yml = '''\
     apiVersion: apps/v1
     kind: Deployment
@@ -23,7 +23,7 @@ def test_resource_parser_simple():
 
   assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
-def test_resource_parser_missing_name():
+def test_get_filename_elements_missing_name():
   resource_yml = '''\
     apiVersion: apps/v1
     kind: Deployment
@@ -33,7 +33,7 @@ def test_resource_parser_missing_name():
 
   assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment']
 
-def test_resource_parser_with_comments():
+def test_get_filename_elements_with_comments():
   resource_yml = '''\
     apiVersion: apps/v1
     #kind: DaemonSet
@@ -46,7 +46,7 @@ def test_resource_parser_with_comments():
 
   assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
-def test_resource_parser_with_leading_comments():
+def test_get_filename_elements_with_leading_comments():
   resource_yml = '''\
     #kind: DaemonSet
     apiVersion: apps/v1
@@ -59,7 +59,7 @@ def test_resource_parser_with_leading_comments():
 
   assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
-def test_resource_parser_with_comments_and_leading_kind():
+def test_get_filename_elements_with_comments_and_leading_kind():
   resource_yml = '''\
     kind: Deployment
     #kind: DaemonSet
@@ -72,7 +72,7 @@ def test_resource_parser_with_comments_and_leading_kind():
 
   assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
-def test_resource_parser_with_messed_up_order_metadata_at_the_beginning():
+def test_get_filename_elements_with_messed_up_order_metadata_at_the_beginning():
   resource_yml = '''\
     metadata:
       name: grafana
@@ -84,7 +84,7 @@ def test_resource_parser_with_messed_up_order_metadata_at_the_beginning():
 
   assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
-def test_resource_parser_with_messed_up_order_metadata_in_the_middle():
+def test_get_filename_elements_with_messed_up_order_metadata_in_the_middle():
   resource_yml = '''\
     kind: Deployment
     apiVersion: apps/v1
@@ -96,7 +96,7 @@ def test_resource_parser_with_messed_up_order_metadata_in_the_middle():
 
   assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
-def test_resource_parser_with_messed_up_order_name_extra_spaces():
+def test_get_filename_elements_with_messed_up_order_name_extra_spaces():
   resource_yml = '''\
     kind: Deployment
     apiVersion: apps/v1
@@ -108,7 +108,7 @@ def test_resource_parser_with_messed_up_order_name_extra_spaces():
 
   assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment']
 
-def test_resource_parser_with_messed_up_order_name_is_not_first():
+def test_get_filename_elements_with_messed_up_order_name_is_not_first():
   resource_yml = '''\
     kind: Deployment
     apiVersion: apps/v1
@@ -121,7 +121,7 @@ def test_resource_parser_with_messed_up_order_name_is_not_first():
 
   assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
-def test_resource_parser_with_messed_up_order_name_is_not_first_with_comment_1():
+def test_get_filename_elements_with_messed_up_order_name_is_not_first_with_comment_1():
   resource_yml = '''\
     kind: Deployment
     apiVersion: apps/v1
@@ -135,7 +135,7 @@ def test_resource_parser_with_messed_up_order_name_is_not_first_with_comment_1()
 
   assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
-def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_2():
+def test_get_filename_elements_with_messed_up_order_name_is_not_first_with_comments_2():
   resource_yml = '''\
     kind: Deployment
     apiVersion: apps/v1
@@ -149,7 +149,7 @@ def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_2(
 
   assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
-def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_3():
+def test_get_filename_elements_with_messed_up_order_name_is_not_first_with_comments_3():
   resource_yml = '''\
     kind: Deployment
     apiVersion: apps/v1
@@ -163,7 +163,7 @@ def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_3(
 
   assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
 
-def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_4():
+def test_get_filename_elements_with_messed_up_order_name_is_not_first_with_comments_4():
   resource_yml = '''\
     kind: Deployment
     apiVersion: apps/v1
@@ -181,7 +181,7 @@ def test_resource_parser_with_messed_up_order_name_is_not_first_with_comments_4(
 ### extract_single_resource
 ###################
 
-def test_multi_resource_parser_with_valid_yaml():
+def test_extract_single_resource_with_valid_yaml():
   # Test when valid YAML is provided with multiple resources
   multi_resource_yml = '''\
     kind: Deployment
@@ -201,7 +201,7 @@ def test_multi_resource_parser_with_valid_yaml():
 
   assert result == expected
 
-def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_top():
+def test_extract_single_resource_with_valid_yaml_extra_separator_at_the_top():
   # Test when valid YAML is provided with multiple resources
   multi_resource_yml = '''\
     ---
@@ -222,7 +222,7 @@ def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_top():
 
   assert result == expected
 
-def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_bottom():
+def test_extract_single_resource_with_valid_yaml_extra_separator_at_the_bottom():
   # Test when valid YAML is provided with multiple resources
   multi_resource_yml = '''\
     kind: Deployment
@@ -243,7 +243,36 @@ def test_multi_resource_parser_with_valid_yaml_extra_separator_at_the_bottom():
 
   assert result == expected
 
-def test_multi_resource_parser_with_valid_yaml_not_an_extra_separator():
+def test_extract_single_resource_with_single_yaml_extra_separator_at_the_bottom():
+  multi_resource_yml = '''\
+    kind: DaemonSet
+    metadata:
+      name: prometheus
+    ---
+    '''
+
+  result = list(extract_single_resource(textwrap.dedent(multi_resource_yml)))
+  expected = [
+      ('kind: DaemonSet\nmetadata:\n  name: prometheus')
+  ]
+
+  assert result == expected
+
+def test_extract_single_resource_with_single_yaml_extra_separator_at_the_bottom_without_new_line():
+  multi_resource_yml = '''\
+    kind: DaemonSet
+    metadata:
+      name: prometheus
+    ---'''
+
+  result = list(extract_single_resource(textwrap.dedent(multi_resource_yml)))
+  expected = [
+      ('kind: DaemonSet\nmetadata:\n  name: prometheus')
+  ]
+
+  assert result == expected
+
+def test_extract_single_resource_with_valid_yaml_not_an_extra_separator():
   # Test when valid YAML is provided with multiple resources
   multi_resource_yml = '''\
     kind: Deployment
@@ -264,7 +293,7 @@ def test_multi_resource_parser_with_valid_yaml_not_an_extra_separator():
 
   assert result == expected
 
-def test_multi_resource_parser_with_valid_yaml_not_an_extra_separator_2():
+def test_extract_single_resource_with_valid_yaml_not_an_extra_separator_2():
   # Test when valid YAML is provided with multiple resources
   multi_resource_yml = '''\
     kind: Deployment

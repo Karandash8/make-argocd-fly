@@ -114,7 +114,9 @@ def get_filename_elements(resource_yml: str) -> list:
 
 def extract_single_resource(multi_resource_yml: str) -> str:
   for resource_yml in multi_resource_yml.split('\n---\n'):
-    resource_yml = resource_yml.strip().lstrip('---\n')
+    resource_yml = resource_yml.strip()
+    resource_yml = re.sub('^---\n', '', resource_yml)
+    resource_yml = re.sub('\n---$', '', resource_yml)
 
     if resource_yml:
       yield resource_yml
