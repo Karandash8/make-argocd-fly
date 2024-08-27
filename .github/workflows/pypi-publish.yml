@@ -18,7 +18,7 @@ permissions:
 jobs:
   build:
     name: Build make-argocd-fly
-    runs-on: home-use
+    runs-on: make-argocd-fly
 
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +52,7 @@ jobs:
     name: Publish make-argocd-fly to TestPyPI
     needs:
       - build
-    runs-on: home-use
+    runs-on: make-argocd-fly
 
     environment:
       name: testpypi
@@ -108,7 +108,7 @@ jobs:
     name: Publish make-argocd-fly to PyPI
     needs:
       - publish-to-testpypi
-    runs-on: home-use
+    runs-on: make-argocd-fly
 
     environment:
       name: pypi
