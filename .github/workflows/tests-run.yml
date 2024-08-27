@@ -13,7 +13,7 @@ permissions:
 jobs:
   flake8:
     name: Run flake8
-    runs-on: home-use
+    runs-on: make-argocd-fly
 
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
 
   pytest:
     name: "Run pytest with Python ${{ matrix.python-version }}"
-    runs-on: home-use
+    runs-on: make-argocd-fly
 
     strategy:
       fail-fast: false
@@ -82,7 +82,7 @@ jobs:
   coverage:
     name: Run coverage
     needs: pytest
-    runs-on: home-use
+    runs-on: make-argocd-fly
     steps:
       - name: "Check out the repo"
         uses: "actions/checkout@v4"
