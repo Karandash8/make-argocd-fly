@@ -232,6 +232,12 @@ envs:
         exclude_rendering: [<directory>]  ## (OPTIONAL) list of directories to exclude from rendering (e.g., unit test files for opa)
 ```
 
+Additionally you could use the `read_files` extension in a jinja template to include raw content of all files in provided directory.
+
+**Note** If the directory has kubernetes resource files, you will need to exclude the directory from rendering explicitely using `exclude_rendering`.
+
+**Note2** Reading files is not recursive. Only files in provided directory are read
+
 ## Caveats
 - Comments are not rendered in the final output manifests.
 

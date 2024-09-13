@@ -66,18 +66,18 @@ class ReadFilesExtension(Extension):
     files_content = []
 
     if os.path.isdir(directory_path):
-        for filename in os.listdir(directory_path):
-            filepath = os.path.join(directory_path, filename)
-            if os.path.isdir(filepath):
-              log.debug('Filepath {} is a directory'.format(filepath))
-            else:
-              if os.path.isfile(filepath):
-                  with open(filepath, 'r') as file:
-                      # This will add a dictionary for each file with its name and content
-                      files_content.append({
-                          'name': filename,
-                          'content': file.read()
-                      })
+      for filename in os.listdir(directory_path):
+        filepath = os.path.join(directory_path, filename)
+        if os.path.isdir(filepath):
+          log.debug('Filepath {} is a directory'.format(filepath))
+        else:
+          if os.path.isfile(filepath):
+            with open(filepath, 'r') as file:
+                # This will add a dictionary for each file with its name and content
+                files_content.append({
+                    'name': filename,
+                    'content': file.read()
+                })
     return files_content
 
 class JinjaRenderer(AbstractRenderer):
