@@ -1,44 +1,16 @@
 # This workflow will install Python dependencies, run tests and lint with a single version of Python
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Test
+name: Coverage
 
 on:
-  pull_request:
+  push:
     branches: [ "main" ]
 
 permissions:
   contents: read
 
 jobs:
-  flake8:
-    name: Run flake8
-    runs-on: make-argocd-fly
-
-    steps:
-      - uses: actions/checkout@v4
-      - if: ${{ runner.arch == 'arm64' }}
-        name: Set up Python
-        uses: deadsnakes/action@v3.1.0
-        with:
-          python-version: "3.11"
-      - if: ${{ runner.arch == 'amd64' }}
-        name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install flake8
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      - name: Lint with flake8
-        run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 make_argocd_fly --count --select=E9,F63,F7,F82 --show-source --extend-exclude=".venv,.vscode,.pytest_cache,.github,dist" --statistics
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 make_argocd_fly --count --indent-size=2 --max-complexity=10 --max-line-length=150 --extend-exclude=".venv,.vscode,.pytest_cache,.github,dist" --statistics
-
   pytest:
     name: "Run pytest with Python ${{ matrix.python-version }}"
     runs-on: make-argocd-fly
@@ -113,7 +85,7 @@ jobs:
 
       - name: "Make badge"
         uses: schneegans/dynamic-badges-action@v1.7.0
-        continue-on-error: true
+        continue-on-error: false
         with:
           auth: ${{ secrets.GIST_TOKEN }}
           gistID: 26eb92c97bbfac22b938afebac85e7cd
