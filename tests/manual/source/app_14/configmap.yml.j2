@@ -1,0 +1,12 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: |-
+{%- filter indent(width=4) %}
+{% include 'files/file.json.j2' %}
+{% endfilter %}
+
+  ip: {{ 'localhost' | dig }}
