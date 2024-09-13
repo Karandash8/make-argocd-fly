@@ -1,0 +1,10 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: prometheus-config
+data:
+{% for file in read_files('./tests/manual/source/app_15/files') %}
+  {{ file.name }}: |
+    {{ file.content | indent(4) }}
+{% endfor %}

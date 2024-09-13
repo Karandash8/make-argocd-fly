@@ -50,6 +50,35 @@ class IncludeRawExtension(Extension):
   def _render(self, filename):
     return Markup(self.environment.loader.get_source(self.environment, filename)[0])
 
+class ReadFilesExtension(Extension):
+  def __init__(self, environment):
+    super(ReadFilesExtension, self).__init__(environment)
+    
+    # Add our custom function to Jinja's globals when this extension is initialized
+    environment.globals['read_files'] = self.read_files
+
+  @staticmethod
+  def read_files(directory_path):
+    """ 
+    Return a list of dictionaries with filenames and their contents 
+    for each file in the given directory.
+    """
+    files_content = []
+
+    if os.path.isdir(directory_path):
+        for filename in os.listdir(directory_path):
+            filepath = os.path.join(directory_path, filename)
+            if os.path.isdir(filepath):
+              log.debug('Filepath {} is a directory'.format(filepath))
+            else:
+              if os.path.isfile(filepath):
+                  with open(filepath, 'r') as file:
+                      # This will add a dictionary for each file with its name and content
+                      files_content.append({
+                          'name': filename,
+                          'content': file.read()
+                      })
+    return files_content
 
 class JinjaRenderer(AbstractRenderer):
   def __init__(self, viewer: ResourceViewer = None) -> None:
@@ -59,6 +88,7 @@ class JinjaRenderer(AbstractRenderer):
     else:
       self.loader = BaseLoader()
     self.env = Environment(extensions=[IncludeRawExtension,
+                                       ReadFilesExtension,
                                        DigExtension,
                                        'jinja2_ansible_filters.AnsibleCoreFiltersExtension'],
                            loader=self.loader, undefined=StrictUndefined)
