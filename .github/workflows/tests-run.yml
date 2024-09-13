@@ -69,15 +69,12 @@ jobs:
       - name: "Run tox for ${{ matrix.python-version }}"
         run: |
           python -m tox
-      - name: debug
-        run: |
-          pwd
-          ls -la
       - name: "Upload coverage data"
         uses: actions/upload-artifact@v4
         with:
           name: covdata
           path: .coverage.*
+          include-hidden-files: true
 
   coverage:
     name: Run coverage
