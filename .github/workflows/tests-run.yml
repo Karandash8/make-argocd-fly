@@ -113,6 +113,7 @@ jobs:
 
       - name: "Make badge"
         uses: schneegans/dynamic-badges-action@v1.7.0
+        continue-on-error: true
         with:
           auth: ${{ secrets.GIST_TOKEN }}
           gistID: 26eb92c97bbfac22b938afebac85e7cd
