@@ -54,14 +54,21 @@ class BaseResourceGenerationStep(AbstractStep):
     self.resources = []
 
   def _generate_file_path(self, resource_yml: str, source_filename: str = None, element_rel_path: str = '.') -> str:
+    app_params = get_config().get_app_params(self.env_name, self.app_name)
+
     filename_elements = get_filename_elements(resource_yml)
     if not filename_elements:
-      app_params = get_config().get_app_params(self.env_name, self.app_name)
       if source_filename and 'non_k8s_files_to_render' in app_params and source_filename in app_params['non_k8s_files_to_render']:
         filename_elements = [os.path.basename(source_filename.split('.')[0])]
       else:
         raise ValueError("Filename elements could not be determined")
 
+    if 'exclude_rendering' in app_params:
+      for exclude in app_params['exclude_rendering']:
+        if element_rel_path.startswith(exclude):
+          log.debug("Excluded rendering for file {}".format(element_rel_path))
+          raise ValueError("Excluded rendering for file {}".format(element_rel_path))
+    
     return os.path.join(
       get_app_rel_path(self.app_name, self.env_name),
       os.path.dirname(element_rel_path),

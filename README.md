@@ -222,6 +222,15 @@ envs:
       <application_name>:
         non_k8s_files_to_render: [<filename>]  ## (OPTIONAL) list of files to render that are not Kubernetes resources (e.g., values.yml)
 ```
+### Exclude certain directories
+In case you have certain files in source application directory that you would like to not be rendered, you can use `exclude_rendering` application parameter in your configuration to exclude it from rendering
+```
+envs:
+  <environment_name>:
+    apps:
+      <application_name>:
+        exclude_rendering: [<directory>]  ## (OPTIONAL) list of directories to exclude from rendering (e.g., unit test files for opa)
+```
 
 ## Caveats
 - Comments are not rendered in the final output manifests.
