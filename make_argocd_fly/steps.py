@@ -68,7 +68,7 @@ class BaseResourceGenerationStep(AbstractStep):
         if element_rel_path.startswith(exclude):
           log.debug("Excluded rendering for file {}".format(element_rel_path))
           raise ValueError("Excluded rendering for file {}".format(element_rel_path))
-    
+
     return os.path.join(
       get_app_rel_path(self.app_name, self.env_name),
       os.path.dirname(element_rel_path),
