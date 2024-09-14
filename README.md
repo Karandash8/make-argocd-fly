@@ -189,6 +189,18 @@ To render a template in the current jinja2 template, use the following block:
 Example:
 ```tests/manual/source/app_5```
 
+To render files from a subdirectory as YAML key-value pairs (where file name would be the key and file content would be the value),
+use the following block:
+
+```
+{%- filter indent(width=2) %}
+{% include_all_as_yaml_kv 'files' %}
+{% endfilter %}
+```
+
+Example:
+```tests/manual/source/app_15```
+
 To perform a DNS lookup, use the following filter:
 
 ```
