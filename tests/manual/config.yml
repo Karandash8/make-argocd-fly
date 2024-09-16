@@ -46,6 +46,7 @@ envs:
       app_13: {app_deployer: service_deployer, vars: {argocd: {project: management, source: {directory: {recurse: true}}, destination: {namespace: kube-default}}}}
       app_14: {app_deployer: service_deployer, exclude_rendering: ['testcases','cases'], vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
       app_15: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
+      app_16: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
     vars:
       argocd:
         destination:

@@ -5,5 +5,5 @@ metadata:
   name: prometheus-config
 data:
 {%- filter indent(width=2) %}
-{% include_all_as_yaml_kv 'files' %}
+{% include_all_as_yaml_kv 'files/' %}
 {% endfilter %}

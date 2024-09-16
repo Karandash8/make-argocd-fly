@@ -283,3 +283,50 @@ def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_kv(tmp_pa
   assert textwrap.dedent(output_file_1) in renderer.render(textwrap.dedent(TEMPLATE))
   assert textwrap.dedent(output_file_2) in renderer.render(textwrap.dedent(TEMPLATE))
   assert textwrap.dedent(output_file_3) in renderer.render(textwrap.dedent(TEMPLATE))
+
+def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_list(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_0 = dir_root / 'dir_0'
+  dir_0.mkdir()
+  files = dir_0 / 'files'
+  files.mkdir()
+  files_subdir = files / 'files_subdir'
+  files_subdir.mkdir()
+  FILE_1 = 'key_1: {{ content }}'
+  file_1 = files / 'file_1.yml.j2'
+  file_1.write_text(FILE_1)
+  FILE_2 = 'key_2: value 2'
+  file_2 = files / 'file_2.yml'
+  file_2.write_text(FILE_2)
+  FILE_3 = '''\
+  key_3: value 3
+  multiline_key_3: |
+    multiline value 3
+  '''
+  file_3 = files_subdir / 'file_3.yml'
+  file_3.write_text(textwrap.dedent(FILE_3))
+
+  resource_viewer = ResourceViewer(str(dir_0))
+  resource_viewer.build()
+  renderer = JinjaRenderer(resource_viewer)
+
+  TEMPLATE = '''\
+    {% include_all_as_yaml_list 'files' %}
+  '''
+
+  renderer.set_template_vars({'content': 'value 1'})
+  output_file_1 = '''\
+    - key_1: value 1
+  '''
+  output_file_2 = '''\
+    - key_2: value 2
+  '''
+  output_file_3 = '''\
+    - key_3: value 3
+      multiline_key_3: |
+        multiline value 3
+  '''
+  assert textwrap.dedent(output_file_1) in renderer.render(textwrap.dedent(TEMPLATE))
+  assert textwrap.dedent(output_file_2) in renderer.render(textwrap.dedent(TEMPLATE))
+  assert textwrap.dedent(output_file_3) in renderer.render(textwrap.dedent(TEMPLATE))
