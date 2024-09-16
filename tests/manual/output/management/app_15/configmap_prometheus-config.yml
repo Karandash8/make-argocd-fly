@@ -4,8 +4,11 @@ apiVersion: v1
 metadata:
   name: prometheus-config
 data:
-  file_1.yml.j2: |
-    namespace: {{ namespace }}
+  file_3.yml: |
+    key_composite:
+      key: value
+  file_1.yml: |
+    namespace: kube-default
   file_2.yml: |-
     key: value 2
     key_1: that is a yaml
