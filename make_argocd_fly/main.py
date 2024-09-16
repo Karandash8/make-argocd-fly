@@ -87,7 +87,7 @@ def main() -> None:
   if not cli_args.get_skip_latest_version_check():
     latest_version_check()
   else:
-    log.warn('Skipping latest version check')
+    log.warning('Skipping latest version check')
   config = read_config(args.root_dir, args.config_file, cli_args)
 
   tmp_dir = config.get_tmp_dir()
