@@ -137,9 +137,6 @@ class ResourceWriter:
     path = os.path.join(self.output_dir_abs_path, os.path.dirname(file_path))
     os.makedirs(path, exist_ok=True)
 
-    with open(os.path.join(self.output_dir_abs_path, file_path), 'w') as f:
-      f.write(resource_yml)
-
     try:
       yaml_obj = yaml.load(resource_yml, Loader=SafeLoader)
     except yaml.composer.ComposerError:

@@ -65,7 +65,7 @@ async def generate() -> None:
 def main() -> None:
   parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')
   parser.add_argument('--root-dir', type=str, default=os.getcwd(), help='Root directory (default: current directory)')
-  parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file (default: config.yaml)')
+  parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file (default: config.yml)')
   parser.add_argument('--source-dir', type=str, default=SOURCE_DIR, help='Source files directory (default: source)')
   parser.add_argument('--output-dir', type=str, default=OUTPUT_DIR, help='Output files directory (default: output)')
   parser.add_argument('--tmp-dir', type=str, default=TMP_DIR, help='Temporary files directory (default: .tmp)')
@@ -73,7 +73,7 @@ def main() -> None:
   parser.add_argument('--render-envs', type=str, default=None, help='Comma separate list of environments to render')
   parser.add_argument('--skip-generate', action='store_true', help='Skip resource generation')
   parser.add_argument('--preserve-tmp-dir', action='store_true', help='Preserve temporary directory')
-  parser.add_argument('--clean', action='store_true', help='Clean all applications in output directory')
+  parser.add_argument('--remove-output-dir', action='store_true', help='Remove output directory')
   parser.add_argument('--print-vars', action='store_true', help='Print variables for each application')
   parser.add_argument('--var-identifier', type=str, default='$', help='Variable prefix in config.yml file (default: $)')
   parser.add_argument('--skip-latest-version-check', action='store_true', help='Skip latest version check')
@@ -94,8 +94,8 @@ def main() -> None:
   if os.path.exists(tmp_dir):
     shutil.rmtree(tmp_dir)
 
-  if cli_args.get_clean():
-    log.info('Cleaning all output directory')
+  if cli_args.get_remove_output_dir():
+    log.info('Wiping output directory')
     if os.path.exists(config.get_output_dir()):
       shutil.rmtree(config.get_output_dir())
 

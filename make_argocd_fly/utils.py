@@ -129,7 +129,7 @@ def generate_filename(filename_parts: list) -> str:
   return '_'.join([filename_part for filename_part in filename_parts if filename_part]).lower() + '.yml'
 
 
-def get_app_rel_path(app_name: str, env_name: str) -> str:
+def get_app_rel_path(env_name: str, app_name: str) -> str:
   return os.path.join(env_name, app_name)
 
 
