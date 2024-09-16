@@ -124,6 +124,31 @@ class IncludeAllAsYamlKVExtension(Extension):
     return Markup(''.join(kv_as_yaml_str))
 
 
+class IncludeAllAsYamlListExtension(Extension):
+  tags = {"include_all_as_yaml_list"}
+
+  def parse(self, parser):
+    lineno = parser.stream.expect("name:include_all_as_yaml_list").lineno
+    template = parser.parse_expression()
+    result = self.call_method("_render", [template], lineno=lineno)
+    return nodes.Output([result], lineno=lineno)
+
+  def _render(self, path: str) -> str:
+    children = self.environment.loader.list_templates(path)
+    kv_as_yaml_str = []
+
+    for child in children:
+      if child.name.endswith('.j2'):
+        loaded_template = self.environment.loader.get_rendered(self.environment, child.element_rel_path)
+      else:
+        loaded_template = self.environment.loader.get_source(self.environment, child.element_rel_path)
+
+      child_content = loaded_template[0] if loaded_template else ''
+      kv_as_yaml_str.append('- {}\n'.format(re.sub('\n', '\n  ', child_content.strip())))
+
+    return Markup(''.join(kv_as_yaml_str))
+
+
 class JinjaRenderer(AbstractRenderer):
   def __init__(self, viewer: ResourceViewer = None) -> None:
     self.viewer = viewer
@@ -133,6 +158,7 @@ class JinjaRenderer(AbstractRenderer):
       self.loader = BaseLoader()
     self.env = Environment(extensions=[IncludeRawExtension,
                                        IncludeAllAsYamlKVExtension,
+                                       IncludeAllAsYamlListExtension,
                                        DigExtension,
                                        'jinja2_ansible_filters.AnsibleCoreFiltersExtension'],
                            loader=self.loader, undefined=StrictUndefined)

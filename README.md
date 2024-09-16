@@ -194,12 +194,24 @@ use the following block:
 
 ```
 {%- filter indent(width=2) %}
-{% include_all_as_yaml_kv 'files' %}
+{% include_all_as_yaml_kv 'files/' %}
 {% endfilter %}
 ```
 
 Example:
 ```tests/manual/source/app_15```
+
+To render files from a subdirectory as YAML list (where file content would be the value),
+use the following block:
+
+```
+{%- filter indent(width=4) %}
+{% include_all_as_yaml_list 'files/' %}
+{% endfilter %}
+```
+
+Example:
+```tests/manual/source/app_16```
 
 To perform a DNS lookup, use the following filter:
 
