@@ -167,59 +167,63 @@ The following variable resolution rules apply:
 - Variable referenced in per-application scope is resolved using global, per-environment, and per-application variables.
 
 ### Jinja2 templates
-To include file content in the current Jinja2 template, use the following block:
+All standard Jinja2 features are supported.
 
-```
-{%- filter indent(width=4) %}
-{% include_raw 'files/file.json' %}
-{% endfilter %}
-```
+For example:
+- To render a template in the current jinja2 template, use the following block:
 
-Example:
-```tests/manual/source/app_4```
+  ```
+  {%- filter indent(width=4) %}
+  {% include 'files/file.json.j2' %}
+  {% endfilter %}
+  ```
 
-To render a template in the current jinja2 template, use the following block:
+  Example:
+  ```tests/manual/source/app_5```
 
-```
-{%- filter indent(width=4) %}
-{% include 'files/file.json.j2' %}
-{% endfilter %}
-```
+In addition, the following features are available:
+- To include file content in the current Jinja2 template, use the following block:
 
-Example:
-```tests/manual/source/app_5```
+  ```
+  {%- filter indent(width=4) %}
+  {% include_raw 'files/file.json' %}
+  {% endfilter %}
+  ```
 
-To render files from a subdirectory as YAML key-value pairs (where file name would be the key and file content would be the value),
+  Example:
+  ```tests/manual/source/app_4```
+
+- To render files from a subdirectory as YAML key-value pairs (where file name would be the key and file content would be the value),
 use the following block:
 
-```
-{%- filter indent(width=2) %}
-{% include_all_as_yaml_kv 'files/' %}
-{% endfilter %}
-```
+  ```
+  {%- filter indent(width=2) %}
+  {% include_all_as_yaml_kv 'files/' %}
+  {% endfilter %}
+  ```
 
-Example:
-```tests/manual/source/app_15```
+  Example:
+  ```tests/manual/source/app_15```
 
-To render files from a subdirectory as YAML list (where file content would be the value),
+- To render files from a subdirectory as YAML list (where file content would be the value),
 use the following block:
 
-```
-{%- filter indent(width=4) %}
-{% include_all_as_yaml_list 'files/' %}
-{% endfilter %}
-```
+  ```
+  {%- filter indent(width=4) %}
+  {% include_all_as_yaml_list 'files/' %}
+  {% endfilter %}
+  ```
 
-Example:
-```tests/manual/source/app_16```
+  Example:
+  ```tests/manual/source/app_16```
 
-To perform a DNS lookup, use the following filter:
+- To perform a DNS lookup, use the following filter:
 
-```
-{{ 'example.com' | dig }}
-```
+  ```
+  {{ 'example.com' | dig }}
+  ```
 
-Ansible filters are supported as well: https://pypi.org/project/jinja2-ansible-filters/
+- Ansible filters are supported as well: https://pypi.org/project/jinja2-ansible-filters/
 
 ### Kustomize
 Local files referenced in the `resources` section shall be named after Kubernetes resource type + `_` + resource name:
