@@ -4,11 +4,10 @@ import os
 import copy
 import ast
 import json
+import ssl
 import urllib.request
 from importlib.metadata import version, PackageNotFoundError
 from packaging.version import Version
-
-PACKAGE_NAME = 'make_argocd_fly'
 
 log = logging.getLogger(__name__)
 
@@ -158,21 +157,38 @@ def merge_dicts(*dicts):
   return merged
 
 
-def latest_version_check():
-  try:
-    current_version = Version(version(PACKAGE_NAME))
-  except PackageNotFoundError:
-    raise
+def confirm_dialog() -> None:
+  answer = input("Are you sure you want to continue? [y/n] (default: n) ")
+  if answer.lower() not in ["y", "yes"]:
+    exit()
 
-  pypi_url = 'https://pypi.org/pypi/{}/json'.format(PACKAGE_NAME)
-  response = urllib.request.urlopen(pypi_url).read().decode()
-  latest_version = max(Version(s) for s in json.loads(response)['releases'].keys())
+
+def latest_version_check():
+  module_name = __name__.split('.')[0]
+  package_name = module_name.replace('_', '-')
+
+  try:
+    current_version = Version(version(module_name))
+  except PackageNotFoundError:
+    log.warning('Could not determine installed version of the package. Something is wrong or you are running from source.')
+
+    confirm_dialog()
+    return
+
+  try:
+    pypi_url = 'https://pypi.org/pypi/{}/json'.format(module_name)
+    response = urllib.request.urlopen(pypi_url).read().decode()
+    latest_version = max(Version(s) for s in json.loads(response)['releases'].keys())
+  except ssl.SSLCertVerificationError:
+    log.warning('SSL Certificate verification failed. Could not determine latest version of the package. \
+                Likely you have an issue with your local Python installation.')
+
+    confirm_dialog()
+    return
 
   if current_version < latest_version:
-    log.warning('You are running {} ({}) but there is a newer version of the package available ({})'.format(PACKAGE_NAME, current_version,
+    log.warning('You are running {} ({}) but there is a newer version of the package available ({})'.format(package_name, current_version,
                                                                                                             latest_version))
-    answer = input("Are you sure you want to continue? [y/n] (default: n) ")
-    if answer.lower() not in ["y", "yes"]:
-      exit()
+    confirm_dialog()
   else:
-    log.info('You are using the latest version of {} ({})'.format(PACKAGE_NAME, current_version))
+    log.info('You are using the latest version of {} ({})'.format(package_name, current_version))
