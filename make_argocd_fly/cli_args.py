@@ -15,7 +15,7 @@ class CLIArgs:
     self.render_envs = None
     self.skip_generate = None
     self.preserve_tmp_dir = None
-    self.clean = None
+    self.remove_output_dir = None
     self.print_vars = None
     self.var_identifier = None
     self.skip_latest_version_check = None
@@ -67,10 +67,10 @@ class CLIArgs:
       raise Exception("preserve_tmp_dir is not set")
     return self.preserve_tmp_dir
 
-  def get_clean(self):
-    if self.clean is None:
-      raise Exception("clean is not set")
-    return self.clean
+  def get_remove_output_dir(self):
+    if self.remove_output_dir is None:
+      raise Exception("remove_output_dir is not set")
+    return self.remove_output_dir
 
   def get_print_vars(self):
     if self.print_vars is None:

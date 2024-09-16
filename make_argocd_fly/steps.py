@@ -70,7 +70,7 @@ class BaseResourceGenerationStep(AbstractStep):
           raise ValueError("Excluded rendering for file {}".format(element_rel_path))
 
     return os.path.join(
-      get_app_rel_path(self.app_name, self.env_name),
+      get_app_rel_path(self.env_name, self.app_name),
       os.path.dirname(element_rel_path),
       generate_filename(filename_elements)
     )

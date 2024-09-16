@@ -2,6 +2,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 import textwrap
+import shutil
 from pprint import pformat
 
 from make_argocd_fly.resource import ResourceViewer
@@ -109,6 +110,11 @@ class AppOfAppsWorkflow(AbstractWorkflow):
 
     log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
 
+    # Clean up output directory for the application
+    app_output_dir = os.path.join(self.config.get_output_dir(), get_app_rel_path(self.env_name, self.app_name))
+    if os.path.exists(app_output_dir):
+      shutil.rmtree(app_output_dir)
+
     self.write_resources_step.configure(self.config.get_output_dir(), self.render_jinja_step.get_resources())
     await self.write_resources_step.run()
     log.info('Updated application {} in environment {}'.format(self.app_name, self.env_name))
@@ -155,6 +161,11 @@ class SimpleWorkflow(AbstractWorkflow):
     await self.render_jinja_step.run()
 
     log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
+
+    # Clean up output directory for the application
+    app_output_dir = os.path.join(self.config.get_output_dir(), get_app_rel_path(self.env_name, self.app_name))
+    if os.path.exists(app_output_dir):
+      shutil.rmtree(app_output_dir)
 
     self.write_resources_step.configure(self.config.get_output_dir(), self.render_yaml_step.get_resources() + self.render_jinja_step.get_resources())
     await self.write_resources_step.run()
@@ -208,13 +219,18 @@ class KustomizeWorkflow(AbstractWorkflow):
     self.tmp_write_resources_step.configure(self.config.get_tmp_dir(), self.render_yaml_step.get_resources() + self.render_jinja_step.get_resources())
     await self.tmp_write_resources_step.run()
 
-    self.tmp_read_source_step.configure(os.path.join(self.config.get_tmp_dir(), get_app_rel_path(self.app_name, self.env_name)))
+    self.tmp_read_source_step.configure(os.path.join(self.config.get_tmp_dir(), get_app_rel_path(self.env_name, self.app_name)))
     await self.tmp_read_source_step.run()
 
     self.run_kustomize_step.configure(self.tmp_read_source_step.get_viewer(), self.app_name, self.env_name)
     await self.run_kustomize_step.run()
 
     log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
+
+    # Clean up output directory for the application
+    app_output_dir = os.path.join(self.config.get_output_dir(), get_app_rel_path(self.env_name, self.app_name))
+    if os.path.exists(app_output_dir):
+      shutil.rmtree(app_output_dir)
 
     self.write_resources_step.configure(self.config.get_output_dir(), self.run_kustomize_step.get_resources())
     await self.write_resources_step.run()

@@ -74,7 +74,7 @@ options:
                         Comma separate list of environments to render
   --skip-generate       Skip resource generation
   --preserve-tmp-dir    Preserve temporary directory
-  --clean               Clean all applications in output directory
+  --remove-output-dir   Remove output directory
   --print-vars          Print variables for each application
   --var-identifier VAR_IDENTIFIER
                         Variable prefix in config.yml file (default: $)
