@@ -140,10 +140,8 @@ class IncludeAllAsYamlListExtension(Extension):
     for child in children:
       if child.name.endswith('.j2'):
         loaded_template = self.environment.loader.get_rendered(self.environment, child.element_rel_path)
-        child_name = child.name[:-3]
       else:
         loaded_template = self.environment.loader.get_source(self.environment, child.element_rel_path)
-        child_name = child.name
 
       child_content = loaded_template[0] if loaded_template else ''
       kv_as_yaml_str.append('- {}\n'.format(re.sub('\n', '\n  ', child_content.strip())))
