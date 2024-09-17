@@ -2,16 +2,16 @@
   [![cov](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Karandash8/26eb92c97bbfac22b938afebac85e7cd/raw/covbadge.json)](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Karandash8/26eb92c97bbfac22b938afebac85e7cd/raw/covbadge.json)
 
 ## Description
-`make-argocd-fly` is a tool designed to simplify the generation of Kubernetes manifests for deployment in complex, multi-cluster, and multi-application environments. By leveraging YAML, Jinja2 templates, Kustomize files, and Helm charts via Kustomize. This tool streamlines the process of creating and maintaining Kubernetes resources. While the generated manifests can be deployed using any external deployment tool, such as kubectl, `make-argocd-fly` offers native integration with ArgoCD, enhancing the deployment experience.
+`make-argocd-fly` is a tool designed to simplify the generation of Kubernetes manifests for deployment in complex, multi-cluster, and multi-application environments. It leverages YAML, Jinja2 templates, Kustomize files, and Helm charts through Kustomize, streamlining the process of creating and maintaining Kubernetes resources. Although the generated manifests can be deployed using any external tool, such as kubectl, `make-argocd-fly` provides native integration with ArgoCD, enhancing the overall deployment experience.
 
-With `make-argocd-fly`, you can develop your resources in various formats, write a configuration file to specify deployment details, generate the final manifests effortlessly, and then push them to a repository for ArgoCD to deploy them in a Kubernetes cluster. This approach ensures transparency in what is being deployed and where, simplifies maintenance and development, and aids in debugging issues.
+With `make-argocd-fly`, you can develop resources in various formats, specify deployment details in a configuration file, generate the final manifests effortlessly, and push them to a repository for ArgoCD to deploy to a Kubernetes cluster. This approach promotes transparency in what is being deployed and where, simplifies both maintenance and development, and assists in debugging issues.
 
 ## Features
-- **Jinja2 and Kustomize Rendering:** Seamlessly render Kubernetes manifests using Jinja2 templates and Kustomize, including Helm charts.
-- **ArgoCD App-of-Apps Pattern Support:** Native support of the app-of-apps pattern for organizing complex applications with automatic generation of ArgoCD `Application` resources for streamlined deployment.
-- **External File Inclusion:** Use `include` or `include_raw` in Jinja2 templates to render content from external files.
-- **Flexible Variable Management:** Support for global, per-environment, and per-application Jinja2 variables, with the ability to reference other variables.
-- **Subdirectory Resource Management:** Source resources can reside in subdirectories for better organization and management.
+- **ArgoCD App-of-Apps Pattern Support:** Native support for the app-of-apps pattern to organize complex applications, with automatic generation of ArgoCD `Application` resources for streamlined deployment.
+- **Jinja2 and Kustomize Rendering:** Effortlessly render Kubernetes manifests using Jinja2 templates and Kustomize, including support for Helm charts.
+- **Extended Jinja2 Functionality:** Includes additional Jinja2 extensions and filters, such as `include_raw`, to render content from external files.
+- **Flexible Variable Management:** Manage global, per-environment, and per-application Jinja2 variables, with support for referencing other variables.
+- **Subdirectory Resource Management:** Organize resources within subdirectories for improved structure and management.
 
 ## How to start
 ### Prerequisites
@@ -36,7 +36,7 @@ vars:
   #<variable_name_N>: <variable_value_N>  ## additional variables
 ```
 
-Application names shall correspond to the relative paths from the source directory to the application directory, e.g., ```grafana```, ```path/to/grafana``` .
+Application names must correspond to the relative paths from the source directory to the application directory, e.g., ```grafana```, ```path/to/grafana``` .
 
 Example configuration file:
 ```tests/examples/app_types/config.yml```
@@ -87,14 +87,15 @@ options:
 
 ## Advanced usage
 ### ArgoCD integration
-ArgoCD app-of-apps pattern (https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) is one of the ways to deploy applications in a Kubernetes cluster. `make-argocd-fly` supports this pattern by generating ArgoCD `Application` resources for each application in the configuration file. The generated resources can be deployed in the cluster using ArgoCD, which will automatically deploy the applications specified in the `Application` resources. The app-of-apps pattern can be nested, which allows for organizing applications in a hierarchical structure, where only the top-level application needs to be deployed externally.
+The [ArgoCD app-of-apps pattern](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/) is a method for deploying applications in a Kubernetes cluster. `make-argocd-fly` supports this pattern by generating ArgoCD `Application` resources for each application specified in the configuration file. These resources can be deployed in the cluster using ArgoCD, which will automatically handle the deployment of all applications referenced in the `Application` resources. The app-of-apps pattern supports nesting, enabling hierarchical organization of applications, where only the top-level application needs to be deployed manually.
 
-To make use of ArgoCD app-of-apps pattern in `make-argocd-fly`, specify the following variables and application parameters:
+To leverage the ArgoCD app-of-apps pattern in `make-argocd-fly`, specify the following variables and application parameters:
+
 ```
 envs:
   <environment_name>:
     apps:
-      <bootstrap_application>: {}  ## application that shall be deployed externally that will deploy other applications
+      <bootstrap_application>: {}  ## application that needs be deployed externally that will deploy other applications
       <application_name>:
         app_deployer: <bootstrap_application>  ## application that will deploy this application
         app_deployer_env: <environment_name>  ## (OPTIONAL) for multi-environments with single ArgoCD deployment
@@ -117,7 +118,7 @@ vars:
 ```
 
 ### Magic variables
-The folloving variable names are reserved for internal purposes and shall not be used in the configuration file:
+The folloving variable names are reserved for internal purposes and must not be used in the configuration file:
 - __application
 
 The folloving variable are automatically populated and can be referenced without explicit definition:
@@ -125,9 +126,14 @@ The folloving variable are automatically populated and can be referenced without
 - app_name
 
 ### Variables scopes
-Variables can be defined at the root level, per-environment, and per-application. Variables defined at the root level are global and can be referenced in any application. Variables defined per-environment are specific to the environment and can be referenced in any application within that environment. Variables defined per-application are specific to the application and can be referenced only in that application.
+Variables can be defined at three levels: root (global), per-environment, and per-application.
 
-When a variable is defined in multiple scopes the following priority rules apply: global variable < environment variable < application variable
+- Global variables (defined at the root level) are accessible by all applications.
+- Environment-specific variables apply only to a specific environment but can be used by any application within that environment.
+- Application-specific variables are restricted to the application in which they are defined.
+
+If a variable is defined at multiple levels, the following priority rules apply: global < environment < application.
+
 
 ```
 envs:
@@ -156,15 +162,16 @@ vars:
 
 ### Variables in `config.yml`
 Variables can be referenced in the configuration file using the following syntax:
-```${var_name}``` and  ```${var_name[dict_key][...]}```.
+- ```${var_name}```
+- ```${var_name[dict_key][...]}```
 
-Variables can also be used as substring values:
-```prefix-${var_name}-suffix```.
+Variables can also be embedded within strings:
+- ```prefix-${var_name}-suffix```
 
-The following variable resolution rules apply:
-- Variable referenced in global scope is resolved using global variables.
-- Variable referenced in per-environment scope is resolved using global and per-environment variables.
-- Variable referenced in per-application scope is resolved using global, per-environment, and per-application variables.
+The following rules apply for variable resolution:
+- Variables referenced in the global scope are resolved using global variables.
+- Variables referenced in the per-environment scope are resolved using global and per-environment variables.
+- Variables referenced in the per-application scope are resolved using global, per-environment, and per-application variables.
 
 ### Jinja2 templates
 All standard Jinja2 features are supported.
@@ -226,8 +233,7 @@ use the following block:
 - Ansible filters are supported as well: https://pypi.org/project/jinja2-ansible-filters/
 
 ### Kustomize
-Local files referenced in the `resources` section shall be named after Kubernetes resource type + `_` + resource name:
-
+Local files referenced in the `resources` section should be named following this convention: the Kubernetes resource type followed by an underscore (`_`) and the resource name. For example:
 ```
 resources:
   - deployment_nginx.yml
@@ -237,12 +243,11 @@ resources:
 Example:
 ```tests/manual/source/app_1```
 
-When kustomization overlays are used, kustomization base directory shall be named `base`, overlay directories shall be named after the corresponding environments names.
+When using Kustomize overlays, the base directory should be named `base`, and overlay directories should be named after the corresponding environment names.
 Example:
 ```tests/manual/source/app_2```
 
-When Helm `values.yml` file is used, the file shall be named `values.yml` and reside in the application directory.
-On top of that the file shall be explicitly set for rendering in the configuration file:
+If using a Helm `values.yml` file, it must be named `values.yml` and placed within the application directory. Additionally, the file must be explicitly specified for rendering in the configuration file:
 ```
 envs:
   <environment_name>:
@@ -251,7 +256,7 @@ envs:
         non_k8s_files_to_render: [<filename>]  ## (OPTIONAL) list of files to render that are not Kubernetes resources (e.g., values.yml)
 ```
 ### Exclude certain directories
-In case you have certain files in source application directory that you would like to not be rendered, you can use `exclude_rendering` application parameter in your configuration to exclude it from rendering
+If there are certain files in the source application directory that you do not want to render, you can use the `exclude_rendering` parameter in your configuration to exclude them from the rendering process:
 ```
 envs:
   <environment_name>:
