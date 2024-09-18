@@ -85,14 +85,14 @@ class AppOfAppsWorkflow(AbstractWorkflow):
 
     for (app_name, env_name) in self.find_apps_step.get_apps():
       global_vars = merge_dicts(self.config.get_global_vars(),
-                         {
-                           '__application': {
-                             'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
-                             'path': os.path.join(os.path.basename(self.config.get_output_dir()), env_name, app_name)
-                           },
-                           'env_name': env_name,
-                           'app_name': app_name
-                         })
+                                {
+                                  '__application': {
+                                    'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
+                                    'path': os.path.join(os.path.basename(self.config.get_output_dir()), env_name, app_name)
+                                  },
+                                  'env_name': env_name,
+                                  'app_name': app_name
+                                })
       global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                       global_vars,
                                                       var_identifier=self.cli_args.get_var_identifier())
@@ -133,10 +133,10 @@ class SimpleWorkflow(AbstractWorkflow):
     log.debug('Starting to process application {} in environment {}'.format(self.app_name, self.env_name))
 
     global_vars = merge_dicts(self.config.get_global_vars(),
-                       {
-                         'env_name': self.env_name,
-                         'app_name': self.app_name
-                       })
+                              {
+                                'env_name': self.env_name,
+                                'app_name': self.app_name
+                              })
     global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                     global_vars,
                                                     var_identifier=self.cli_args.get_var_identifier())
@@ -189,10 +189,10 @@ class KustomizeWorkflow(AbstractWorkflow):
     log.debug('Starting to process application {} in environment {}'.format(self.app_name, self.env_name))
 
     global_vars = merge_dicts(self.config.get_global_vars(),
-                       {
-                         'env_name': self.env_name,
-                         'app_name': self.app_name
-                       })
+                              {
+                                'env_name': self.env_name,
+                                'app_name': self.app_name
+                              })
     global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                     global_vars,
                                                     var_identifier=self.cli_args.get_var_identifier())
