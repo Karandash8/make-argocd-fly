@@ -46,7 +46,7 @@ class Config:
       raise Exception
     return self.envs
 
-  def get_vars(self) -> dict:
+  def get_global_vars(self) -> dict:
     if not isinstance(self.vars, dict):
       log.error('Config was not initialized.')
       raise Exception
