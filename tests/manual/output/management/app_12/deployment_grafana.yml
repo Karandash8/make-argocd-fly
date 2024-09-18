@@ -6,3 +6,4 @@ metadata:
   namespace: kube-default
   labels:
     version: 1.1.1
+    var_4: value_3

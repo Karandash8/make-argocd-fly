@@ -98,11 +98,11 @@ class AppOfAppsWorkflow(AbstractWorkflow):
                                                       var_identifier=self.cli_args.get_var_identifier())
       env_vars_resolved = merge_dicts(global_vars_resolved,
                                       VarsResolver.resolve_all(self.config.get_env_vars(env_name),
-                                                               global_vars_resolved,
+                                                               merge_dicts(global_vars_resolved, self.config.get_env_vars(self.env_name)),
                                                                var_identifier=self.cli_args.get_var_identifier()))
       template_vars = merge_dicts(env_vars_resolved,
                                   VarsResolver.resolve_all(self.config.get_app_vars(env_name, app_name),
-                                                           env_vars_resolved,
+                                                           merge_dicts(env_vars_resolved, self.config.get_app_vars(env_name, app_name)),
                                                            var_identifier=self.cli_args.get_var_identifier()))
 
       self.render_jinja_step.configure(textwrap.dedent(self.APPLICATION_RESOUCE_TEMPLATE), self.app_name, self.env_name, template_vars)
@@ -142,11 +142,11 @@ class SimpleWorkflow(AbstractWorkflow):
                                                     var_identifier=self.cli_args.get_var_identifier())
     env_vars_resolved = merge_dicts(global_vars_resolved,
                                     VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
-                                                             global_vars_resolved,
+                                                             merge_dicts(global_vars_resolved, self.config.get_env_vars(self.env_name)),
                                                              var_identifier=self.cli_args.get_var_identifier()))
     template_vars = merge_dicts(env_vars_resolved,
                                 VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
-                                                         env_vars_resolved,
+                                                         merge_dicts(env_vars_resolved, self.config.get_app_vars(self.env_name, self.app_name)),
                                                          var_identifier=self.cli_args.get_var_identifier()))
 
     if self.cli_args.get_print_vars():
@@ -198,11 +198,11 @@ class KustomizeWorkflow(AbstractWorkflow):
                                                     var_identifier=self.cli_args.get_var_identifier())
     env_vars_resolved = merge_dicts(global_vars_resolved,
                                     VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
-                                                             global_vars_resolved,
+                                                             merge_dicts(global_vars_resolved, self.config.get_env_vars(self.env_name)),
                                                              var_identifier=self.cli_args.get_var_identifier()))
     template_vars = merge_dicts(env_vars_resolved,
                                 VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
-                                                         env_vars_resolved,
+                                                         merge_dicts(env_vars_resolved, self.config.get_app_vars(self.env_name, self.app_name)),
                                                          var_identifier=self.cli_args.get_var_identifier()))
 
     if self.cli_args.get_print_vars():

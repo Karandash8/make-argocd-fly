@@ -10,4 +10,6 @@ data: |-
     "test_2": "{{ variable }}"
   }
 data_2: 'hello: world'
-data_3: 'hello: kube-default'
+data_3: |-
+  hello: kube-default
+  var_2: value_1

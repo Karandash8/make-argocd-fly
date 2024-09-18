@@ -42,7 +42,7 @@ envs:
       app_9: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
       app_10: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
       app_11: {app_deployer: service_deployer, non_k8s_files_to_render: ['values.yml.j2'], vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
-      app_12: {vars: {version: 1.1.1}}
+      app_12: {vars: {version: 1.1.1, var_3: value_3, var_4: "${var_3}"}}
       app_13: {app_deployer: service_deployer, vars: {argocd: {project: management, source: {directory: {recurse: true}}, destination: {namespace: kube-default}}}}
       app_14: {app_deployer: service_deployer, exclude_rendering: ['testcases','cases'], vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
       app_15: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
@@ -56,6 +56,8 @@ envs:
       json_var: json_management
       parent_var:
         env_specific_var: test_env_specific
+      var_1: value_1
+      var_2: ${var_1}
   external_1:
     apps:
       bootstrap: {}
