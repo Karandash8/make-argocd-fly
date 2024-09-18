@@ -84,17 +84,17 @@ class AppOfAppsWorkflow(AbstractWorkflow):
     await self.find_apps_step.run()
 
     for (app_name, env_name) in self.find_apps_step.get_apps():
-      vars = merge_dicts(self.config.get_vars(),
-                         {
-                           '__application': {
-                             'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
-                             'path': os.path.join(os.path.basename(self.config.get_output_dir()), env_name, app_name)
-                           },
-                           'env_name': env_name,
-                           'app_name': app_name
-                         })
-      global_vars_resolved = VarsResolver.resolve_all(vars,
-                                                      vars,
+      global_vars = merge_dicts(self.config.get_global_vars(),
+                                {
+                                  '__application': {
+                                    'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
+                                    'path': os.path.join(os.path.basename(self.config.get_output_dir()), env_name, app_name)
+                                  },
+                                  'env_name': env_name,
+                                  'app_name': app_name
+                                })
+      global_vars_resolved = VarsResolver.resolve_all(global_vars,
+                                                      global_vars,
                                                       var_identifier=self.cli_args.get_var_identifier())
       env_vars_resolved = merge_dicts(global_vars_resolved,
                                       VarsResolver.resolve_all(self.config.get_env_vars(env_name),
@@ -132,13 +132,13 @@ class SimpleWorkflow(AbstractWorkflow):
   async def process(self) -> None:
     log.debug('Starting to process application {} in environment {}'.format(self.app_name, self.env_name))
 
-    vars = merge_dicts(self.config.get_vars(),
-                       {
-                         'env_name': self.env_name,
-                         'app_name': self.app_name
-                       })
-    global_vars_resolved = VarsResolver.resolve_all(vars,
-                                                    vars,
+    global_vars = merge_dicts(self.config.get_global_vars(),
+                              {
+                                'env_name': self.env_name,
+                                'app_name': self.app_name
+                              })
+    global_vars_resolved = VarsResolver.resolve_all(global_vars,
+                                                    global_vars,
                                                     var_identifier=self.cli_args.get_var_identifier())
     env_vars_resolved = merge_dicts(global_vars_resolved,
                                     VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
@@ -188,13 +188,13 @@ class KustomizeWorkflow(AbstractWorkflow):
   async def process(self) -> None:
     log.debug('Starting to process application {} in environment {}'.format(self.app_name, self.env_name))
 
-    vars = merge_dicts(self.config.get_vars(),
-                       {
-                         'env_name': self.env_name,
-                         'app_name': self.app_name
-                       })
-    global_vars_resolved = VarsResolver.resolve_all(vars,
-                                                    vars,
+    global_vars = merge_dicts(self.config.get_global_vars(),
+                              {
+                                'env_name': self.env_name,
+                                'app_name': self.app_name
+                              })
+    global_vars_resolved = VarsResolver.resolve_all(global_vars,
+                                                    global_vars,
                                                     var_identifier=self.cli_args.get_var_identifier())
     env_vars_resolved = merge_dicts(global_vars_resolved,
                                     VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
