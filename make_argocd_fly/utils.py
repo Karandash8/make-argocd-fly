@@ -187,8 +187,8 @@ def latest_version_check():
     return
 
   if current_version < latest_version:
-    log.warning('You are running {} ({}) but there is a newer version of the package available ({})'.format(package_name, current_version,
-                                                                                                            latest_version))
+    log.warning('You are running {} ({}) but there is a newer version of the package available ({}).'.format(package_name, current_version,
+                                                                                                             latest_version))
     confirm_dialog()
   else:
     log.info('You are using the latest version of {} ({})'.format(package_name, current_version))

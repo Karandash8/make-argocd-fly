@@ -8,26 +8,38 @@ try:
   from yaml import CSafeLoader as SafeLoader
 except ImportError:
   from yaml import SafeLoader
+from yaml import SafeDumper
 
 from make_argocd_fly.exceptions import MissingSourceResourcesError
 
 log = logging.getLogger(__name__)
 
 
-class SafeDumper(yaml.SafeDumper):
+class YamlDumper(SafeDumper):
   def increase_indent(self, flow=False, *args, **kwargs):
     return super().increase_indent(flow=flow, indentless=False)
 
 
-def str_presenter(dumper, data):
-    """configures yaml for dumping multiline strings
-    Ref: https://stackoverflow.com/questions/8640959/how-can-i-control-what-scalar-form-pyyaml-uses-for-my-data"""
-    if data.count('\n') > 0:
-        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
-    return dumper.represent_scalar('tag:yaml.org,2002:str', data)
+def represent_str(dumper, data):
+  """configures yaml for dumping multiline strings
+  Ref: https://stackoverflow.com/questions/8640959/how-can-i-control-what-scalar-form-pyyaml-uses-for-my-data"""
+  if data.count('\n') > 0:
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
+  if data.startswith('0'):
+    try:
+      int(data[1:])
+      return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='\'')
+    except (SyntaxError, ValueError):
+      pass
+
+  return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='')
 
 
-yaml.add_representer(str, str_presenter, Dumper=SafeDumper)
+yaml.add_representer(str, represent_str, Dumper=YamlDumper)
+
+
+class YamlLoader(SafeLoader):
+  pass
 
 
 class ResourceViewer:
@@ -138,13 +150,13 @@ class ResourceWriter:
     os.makedirs(path, exist_ok=True)
 
     try:
-      yaml_obj = yaml.load(resource_yml, Loader=SafeLoader)
+      yaml_obj = yaml.load(resource_yml, Loader=YamlLoader)
     except yaml.composer.ComposerError:
       log.error('Error parsing yaml to write as file {}. Yaml:\n{}'.format(file_path, resource_yml))
       raise
 
     with open(os.path.join(self.output_dir_abs_path, file_path), 'w') as f:
-      yaml.dump(yaml_obj, f, Dumper=SafeDumper,
+      yaml.dump(yaml_obj, f, Dumper=YamlDumper,
                 default_flow_style=False,
                 sort_keys=False,
                 allow_unicode=True,
