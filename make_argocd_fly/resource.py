@@ -5,17 +5,17 @@ import asyncio
 import yaml
 import yaml.composer
 try:
-  from yamlcore import CCoreLoader as CoreLoader
+  from yaml import CSafeLoader as SafeLoader
 except ImportError:
-  from yamlcore import CoreLoader
-from yamlcore import CoreDumper
+  from yaml import SafeLoader
+from yaml import SafeDumper
 
 from make_argocd_fly.exceptions import MissingSourceResourcesError
 
 log = logging.getLogger(__name__)
 
 
-class YamlDumper(CoreDumper):
+class YamlDumper(SafeDumper):
   def increase_indent(self, flow=False, *args, **kwargs):
     return super().increase_indent(flow=flow, indentless=False)
 
@@ -25,13 +25,20 @@ def represent_str(dumper, data):
   Ref: https://stackoverflow.com/questions/8640959/how-can-i-control-what-scalar-form-pyyaml-uses-for-my-data"""
   if data.count('\n') > 0:
     return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
+  if data.startswith('0'):
+    try:
+      int(data[1:])
+      return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='\'')
+    except (SyntaxError, ValueError):
+      pass
+
   return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='')
 
 
 yaml.add_representer(str, represent_str, Dumper=YamlDumper)
 
 
-class YamlLoader(CoreLoader):
+class YamlLoader(SafeLoader):
   pass
 
 
