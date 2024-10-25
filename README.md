@@ -303,3 +303,8 @@ python -m twine upload  dist/*
 python -m cProfile -o profile.pstats main.py --root-dir <path>
 gprof2dot log.pstats [-z <function>] | dot -Tsvg -o profile.svg
 ```
+
+### Code coverage HTML report
+```
+pytest --cov --cov-report=html:coverage_re tests/*
+```
