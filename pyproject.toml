@@ -6,17 +6,23 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "make-argocd-fly"
+description = "A tool to generate Kubernetes manifests from templates"
+license = {text = "GPLv3+"}
 authors = [
     {name = "Andrei Lapin", email = "karandash8@gmail.com"},
 ]
-description = "A tool to generate Kubernetes manifests from templates"
 requires-python = ">=3.11"
 keywords = ["argocd", "kustomize", "jinja2"]
-license = {text = "GPLv3+"}
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12"
 ]
-dynamic = ["readme", "dependencies", "version"]
+dynamic = [
+    "readme",
+    "dependencies",
+    "version"
+]
+urls."Source Code" = "https://github.com/Karandash8/make-argocd-fly"
 
 [project.scripts]
 make-argocd-fly = "make_argocd_fly.main:main"
