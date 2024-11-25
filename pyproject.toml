@@ -25,7 +25,7 @@ dynamic = [
 urls."Source Code" = "https://github.com/Karandash8/make-argocd-fly"
 
 [project.scripts]
-make-argocd-fly = "make_argocd_fly.main:main"
+make-argocd-fly = "make_argocd_fly.main:cli_entry_point"
 
 [tool.setuptools_scm]
 

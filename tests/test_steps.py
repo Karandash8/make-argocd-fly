@@ -3,7 +3,6 @@ import textwrap
 
 from make_argocd_fly.steps import FindAppsStep
 from make_argocd_fly.config import read_config
-from make_argocd_fly.cli_args import populate_cli_args
 
 ###################
 ### FindAppsStep
@@ -12,9 +11,6 @@ from make_argocd_fly.cli_args import populate_cli_args
 @pytest.fixture
 def find_apps_step():
   return FindAppsStep()
-
-# @pytest.fixture
-# def get_config():
 
 def test_find_apps_step_configure(find_apps_step):
   app_deployer_name = "my_app_deployer"
@@ -52,8 +48,7 @@ async def test_find_apps_step_run_single_app_same_env(tmp_path):
   config_file.write_text(textwrap.dedent(CONFIG))
   source_dir = tmp_path / 'source'
   source_dir.mkdir()
-  cli_args = populate_cli_args(root_dir=root_dir, config_file=config_file, source_dir=source_dir, output_dir='output', tmp_dir='.tmp')
-  read_config(root_dir, config_file, cli_args)
+  read_config(root_dir, config_file, source_dir)
 
   app_deployer_name = "bootstrap"
   app_deployer_env_name = "test_env"
@@ -95,8 +90,7 @@ async def test_find_apps_step_run_multiple_apps_same_env(tmp_path):
   config_file.write_text(textwrap.dedent(CONFIG))
   source_dir = tmp_path / 'source'
   source_dir.mkdir()
-  cli_args = populate_cli_args(root_dir=root_dir, config_file=config_file, source_dir=source_dir, output_dir='output', tmp_dir='.tmp')
-  read_config(root_dir, config_file, cli_args)
+  read_config(root_dir, config_file, source_dir)
 
   app_deployer_name = "bootstrap"
   app_deployer_env_name = "test_env"
@@ -142,8 +136,7 @@ async def test_find_apps_step_run_multiple_apps_different_envs(tmp_path):
   config_file.write_text(textwrap.dedent(CONFIG))
   source_dir = tmp_path / 'source'
   source_dir.mkdir()
-  cli_args = populate_cli_args(root_dir=root_dir, config_file=config_file, source_dir=source_dir, output_dir='output', tmp_dir='.tmp')
-  read_config(root_dir, config_file, cli_args)
+  read_config(root_dir, config_file, source_dir)
 
   app_deployer_name = "bootstrap"
   app_deployer_env_name = "test_env"

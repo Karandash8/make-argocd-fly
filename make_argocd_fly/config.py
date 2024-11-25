@@ -2,34 +2,27 @@ import logging
 import os
 import yaml
 
-from make_argocd_fly.cli_args import CLIArgs
+from make_argocd_fly import defaults
 
-LOG_CONFIG_FILE = 'log_config.yml'
-CONFIG_FILE = 'config.yml'
-SOURCE_DIR = 'source'
-OUTPUT_DIR = 'output'
-TMP_DIR = '.tmp'
-ENVS = {}
-VARS = {}
 
 log = logging.getLogger(__name__)
 
 
 class Config:
   def __init__(self) -> None:
-    self.source_dir = None
-    self.output_dir = None
-    self.tmp_dir = None
-    self.envs = None
-    self.vars = None
+    self.source_dir = defaults.SOURCE_DIR
+    self.output_dir = defaults.OUTPUT_DIR
+    self.tmp_dir = defaults.TMP_DIR
+    self.envs = defaults.ENVS
+    self.vars = defaults.VARS
 
   def init_config(self, root_dir: str, config: dict, source_dir: str, output_dir: str, tmp_dir: str) -> None:
     self.root_dir = root_dir
     self.source_dir = source_dir
     self.output_dir = output_dir
     self.tmp_dir = tmp_dir
-    self.envs = config['envs'] if 'envs' in config else ENVS
-    self.vars = config['vars'] if 'vars' in config else VARS
+    self.envs = config['envs'] if 'envs' in config else defaults.ENVS
+    self.vars = config['vars'] if 'vars' in config else defaults.VARS
 
   def get_source_dir(self) -> str:
     return get_abs_path(self.root_dir, self.source_dir)
@@ -109,20 +102,24 @@ def get_abs_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
   return abs_path
 
 
-def read_config(root_dir: str, config_file: str, cli_args: CLIArgs) -> Config:
+def read_config(root_dir: str = defaults.ROOT_DIR,
+                config_file: str = defaults.CONFIG_FILE,
+                source_dir: str = defaults.SOURCE_DIR,
+                output_dir: str = defaults.OUTPUT_DIR,
+                tmp_dir: str = defaults.TMP_DIR) -> Config:
   root_dir = os.path.abspath(root_dir)
   config_content = {}
 
   with open(get_abs_path(root_dir, config_file)) as f:
     config_content = yaml.safe_load(f.read())
 
-  config.init_config(root_dir, config_content, cli_args.get_source_dir(), cli_args.get_output_dir(), cli_args.get_tmp_dir())
+  config.init_config(root_dir, config_content, source_dir, output_dir, tmp_dir)
 
-  log.info('Root directory: {}'.format(root_dir))
-  log.info('Config file: {}'.format(get_abs_path(root_dir, config_file)))
-  log.info('Source directory: {}'.format(config.get_source_dir()))
-  log.info('Output directory: {}'.format(config.get_output_dir()))
-  log.info('Temporary directory: {}'.format(config.get_tmp_dir()))
+  log.debug('Root directory: {}'.format(root_dir))
+  log.debug('Config file: {}'.format(get_abs_path(root_dir, config_file)))
+  log.debug('Source directory: {}'.format(config.get_source_dir()))
+  log.debug('Output directory: {}'.format(config.get_output_dir()))
+  log.debug('Temporary directory: {}'.format(config.get_tmp_dir()))
 
   return config
 

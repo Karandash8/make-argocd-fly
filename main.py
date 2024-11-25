@@ -1,5 +1,5 @@
-from make_argocd_fly.main import main
+from make_argocd_fly.main import cli_entry_point
 
 
 if __name__ == '__main__':
-  main()
+  cli_entry_point()
