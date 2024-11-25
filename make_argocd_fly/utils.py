@@ -5,15 +5,19 @@ import copy
 import ast
 import json
 import ssl
+import yaml
 import urllib.request
 from importlib.metadata import version, PackageNotFoundError
 from packaging.version import Version
+
+from make_argocd_fly import defaults
+
 
 log = logging.getLogger(__name__)
 
 
 class VarsResolver:
-  def __init__(self, var_identifier: str = '$') -> None:
+  def __init__(self, var_identifier: str = defaults.VAR_IDENTIFIER) -> None:
     self.var_identifier = var_identifier
     self.resolution_counter = 0
 
@@ -80,7 +84,7 @@ class VarsResolver:
     return self._iterate(copy.deepcopy(to_resolve), source)
 
   @staticmethod
-  def resolve_all(to_resolve: dict, source: dict, var_identifier: str = '$') -> dict:
+  def resolve_all(to_resolve: dict, source: dict, var_identifier: str = defaults.VAR_IDENTIFIER) -> dict:
       resolver = VarsResolver(var_identifier)
 
       resolved_vars = resolver.resolve(to_resolve, source)
@@ -155,6 +159,17 @@ def merge_dicts(*dicts):
         merged[key] = value
 
   return merged
+
+
+def init_logging(loglevel: str) -> None:
+  try:
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), defaults.LOG_CONFIG_FILE)) as f:
+      yaml_config = yaml.safe_load(f.read())
+      if loglevel in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
+        yaml_config['loggers']['root']['level'] = loglevel
+      logging.config.dictConfig(yaml_config)
+  except FileNotFoundError:
+    pass
 
 
 def confirm_dialog() -> None:

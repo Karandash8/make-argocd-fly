@@ -52,9 +52,9 @@ python3 -m venv .venv
 pip install make-argocd-fly
 
 make-argocd-fly -h
-usage: main.py [-h] [--root-dir ROOT_DIR] [--config-file CONFIG_FILE] [--source-dir SOURCE_DIR] [--output-dir OUTPUT_DIR] [--tmp-dir TMP_DIR] [--render-apps RENDER_APPS]
-               [--render-envs RENDER_ENVS] [--skip-generate] [--preserve-tmp-dir] [--clean] [--print-vars] [--var-identifier VAR_IDENTIFIER] [--skip-latest-version-check]
-               [--yaml-linter] [--kube-linter] [--loglevel LOGLEVEL]
+usage: make-argocd-fly [-h] [--root-dir ROOT_DIR] [--config-file CONFIG_FILE] [--source-dir SOURCE_DIR] [--output-dir OUTPUT_DIR] [--tmp-dir TMP_DIR]
+                       [--render-apps RENDER_APPS] [--render-envs RENDER_ENVS] [--skip-generate] [--preserve-tmp-dir] [--remove-output-dir] [--print-vars]
+                       [--var-identifier VAR_IDENTIFIER] [--skip-latest-version-check] [--yaml-linter] [--kube-linter] [--loglevel LOGLEVEL]
 
 Render ArgoCD Applications.
 

@@ -1,6 +1,5 @@
 import pytest
 from make_argocd_fly.config import get_abs_path, read_config, Config
-from make_argocd_fly.cli_args import populate_cli_args
 
 
 def test_get_abs_path_with_relative_path_in_current_directory(tmp_path):
@@ -86,7 +85,6 @@ def test_read_config_with_valid_config_file(tmp_path):
   config_file_path.write_text('test')
   source_dir_path = tmp_path / source_dir
   source_dir_path.mkdir()
-  cli_args = populate_cli_args(root_dir=root_dir, config_file=config_file, source_dir=source_dir, output_dir=output_dir, tmp_dir=tmp_dir)
-  config = read_config(root_dir, config_file, cli_args)
+  config = read_config(root_dir)
   assert isinstance(config, Config)
   assert config.get_source_dir() == str(source_dir_path)

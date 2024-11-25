@@ -8,7 +8,7 @@ from pprint import pformat
 from make_argocd_fly.resource import ResourceViewer
 from make_argocd_fly.utils import merge_dicts, VarsResolver, get_app_rel_path
 from make_argocd_fly.config import get_config
-from make_argocd_fly.cli_args import get_cli_args
+from make_argocd_fly.params import get_params
 from make_argocd_fly.steps import FindAppsStep, RenderYamlStep, RenderJinjaFromViewerStep, RenderJinjaFromMemoryStep, \
   WriteResourcesStep, ReadSourceStep, RunKustomizeStep
 from make_argocd_fly.exceptions import MissingSourceResourcesError
@@ -24,7 +24,7 @@ class AbstractWorkflow(ABC):
     self.env_name = env_name
     self.app_viewer = app_viewer
     self.config = get_config()
-    self.cli_args = get_cli_args()
+    self.params = get_params()
 
   @abstractmethod
   async def process(self) -> None:
@@ -95,15 +95,15 @@ class AppOfAppsWorkflow(AbstractWorkflow):
                                 })
       global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                       global_vars,
-                                                      var_identifier=self.cli_args.get_var_identifier())
+                                                      var_identifier=self.params.get_var_identifier())
       env_vars_resolved = merge_dicts(global_vars_resolved,
                                       VarsResolver.resolve_all(self.config.get_env_vars(env_name),
                                                                merge_dicts(global_vars_resolved, self.config.get_env_vars(self.env_name)),
-                                                               var_identifier=self.cli_args.get_var_identifier()))
+                                                               var_identifier=self.params.get_var_identifier()))
       template_vars = merge_dicts(env_vars_resolved,
                                   VarsResolver.resolve_all(self.config.get_app_vars(env_name, app_name),
                                                            merge_dicts(env_vars_resolved, self.config.get_app_vars(env_name, app_name)),
-                                                           var_identifier=self.cli_args.get_var_identifier()))
+                                                           var_identifier=self.params.get_var_identifier()))
 
       self.render_jinja_step.configure(textwrap.dedent(self.APPLICATION_RESOUCE_TEMPLATE), self.app_name, self.env_name, template_vars)
       await self.render_jinja_step.run()
@@ -139,17 +139,17 @@ class SimpleWorkflow(AbstractWorkflow):
                               })
     global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                     global_vars,
-                                                    var_identifier=self.cli_args.get_var_identifier())
+                                                    var_identifier=self.params.get_var_identifier())
     env_vars_resolved = merge_dicts(global_vars_resolved,
                                     VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
                                                              merge_dicts(global_vars_resolved, self.config.get_env_vars(self.env_name)),
-                                                             var_identifier=self.cli_args.get_var_identifier()))
+                                                             var_identifier=self.params.get_var_identifier()))
     template_vars = merge_dicts(env_vars_resolved,
                                 VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
                                                          merge_dicts(env_vars_resolved, self.config.get_app_vars(self.env_name, self.app_name)),
-                                                         var_identifier=self.cli_args.get_var_identifier()))
+                                                         var_identifier=self.params.get_var_identifier()))
 
-    if self.cli_args.get_print_vars():
+    if self.params.get_print_vars():
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml)$')
@@ -195,17 +195,17 @@ class KustomizeWorkflow(AbstractWorkflow):
                               })
     global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                     global_vars,
-                                                    var_identifier=self.cli_args.get_var_identifier())
+                                                    var_identifier=self.params.get_var_identifier())
     env_vars_resolved = merge_dicts(global_vars_resolved,
                                     VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
                                                              merge_dicts(global_vars_resolved, self.config.get_env_vars(self.env_name)),
-                                                             var_identifier=self.cli_args.get_var_identifier()))
+                                                             var_identifier=self.params.get_var_identifier()))
     template_vars = merge_dicts(env_vars_resolved,
                                 VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
                                                          merge_dicts(env_vars_resolved, self.config.get_app_vars(self.env_name, self.app_name)),
-                                                         var_identifier=self.cli_args.get_var_identifier()))
+                                                         var_identifier=self.params.get_var_identifier()))
 
-    if self.cli_args.get_print_vars():
+    if self.params.get_print_vars():
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml)$', ['base', self.env_name])
