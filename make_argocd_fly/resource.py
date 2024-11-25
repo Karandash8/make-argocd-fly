@@ -21,10 +21,12 @@ class YamlDumper(SafeDumper):
 
 
 def represent_str(dumper, data):
-  """configures yaml for dumping multiline strings
+  """configures pyyaml for dumping multiline strings
   Ref: https://stackoverflow.com/questions/8640959/how-can-i-control-what-scalar-form-pyyaml-uses-for-my-data"""
   if data.count('\n') > 0:
     return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
+  """configure pyyaml for dumping numbers that start with 0 as strings
+  Ref: https://github.com/yaml/pyyaml/issues/98"""
   if data.startswith('0'):
     try:
       int(data[1:])

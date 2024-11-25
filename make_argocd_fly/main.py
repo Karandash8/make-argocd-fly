@@ -63,7 +63,7 @@ async def generate() -> None:
 
 
 def main() -> None:
-  parser = argparse.ArgumentParser(description='Render ArgoCD Applications.')
+  parser = argparse.ArgumentParser(prog='make-argocd-fly', description='Render ArgoCD Applications.')
   parser.add_argument('--root-dir', type=str, default=os.getcwd(), help='Root directory (default: current directory)')
   parser.add_argument('--config-file', type=str, default=CONFIG_FILE, help='Configuration file (default: config.yml)')
   parser.add_argument('--source-dir', type=str, default=SOURCE_DIR, help='Source files directory (default: source)')
