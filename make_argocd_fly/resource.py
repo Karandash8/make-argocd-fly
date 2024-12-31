@@ -155,7 +155,7 @@ class ResourceWriter:
       yaml_obj = yaml.load(resource_yml, Loader=YamlLoader)
     except yaml.composer.ComposerError:
       log.error('Error parsing yaml to write as file {}. Yaml:\n{}'.format(file_path, resource_yml))
-      raise
+      raise Exception
 
     with open(os.path.join(self.output_dir_abs_path, file_path), 'w') as f:
       yaml.dump(yaml_obj, f, Dumper=YamlDumper,
@@ -173,4 +173,4 @@ class ResourceWriter:
     except Exception:
       for task in asyncio.all_tasks():
         task.cancel()
-      raise
+      raise Exception

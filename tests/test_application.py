@@ -1,10 +1,10 @@
 import pytest
 
-from make_argocd_fly.application import workflow_factory, AppOfAppsWorkflow, SimpleWorkflow, KustomizeWorkflow
+from make_argocd_fly.application import application_factory, AppOfAppsApplication, SimpleApplication, KustomizeApplication
 
 
 @pytest.mark.asyncio
-async def test_workflow_factory_create_SimpleWorkflow(tmp_path):
+async def test_application_factory_create_SimpleApplication(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
   dir_app = dir_root / 'app'
@@ -13,14 +13,14 @@ async def test_workflow_factory_create_SimpleWorkflow(tmp_path):
   file_app = dir_app / 'resource.yml'
   file_app.write_text(FILE_CONTENT)
 
-  app_name = 'app'
   env_name = 'env'
+  app_name = 'app'
 
-  app_instance = await workflow_factory(app_name, env_name, str(dir_app))
-  assert isinstance(app_instance, SimpleWorkflow)
+  app_instance = await application_factory(env_name, app_name, str(dir_app))
+  assert isinstance(app_instance, SimpleApplication)
 
 @pytest.mark.asyncio
-async def test_workflow_factory_create_KustomizeWorkflow(tmp_path):
+async def test_application_factory_create_KustomizeApplication(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
   dir_app = dir_root / 'app'
@@ -29,16 +29,16 @@ async def test_workflow_factory_create_KustomizeWorkflow(tmp_path):
   file_app = dir_app / 'kustomization.yml'
   file_app.write_text(FILE_CONTENT)
 
-  app_name = 'app'
   env_name = 'env'
+  app_name = 'app'
 
-  app_instance = await workflow_factory(app_name, env_name, str(dir_app))
-  assert isinstance(app_instance, KustomizeWorkflow)
+  app_instance = await application_factory(env_name, app_name, str(dir_app))
+  assert isinstance(app_instance, KustomizeApplication)
 
 @pytest.mark.asyncio
 async def test_application_factory_create_AppOfApps():
-  app_name = 'app'
   env_name = 'env'
+  app_name = 'app'
 
-  app_instance = await workflow_factory(app_name, env_name, 'non_existing_dir')
-  assert isinstance(app_instance, AppOfAppsWorkflow)
+  app_instance = await application_factory(env_name, app_name, 'non_existing_dir')
+  assert isinstance(app_instance, AppOfAppsApplication)
