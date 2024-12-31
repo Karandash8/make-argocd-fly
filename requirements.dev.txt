@@ -1,8 +1,12 @@
 setuptools==75.6.0
 build==1.2.2.post1
 twine==5.1.1
-pytest==8.3.3
-pytest-asyncio==0.24.0
+pytest==8.3.4
+pytest-asyncio==0.25.0
 pytest-cov==6.0.0
+pytest-mock==3.14.0
 yelp-gprof2dot==1.2.0
 flake8==7.1.1
+tox==4.23.2
+tox-gh-actions==3.2.0
+

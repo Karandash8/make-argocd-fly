@@ -16,7 +16,7 @@ from make_argocd_fly.exceptions import MissingSourceResourcesError
 log = logging.getLogger(__name__)
 
 
-class AbstractWorkflow(ABC):
+class AbstractApplication(ABC):
   def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:
     super().__init__()
 
@@ -31,8 +31,8 @@ class AbstractWorkflow(ABC):
     pass
 
 
-class AppOfAppsWorkflow(AbstractWorkflow):
-  APPLICATION_RESOUCE_TEMPLATE = '''\
+class AppOfAppsApplication(AbstractApplication):
+  APPLICATION_RESOUCE_TEMPLATE = textwrap.dedent('''\
     apiVersion: argoproj.io/v1alpha1
     kind: Application
     metadata:
@@ -67,7 +67,7 @@ class AppOfAppsWorkflow(AbstractWorkflow):
       ignoreDifferences:
       {{ argocd.ignoreDifferences | default([]) | to_nice_yaml(indent=2) | trim | indent(2) }}
       {%- endif %}
-    '''
+    ''')
 
   def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:
     super().__init__(app_name, env_name, app_viewer)
@@ -80,7 +80,7 @@ class AppOfAppsWorkflow(AbstractWorkflow):
   async def process(self) -> None:
     log.debug('Starting to process application {} in environment {}'.format(self.app_name, self.env_name))
 
-    self.find_apps_step.configure(self.app_name, self.env_name)
+    self.find_apps_step.configure(self.env_name, self.app_name)
     await self.find_apps_step.run()
 
     for (app_name, env_name) in self.find_apps_step.get_apps():
@@ -105,7 +105,7 @@ class AppOfAppsWorkflow(AbstractWorkflow):
                                                            merge_dicts(env_vars_resolved, self.config.get_app_vars(env_name, app_name)),
                                                            var_identifier=self.params.get_var_identifier()))
 
-      self.render_jinja_step.configure(textwrap.dedent(self.APPLICATION_RESOUCE_TEMPLATE), self.app_name, self.env_name, template_vars)
+      self.render_jinja_step.configure(self.env_name, self.app_name, self.APPLICATION_RESOUCE_TEMPLATE, template_vars)
       await self.render_jinja_step.run()
 
     log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
@@ -120,7 +120,7 @@ class AppOfAppsWorkflow(AbstractWorkflow):
     log.info('Updated application {} in environment {}'.format(self.app_name, self.env_name))
 
 
-class SimpleWorkflow(AbstractWorkflow):
+class SimpleApplication(AbstractApplication):
   def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:
     super().__init__(app_name, env_name, app_viewer)
     self.render_yaml_step = RenderYamlStep()
@@ -153,11 +153,11 @@ class SimpleWorkflow(AbstractWorkflow):
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml)$')
-    self.render_yaml_step.configure(yml_children, self.app_name, self.env_name)
+    self.render_yaml_step.configure(self.env_name, self.app_name, yml_children)
     await self.render_yaml_step.run()
 
     j2_children = self.app_viewer.get_files_children(r'(\.yml\.j2)$')
-    self.render_jinja_step.configure(j2_children, self.app_name, self.env_name, template_vars)
+    self.render_jinja_step.configure(self.env_name, self.app_name, j2_children, template_vars)
     await self.render_jinja_step.run()
 
     log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
@@ -173,7 +173,7 @@ class SimpleWorkflow(AbstractWorkflow):
     log.info('Updated application {} in environment {}'.format(self.app_name, self.env_name))
 
 
-class KustomizeWorkflow(AbstractWorkflow):
+class KustomizeApplication(AbstractApplication):
   def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:
     super().__init__(app_name, env_name, app_viewer)
     self.render_yaml_step = RenderYamlStep()
@@ -209,11 +209,11 @@ class KustomizeWorkflow(AbstractWorkflow):
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml)$', ['base', self.env_name])
-    self.render_yaml_step.configure(yml_children, self.app_name, self.env_name)
+    self.render_yaml_step.configure(self.env_name, self.app_name, yml_children)
     await self.render_yaml_step.run()
 
     j2_children = self.app_viewer.get_files_children(r'(\.yml\.j2)$', ['base', self.env_name])
-    self.render_jinja_step.configure(j2_children, self.app_name, self.env_name, template_vars)
+    self.render_jinja_step.configure(self.env_name, self.app_name, j2_children, template_vars)
     await self.render_jinja_step.run()
 
     self.tmp_write_resources_step.configure(self.config.get_tmp_dir(), self.render_yaml_step.get_resources() + self.render_jinja_step.get_resources())
@@ -222,7 +222,7 @@ class KustomizeWorkflow(AbstractWorkflow):
     self.tmp_read_source_step.configure(os.path.join(self.config.get_tmp_dir(), get_app_rel_path(self.env_name, self.app_name)))
     await self.tmp_read_source_step.run()
 
-    self.run_kustomize_step.configure(self.tmp_read_source_step.get_viewer(), self.app_name, self.env_name)
+    self.run_kustomize_step.configure(self.env_name, self.app_name, self.tmp_read_source_step.get_viewer())
     await self.run_kustomize_step.run()
 
     log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
@@ -238,7 +238,7 @@ class KustomizeWorkflow(AbstractWorkflow):
     log.info('Updated application {} in environment {}'.format(self.app_name, self.env_name))
 
 
-async def workflow_factory(app_name: str, env_name: str, source_path: str) -> AbstractWorkflow:
+async def application_factory(env_name: str, app_name: str, source_path: str) -> AbstractApplication:
   read_source_step = ReadSourceStep()
   read_source_step.configure(source_path)
 
@@ -248,19 +248,9 @@ async def workflow_factory(app_name: str, env_name: str, source_path: str) -> Ab
 
     kustomize_children = viewer.get_files_children('kustomization.yml')
 
-    if not kustomize_children:
-      return SimpleWorkflow(app_name, env_name, viewer)
+    if kustomize_children:
+      return KustomizeApplication(app_name, env_name, viewer)
     else:
-      return KustomizeWorkflow(app_name, env_name, viewer)
+      return SimpleApplication(app_name, env_name, viewer)
   except MissingSourceResourcesError:
-    return AppOfAppsWorkflow(app_name, env_name)
-
-
-class Application():
-  def __init__(self, app_name: str, env_name: str, workflow: AbstractWorkflow) -> None:
-    self.app_name = app_name
-    self.env_name = env_name
-    self.workflow = workflow
-
-  async def process(self) -> None:
-    await self.workflow.process()
+    return AppOfAppsApplication(app_name, env_name)

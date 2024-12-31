@@ -7,14 +7,14 @@ import asyncio
 import subprocess
 import yamllint
 
-from make_argocd_fly import defaults
+from make_argocd_fly import consts
 from make_argocd_fly.params import populate_params, get_params
 from make_argocd_fly.config import read_config, get_config
 from make_argocd_fly.utils import init_logging, latest_version_check
-from make_argocd_fly.application import workflow_factory, Application
+from make_argocd_fly.application import application_factory
 
 
-logging.basicConfig(level=defaults.LOGLEVEL)
+logging.basicConfig(level=consts.DEFAULT_LOGLEVEL)
 
 log = logging.getLogger(__name__)
 
@@ -38,16 +38,18 @@ async def generate() -> None:
       if apps_to_render and app_name not in apps_to_render:
         continue
 
-      workflow = await workflow_factory(app_name, env_name, os.path.join(config.get_source_dir(), app_name))
-      apps.append(Application(app_name, env_name, workflow))
+      application = await application_factory(env_name, app_name, os.path.join(config.get_source_dir(), app_name))
+      apps.append(application)
 
+  # TODO: convert to TaskGroup
+  # TODO: add throttling with asyncio.Semaphore
   log.info('Processing applications')
   try:
     await asyncio.gather(*[asyncio.create_task(app.process()) for app in apps])
   except Exception:
     for task in asyncio.all_tasks():
       task.cancel()
-    raise
+    raise Exception
 
 
 def main(**kwargs) -> None:
@@ -101,22 +103,22 @@ def main(**kwargs) -> None:
 
 def cli_entry_point() -> None:
   parser = argparse.ArgumentParser(prog='make-argocd-fly', description='Render ArgoCD Applications.')
-  parser.add_argument('--root-dir', type=str, default=defaults.ROOT_DIR, help='Root directory (default: current directory)')
-  parser.add_argument('--config-file', type=str, default=defaults.CONFIG_FILE, help='Configuration file (default: config.yml)')
-  parser.add_argument('--source-dir', type=str, default=defaults.SOURCE_DIR, help='Source files directory (default: source)')
-  parser.add_argument('--output-dir', type=str, default=defaults.OUTPUT_DIR, help='Output files directory (default: output)')
-  parser.add_argument('--tmp-dir', type=str, default=defaults.TMP_DIR, help='Temporary files directory (default: .tmp)')
+  parser.add_argument('--root-dir', type=str, default=consts.DEFAULT_ROOT_DIR, help='Root directory (default: current directory)')
+  parser.add_argument('--config-file', type=str, default=consts.DEFAULT_CONFIG_FILE, help='Configuration file (default: config.yml)')
+  parser.add_argument('--source-dir', type=str, default=consts.DEFAULT_SOURCE_DIR, help='Source files directory (default: source)')
+  parser.add_argument('--output-dir', type=str, default=consts.DEFAULT_OUTPUT_DIR, help='Output files directory (default: output)')
+  parser.add_argument('--tmp-dir', type=str, default=consts.DEFAULT_TMP_DIR, help='Temporary files directory (default: .tmp)')
   parser.add_argument('--render-apps', type=str, default=None, help='Comma separate list of applications to render')
   parser.add_argument('--render-envs', type=str, default=None, help='Comma separate list of environments to render')
   parser.add_argument('--skip-generate', action='store_true', help='Skip resource generation')
   parser.add_argument('--preserve-tmp-dir', action='store_true', help='Preserve temporary directory')
   parser.add_argument('--remove-output-dir', action='store_true', help='Remove output directory')
   parser.add_argument('--print-vars', action='store_true', help='Print variables for each application')
-  parser.add_argument('--var-identifier', type=str, default=defaults.VAR_IDENTIFIER, help='Variable prefix in config.yml file (default: $)')
+  parser.add_argument('--var-identifier', type=str, default=consts.DEFAULT_VAR_IDENTIFIER, help='Variable prefix in config.yml file (default: $)')
   parser.add_argument('--skip-latest-version-check', action='store_true', help='Skip latest version check')
   parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
   parser.add_argument('--kube-linter', action='store_true', help='Run kube-linter against output directory (https://github.com/stackrox/kube-linter)')
-  parser.add_argument('--loglevel', type=str, default=defaults.LOGLEVEL, help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
+  parser.add_argument('--loglevel', type=str, default=consts.DEFAULT_LOGLEVEL, help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
   args = parser.parse_args()
 
   main(**vars(args))

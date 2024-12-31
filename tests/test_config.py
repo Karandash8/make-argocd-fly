@@ -79,8 +79,6 @@ def test_read_config_with_valid_config_file(tmp_path):
   root_dir = tmp_path
   config_file = 'config.yml'
   source_dir = 'source'
-  output_dir = 'output'
-  tmp_dir = '.tmp'
   config_file_path = tmp_path / config_file
   config_file_path.write_text('test')
   source_dir_path = tmp_path / source_dir

@@ -1,40 +1,219 @@
+import logging
 import pytest
 import textwrap
 
-from make_argocd_fly.utils import get_filename_elements, extract_single_resource, generate_filename, merge_dicts, VarsResolver
+from make_argocd_fly.utils import extract_single_resource, merge_dicts, VarsResolver, FilePathGenerator
 
 ###################
-### get_filename_elements
+### FilePathGenerator
 ###################
 
-def test_get_filename_elements_empty():
-  resource_yml = '''\
-    '''
+def test_FilePathGenerator__init__():
+  resource_yml = 'resource_yml'
+  source_file_rel_path = 'path/file.yml'
 
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == []
+  generator = FilePathGenerator(resource_yml, source_file_rel_path)
 
-def test_get_filename_elements_simple():
-  resource_yml = '''\
+  assert generator.resource_yml == resource_yml
+  assert generator.source_file_rel_path == source_file_rel_path
+
+###################
+### FilePathGenerator._extract_kind
+###################
+
+def test_FilePathGenerator___extract_kind__from_yaml_empty():
+  resource_yml = textwrap.dedent('''\
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_kind(resource_yml) == None
+
+def test_FilePathGenerator___extract_kind__from_yaml_simple():
+  resource_yml = textwrap.dedent('''\
     apiVersion: apps/v1
     kind: Deployment
     metadata:
       name: grafana
-    '''
+    ''')
 
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
+  assert FilePathGenerator(resource_yml, None)._extract_kind(resource_yml) == 'Deployment'
 
-def test_get_filename_elements_missing_name():
-  resource_yml = '''\
+def test_FilePathGenerator___extract_kind__from_yaml_missing_kind():
+  resource_yml = textwrap.dedent('''\
+    apiVersion: apps/v1
+    metadata:
+      namespace: monitoring
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_kind(resource_yml) == None
+
+def test_FilePathGenerator___extract_kind__from_yaml_with_comments():
+  resource_yml = textwrap.dedent('''\
+    apiVersion: apps/v1
+    #kind: DaemonSet
+    kind: Deployment
+    metadata:
+    # name: grafana-comment
+      #name: grafana-comment
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_kind(resource_yml) == 'Deployment'
+
+def test_FilePathGenerator___extract_kind__from_yaml_with_leading_comments():
+  resource_yml = textwrap.dedent('''\
+    #kind: DaemonSet
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+    # name: grafana-comment
+      #name: grafana-comment
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_kind(resource_yml) == 'Deployment'
+
+def test_FilePathGenerator___extract_kind__from_yaml_with_comments_and_leading_kind():
+  resource_yml = textwrap.dedent('''\
+    kind: Deployment
+    #kind: DaemonSet
+    apiVersion: apps/v1
+    metadata:
+    # name: grafana-comment
+      #name: grafana-comment
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_kind(resource_yml) == 'Deployment'
+
+def test_FilePathGenerator___extract_kind__from_yaml_with_extra_spaces():
+  resource_yml = textwrap.dedent('''\
+      kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_kind(resource_yml) == None
+
+###################
+### FilePathGenerator._extract_api_version
+###################
+
+def test_FilePathGenerator___extract_api_version__from_yaml_empty():
+  resource_yml = textwrap.dedent('''\
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_api_version(resource_yml) == None
+
+def test_FilePathGenerator___extract_api_version__from_yaml_simple():
+  resource_yml = textwrap.dedent('''\
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_api_version(resource_yml) == 'apps/v1'
+
+def test_FilePathGenerator___extract_api_version__from_yaml_missing_api_verion():
+  resource_yml = textwrap.dedent('''\
+    kind: Deployment
+    metadata:
+      namespace: monitoring
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_api_version(resource_yml) == None
+
+def test_FilePathGenerator___extract_api_version__from_yaml_with_comments():
+  resource_yml = textwrap.dedent('''\
+    # apiVersion: apps/v2
+    apiVersion: apps/v1
+    #kind: DaemonSet
+    kind: Deployment
+    metadata:
+    # name: grafana-comment
+      #name: grafana-comment
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_api_version(resource_yml) == 'apps/v1'
+
+def test_FilePathGenerator___extract_api_version__from_yaml_with_leading_comments():
+  resource_yml = textwrap.dedent('''\
+    #kind: DaemonSet
+    # apiVersion: apps/v2
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+    # name: grafana-comment
+      #name: grafana-comment
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_api_version(resource_yml) == 'apps/v1'
+
+def test_FilePathGenerator___extract_api_version__from_yaml_with_comments_and_leading_api_version():
+  resource_yml = textwrap.dedent('''\
+    apiVersion: apps/v1
+    # apiVersion: apps/v2
+    kind: Deployment
+    #kind: DaemonSet
+    metadata:
+    # name: grafana-comment
+      #name: grafana-comment
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_api_version(resource_yml) == 'apps/v1'
+
+def test_FilePathGenerator___extract_api_version__from_yaml_with_extra_spaces():
+  resource_yml = textwrap.dedent('''\
+    kind: Deployment
+      apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_api_version(resource_yml) == None
+
+###################
+### FilePathGenerator._extract_name
+###################
+
+def test_FilePathGenerator___extract_name__from_yaml_empty():
+  resource_yml = textwrap.dedent('''\
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_name(resource_yml) == None
+
+def test_FilePathGenerator___extract_name__from_yaml_simple():
+  resource_yml = textwrap.dedent('''\
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_name(resource_yml) == 'grafana'
+
+def test_FilePathGenerator___extract_name__from_yaml_missing_name():
+  resource_yml = textwrap.dedent('''\
     apiVersion: apps/v1
     kind: Deployment
     metadata:
       namespace: monitoring
-    '''
+    ''')
 
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment']
+  assert FilePathGenerator(resource_yml, None)._extract_name(resource_yml) == None
 
-def test_get_filename_elements_with_comments():
-  resource_yml = '''\
+def test_FilePathGenerator___extract_name__from_yaml_with_comments():
+  resource_yml = textwrap.dedent('''\
     apiVersion: apps/v1
     #kind: DaemonSet
     kind: Deployment
@@ -42,12 +221,12 @@ def test_get_filename_elements_with_comments():
     # name: grafana-comment
       #name: grafana-comment
       name: grafana
-    '''
+    ''')
 
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
+  assert FilePathGenerator(resource_yml, None)._extract_name(resource_yml) == 'grafana'
 
-def test_get_filename_elements_with_leading_comments():
-  resource_yml = '''\
+def test_FilePathGenerator___extract_name__from_yaml_with_leading_comments():
+  resource_yml = textwrap.dedent('''\
     #kind: DaemonSet
     apiVersion: apps/v1
     kind: Deployment
@@ -55,61 +234,48 @@ def test_get_filename_elements_with_leading_comments():
     # name: grafana-comment
       #name: grafana-comment
       name: grafana
-    '''
+    ''')
 
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
+  assert FilePathGenerator(resource_yml, None)._extract_name(resource_yml) == 'grafana'
 
-def test_get_filename_elements_with_comments_and_leading_kind():
-  resource_yml = '''\
-    kind: Deployment
-    #kind: DaemonSet
-    apiVersion: apps/v1
-    metadata:
-    # name: grafana-comment
-      #name: grafana-comment
-      name: grafana
-    '''
-
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
-
-def test_get_filename_elements_with_messed_up_order_metadata_at_the_beginning():
-  resource_yml = '''\
+def test_FilePathGenerator___extract_name__from_yaml_with_messed_up_order_metadata_at_the_beginning():
+  resource_yml = textwrap.dedent('''\
     metadata:
       name: grafana
     kind: Deployment
     apiVersion: apps/v1
     stringData:
       name: notgrafana
-    '''
+    ''')
 
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
+  assert FilePathGenerator(resource_yml, None)._extract_name(resource_yml) == 'grafana'
 
-def test_get_filename_elements_with_messed_up_order_metadata_in_the_middle():
-  resource_yml = '''\
+def test_FilePathGenerator___extract_name__from_yaml_with_messed_up_order_metadata_in_the_middle():
+  resource_yml = textwrap.dedent('''\
     kind: Deployment
     apiVersion: apps/v1
     stringData:
       name: notgrafana
     metadata:
       name: grafana
-    '''
+    ''')
 
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
+  assert FilePathGenerator(resource_yml, None)._extract_name(resource_yml) == 'grafana'
 
-def test_get_filename_elements_with_messed_up_order_name_extra_spaces():
-  resource_yml = '''\
+def test_FilePathGenerator___extract_name__from_yaml_with_extra_spaces():
+  resource_yml = textwrap.dedent('''\
     kind: Deployment
     apiVersion: apps/v1
     stringData:
       name: notgrafana
     metadata:
         name: grafana
-    '''
+    ''')
 
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment']
+  assert FilePathGenerator(resource_yml, None)._extract_name(resource_yml) == None
 
-def test_get_filename_elements_with_messed_up_order_name_is_not_first():
-  resource_yml = '''\
+def test_FilePathGenerator___extract_name__from_yaml_with_messed_up_order_name_is_not_first():
+  resource_yml = textwrap.dedent('''\
     kind: Deployment
     apiVersion: apps/v1
     stringData:
@@ -117,12 +283,12 @@ def test_get_filename_elements_with_messed_up_order_name_is_not_first():
     metadata:
       namespace: monitoring
       name: grafana
-    '''
+    ''')
 
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
+  assert FilePathGenerator(resource_yml, None)._extract_name(resource_yml) == 'grafana'
 
-def test_get_filename_elements_with_messed_up_order_name_is_not_first_with_comment_1():
-  resource_yml = '''\
+def test_FilePathGenerator___extract_name__from_yaml_with_messed_up_order_name_is_not_first_with_comment_1():
+  resource_yml = textwrap.dedent('''\
     kind: Deployment
     apiVersion: apps/v1
     stringData:
@@ -131,12 +297,12 @@ def test_get_filename_elements_with_messed_up_order_name_is_not_first_with_comme
       namespace: monitoring
     # comment
       name: grafana
-    '''
+    ''')
 
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
+  assert FilePathGenerator(resource_yml, None)._extract_name(resource_yml) == 'grafana'
 
-def test_get_filename_elements_with_messed_up_order_name_is_not_first_with_comments_2():
-  resource_yml = '''\
+def test_FilePathGenerator___extract_name__from_yaml_with_messed_up_order_name_is_not_first_with_comments_2():
+  resource_yml = textwrap.dedent('''\
     kind: Deployment
     apiVersion: apps/v1
     stringData:
@@ -145,12 +311,12 @@ def test_get_filename_elements_with_messed_up_order_name_is_not_first_with_comme
       namespace: monitoring
      # comment
       name: grafana
-    '''
+    ''')
 
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
+  assert FilePathGenerator(resource_yml, None)._extract_name(resource_yml) == 'grafana'
 
-def test_get_filename_elements_with_messed_up_order_name_is_not_first_with_comments_3():
-  resource_yml = '''\
+def test_FilePathGenerator___extract_name__from_yaml_with_messed_up_order_name_is_not_first_with_comments_3():
+  resource_yml = textwrap.dedent('''\
     kind: Deployment
     apiVersion: apps/v1
     stringData:
@@ -159,12 +325,12 @@ def test_get_filename_elements_with_messed_up_order_name_is_not_first_with_comme
       namespace: monitoring
       # comment
       name: grafana
-    '''
+    ''')
 
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
+  assert FilePathGenerator(resource_yml, None)._extract_name(resource_yml) == 'grafana'
 
-def test_get_filename_elements_with_messed_up_order_name_is_not_first_with_comments_4():
-  resource_yml = '''\
+def test_FilePathGenerator___extract_name__from_yaml_with_messed_up_order_name_is_not_first_with_comments_4():
+  resource_yml = textwrap.dedent('''\
     kind: Deployment
     apiVersion: apps/v1
     stringData:
@@ -173,9 +339,402 @@ def test_get_filename_elements_with_messed_up_order_name_is_not_first_with_comme
       namespace: monitoring
        # comment
       name: grafana
-    '''
+    ''')
 
-  assert get_filename_elements(textwrap.dedent(resource_yml)) == ['Deployment', 'grafana']
+  assert FilePathGenerator(resource_yml, None)._extract_name(resource_yml) == 'grafana'
+
+###################
+### FilePathGenerator._extract_namespace
+###################
+
+def test_FilePathGenerator___extract_namespace__from_yaml_empty():
+  resource_yml = textwrap.dedent('''\
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_namespace(resource_yml) == None
+
+def test_FilePathGenerator___extract_namespace__from_yaml_simple():
+  resource_yml = textwrap.dedent('''\
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: grafana
+      namespace: monitoring
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_namespace(resource_yml) == 'monitoring'
+
+def test_FilePathGenerator___extract_namespace__from_yaml_missing_namespace():
+  resource_yml = textwrap.dedent('''\
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_namespace(resource_yml) == None
+
+def test_FilePathGenerator___extract_namespace__from_yaml_with_comments():
+  resource_yml = textwrap.dedent('''\
+    apiVersion: apps/v1
+    #kind: DaemonSet
+    kind: Deployment
+    metadata:
+    # name: grafana-comment
+      #name: grafana-comment
+      name: grafana
+      # namespace: monitoring-comment
+      namespace: monitoring
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_namespace(resource_yml) == 'monitoring'
+
+def test_FilePathGenerator___extract_namespace__from_yaml_with_leading_comments():
+  resource_yml = textwrap.dedent('''\
+    #kind: DaemonSet
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      # namespace: monitoring-comment
+      namespace: monitoring
+    # name: grafana-comment
+      #name: grafana-comment
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_namespace(resource_yml) == 'monitoring'
+
+def test_FilePathGenerator___extract_namespace__from_yaml_with_messed_up_order_metadata_at_the_beginning():
+  resource_yml = textwrap.dedent('''\
+    metadata:
+      namespace: monitoring
+      name: grafana
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+      namespace: notmonitoring
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_namespace(resource_yml) == 'monitoring'
+
+def test_FilePathGenerator___extract_namespace__from_yaml_with_messed_up_order_metadata_in_the_middle():
+  resource_yml = textwrap.dedent('''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+      namespace: notmonitoring
+    metadata:
+      name: grafana
+      namespace: monitoring
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_namespace(resource_yml) == 'monitoring'
+
+def test_FilePathGenerator___extract_namespace__from_yaml_with_extra_spaces():
+  resource_yml = textwrap.dedent('''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+      namespace: notmonitoring
+    metadata:
+      name: grafana
+        namespace: monitoring
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_namespace(resource_yml) == None
+
+def test_FilePathGenerator___extract_namespace__from_yaml_with_messed_up_order_name_is_not_first():
+  resource_yml = textwrap.dedent('''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+      name: grafana
+      namespace: monitoring
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_namespace(resource_yml) == 'monitoring'
+
+def test_FilePathGenerator___extract_namespace__from_yaml_with_messed_up_order_name_is_not_first_with_comment_1():
+  resource_yml = textwrap.dedent('''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+    # comment
+      namespace: monitoring
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_namespace(resource_yml) == 'monitoring'
+
+def test_FilePathGenerator___extract_namespace__from_yaml_with_messed_up_order_name_is_not_first_with_comments_2():
+  resource_yml = textwrap.dedent('''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+     # comment
+      namespace: monitoring
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_namespace(resource_yml) == 'monitoring'
+
+def test_FilePathGenerator___extract_namespace__from_yaml_with_messed_up_order_name_is_not_first_with_comments_3():
+  resource_yml = textwrap.dedent('''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+      # comment
+      namespace: monitoring
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_namespace(resource_yml) == 'monitoring'
+
+def test_FilePathGenerator___extract_namespace__from_yaml_with_messed_up_order_name_is_not_first_with_comments_4():
+  resource_yml = textwrap.dedent('''\
+    kind: Deployment
+    apiVersion: apps/v1
+    stringData:
+      name: notgrafana
+    metadata:
+       # comment
+      namespace: monitoring
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None)._extract_namespace(resource_yml) == 'monitoring'
+
+###################
+### FilePathGenerator._extract_file_rel_path
+###################
+
+def test_FilePathGenerator___extract_file_rel_path__from_empty():
+  source_file_rel_path = ''
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_file_rel_path(source_file_rel_path) == None
+
+def test_FilePathGenerator___extract_file_rel_path__from_file():
+  source_file_rel_path = 'file.txt'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_file_rel_path(source_file_rel_path) == None
+
+def test_FilePathGenerator___extract_file_rel_path__from_path():
+  source_file_rel_path = 'path/path/'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_file_rel_path(source_file_rel_path) == 'path/path'
+
+def test_FilePathGenerator___extract_file_rel_path__from_file_path():
+  source_file_rel_path = 'path/file.txt'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_file_rel_path(source_file_rel_path) == 'path'
+
+###################
+### FilePathGenerator._extract_source_file_name
+###################
+
+def test_FilePathGenerator___extract_source_file_name__from_empty():
+  source_file_rel_path = ''
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_source_file_name(source_file_rel_path) == None
+
+def test_FilePathGenerator___extract_source_file_name__from_file():
+  source_file_rel_path = 'file.txt'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_source_file_name(source_file_rel_path) == 'file'
+
+def test_FilePathGenerator___extract_source_file_name__from_j2_file():
+  source_file_rel_path = 'file.txt.j2'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_source_file_name(source_file_rel_path) == 'file'
+
+def test_FilePathGenerator___extract_source_file_name__from_file_multi_ext():
+  source_file_rel_path = 'file.txt.txt'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_source_file_name(source_file_rel_path) == 'file.txt'
+
+def test_FilePathGenerator___extract_source_file_name__from_file_no_ext():
+  source_file_rel_path = 'file'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_source_file_name(source_file_rel_path) == 'file'
+
+def test_FilePathGenerator___extract_source_file_name__from_file_path():
+  source_file_rel_path = 'path/file.txt'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_source_file_name(source_file_rel_path) == 'file'
+
+def test_FilePathGenerator___extract_source_file_name__from_path():
+  source_file_rel_path = 'path/'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_source_file_name(source_file_rel_path) == None
+
+###################
+### FilePathGenerator._extract_file_extension
+###################
+
+def test_FilePathGenerator___extract_file_extension__from_empty():
+  source_file_rel_path = ''
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_file_extension(source_file_rel_path) == None
+
+def test_FilePathGenerator___extract_file_extension__from_file():
+  source_file_rel_path = 'file.txt'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_file_extension(source_file_rel_path) == '.txt'
+
+def test_FilePathGenerator___extract_file_extension__from_j2_file():
+  source_file_rel_path = 'file.txt.j2'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_file_extension(source_file_rel_path) == '.txt'
+
+def test_FilePathGenerator___extract_file_extension__from_file_multi_ext():
+  source_file_rel_path = 'file.txt.log'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_file_extension(source_file_rel_path) == '.log'
+
+def test_FilePathGenerator___extract_file_extension__from_file_no_ext():
+  source_file_rel_path = 'file'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_file_extension(source_file_rel_path) == None
+
+def test_FilePathGenerator___extract_file_extension__from_file_path():
+  source_file_rel_path = 'path/file.txt'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_file_extension(source_file_rel_path) == '.txt'
+
+def test_FilePathGenerator___extract_file_extension__from_path():
+  source_file_rel_path = 'path/'
+
+  assert FilePathGenerator(None, source_file_rel_path)._extract_file_extension(source_file_rel_path) == None
+
+###################
+### FilePathGenerator.generate_from_source_file
+###################
+
+def test_FilePathGenerator__generate_from_source_file_path__without_source_file(caplog):
+  caplog.set_level(logging.DEBUG)
+  source_file_rel_path = 'path/'
+
+  generator = FilePathGenerator(None, source_file_rel_path)
+
+  with pytest.raises(Exception):
+    generator.generate_from_source_file()
+  assert 'Filename cannot be constructed' in caplog.text
+
+def test_FilePathGenerator__generate_from_source_file_path__from_source_file():
+  source_file_rel_path = 'file'
+
+  assert FilePathGenerator(None, source_file_rel_path).generate_from_source_file() == 'file'
+
+def test_FilePathGenerator__generate_from_source_file_path__from_j2_source_file():
+  source_file_rel_path = 'file.j2'
+
+  assert FilePathGenerator(None, source_file_rel_path).generate_from_source_file() == 'file'
+
+def test_FilePathGenerator__generate_from_source_file_path__from_source_file_with_ext():
+  source_file_rel_path = 'file.txt'
+
+  assert FilePathGenerator(None, source_file_rel_path).generate_from_source_file() == 'file.txt'
+
+def test_FilePathGenerator__generate_from_source_file_path__from_j2_source_file_with_ext():
+  source_file_rel_path = 'file.txt.j2'
+
+  assert FilePathGenerator(None, source_file_rel_path).generate_from_source_file() == 'file.txt'
+
+def test_FilePathGenerator__generate_from_source_file_path__from_source_file_with_path():
+  source_file_rel_path = 'path/file.txt'
+
+  assert FilePathGenerator(None, source_file_rel_path).generate_from_source_file() == 'path/file.txt'
+
+def test_FilePathGenerator__generate_from_source_file_path__from_j2_source_file_with_path():
+  source_file_rel_path = 'path/file.txt.j2'
+
+  assert FilePathGenerator(None, source_file_rel_path).generate_from_source_file() == 'path/file.txt'
+
+###################
+### FilePathGenerator.generate_from_k8s_resource
+###################
+
+def test_FilePathGenerator__generate_from_k8s_resource__from_empty(caplog):
+  caplog.set_level(logging.DEBUG)
+  resource_yml = textwrap.dedent('''\
+    ''')
+
+  generator = FilePathGenerator(resource_yml, None)
+
+  with pytest.raises(Exception):
+    generator.generate_from_k8s_resource()
+  assert 'Filename cannot be constructed' in caplog.text
+
+def test_FilePathGenerator__generate_from_k8s_resource__missing_resource_kind(caplog):
+  caplog.set_level(logging.DEBUG)
+  resource_yml = textwrap.dedent('''\
+    apiVersion: apps/v1
+    metadata:
+      namespace: monitoring
+      name: grafana
+    ''')
+
+  generator = FilePathGenerator(resource_yml, None)
+
+  with pytest.raises(Exception):
+    generator.generate_from_k8s_resource()
+  assert 'Filename cannot be constructed' in caplog.text
+
+def test_FilePathGenerator__generate_from_k8s_resource__missing_resource_name():
+  resource_yml = textwrap.dedent('''\
+    kind: Kustomization
+    apiVersion: apps/v1
+    data:
+      namespace: monitoring
+    ''')
+
+  assert FilePathGenerator(resource_yml, None).generate_from_k8s_resource() == 'kustomization.yml'
+
+def test_FilePathGenerator__generate_from_k8s_resource__simple():
+  resource_yml = textwrap.dedent('''\
+    kind: Deployment
+    apiVersion: apps/v1
+    metadata:
+      namespace: monitoring
+      name: grafana
+    ''')
+
+  assert FilePathGenerator(resource_yml, None).generate_from_k8s_resource() == 'deployment_grafana.yml'
+
+def test_FilePathGenerator__generate_from_k8s_resource__with_rel_path():
+  resource_yml = textwrap.dedent('''\
+    kind: Deployment
+    apiVersion: apps/v1
+    metadata:
+      namespace: monitoring
+      name: grafana
+    ''')
+  source_file_rel_path = 'path/'
+
+  assert FilePathGenerator(resource_yml, source_file_rel_path).generate_from_k8s_resource() == 'path/deployment_grafana.yml'
+
+def test_FilePathGenerator__generate_from_k8s_resource__with_rel_path_2():
+  resource_yml = textwrap.dedent('''\
+    kind: Deployment
+    apiVersion: apps/v1
+    metadata:
+      namespace: monitoring
+      name: grafana
+    ''')
+  source_file_rel_path = 'path/file.txt'
+
+  assert FilePathGenerator(resource_yml, source_file_rel_path).generate_from_k8s_resource() == 'path/deployment_grafana.yml'
 
 ###################
 ### extract_single_resource
@@ -314,33 +873,6 @@ def test_extract_single_resource_with_valid_yaml_not_an_extra_separator_2():
   ]
 
   assert result == expected
-
-#####################
-### generate_filename
-#####################
-
-def test_generate_filename_undefined_parts(caplog):
-  with pytest.raises(Exception):
-    generate_filename([])
-  assert 'Filename cannot be constructed' in caplog.text
-
-  with pytest.raises(Exception):
-    generate_filename(None)
-  assert 'Filename cannot be constructed' in caplog.text
-
-def test_generate_filename_undefined_first_elements(caplog):
-  assert generate_filename([None, 'key_1']) == 'key_1.yml'
-
-  assert generate_filename(['', 'key_1']) == 'key_1.yml'
-
-def test_generate_filename(tmp_path):
-  assert generate_filename(['key_1', 'key_2']) == 'key_1_key_2.yml'
-
-def test_generate_filename_undefined_end_element(tmp_path):
-  assert generate_filename(['key_1', None]) == 'key_1.yml'
-
-def test_generate_filename_capital_letter(tmp_path):
-  assert generate_filename(['KEY-1', 'KEY-2']) == 'key-1_key-2.yml'
 
 ###############
 ### merge_dicts

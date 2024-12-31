@@ -10,14 +10,18 @@ import urllib.request
 from importlib.metadata import version, PackageNotFoundError
 from packaging.version import Version
 
-from make_argocd_fly import defaults
+from make_argocd_fly import consts
 
 
 log = logging.getLogger(__name__)
 
 
+def check_lists_equal(list_1: list, list_2: list) -> bool:
+    return len(list_1) == len(list_2) and sorted(list_1) == sorted(list_2)
+
+
 class VarsResolver:
-  def __init__(self, var_identifier: str = defaults.VAR_IDENTIFIER) -> None:
+  def __init__(self, var_identifier: str = consts.DEFAULT_VAR_IDENTIFIER) -> None:
     self.var_identifier = var_identifier
     self.resolution_counter = 0
 
@@ -61,7 +65,7 @@ class VarsResolver:
       return resolved_value
     except KeyError:
       log.error('Variable {} not found in vars'.format(value[var_start - 1:var_end + 1]))
-      raise
+      raise KeyError
 
   def _iterate(self, to_resolve: dict, source: dict, value=None, initial=True):
     value = value or to_resolve if initial else value
@@ -84,7 +88,7 @@ class VarsResolver:
     return self._iterate(copy.deepcopy(to_resolve), source)
 
   @staticmethod
-  def resolve_all(to_resolve: dict, source: dict, var_identifier: str = defaults.VAR_IDENTIFIER) -> dict:
+  def resolve_all(to_resolve: dict, source: dict, var_identifier: str = consts.DEFAULT_VAR_IDENTIFIER) -> dict:
       resolver = VarsResolver(var_identifier)
 
       resolved_vars = resolver.resolve(to_resolve, source)
@@ -92,27 +96,6 @@ class VarsResolver:
         resolved_vars = resolver.resolve(resolved_vars, source)
 
       return resolved_vars
-
-
-def get_filename_elements(resource_yml: str) -> list:
-  filename_elements = []
-  resource_kind = None
-  resource_name = None
-
-  match = re.search(r'(^kind:|\nkind:)(.+)', resource_yml)
-  if match:
-    resource_kind = match.group(2).strip()
-    filename_elements.append(resource_kind)
-
-  if resource_kind:
-    match = re.search(r'(^metadata:|\nmetadata:).*', resource_yml)
-    if match:
-      match = re.search(r'(^\s\sname:|\n\s\sname:)(.+)', resource_yml[match.start():])
-      if match:
-        resource_name = match.group(2).strip()
-        filename_elements.append(resource_name)
-
-  return filename_elements
 
 
 def extract_single_resource(multi_resource_yml: str) -> str:
@@ -125,12 +108,113 @@ def extract_single_resource(multi_resource_yml: str) -> str:
       yield resource_yml
 
 
-def generate_filename(filename_parts: list) -> str:
-  if not filename_parts:
-    log.error('Filename cannot be constructed')
-    raise Exception
+class FilePathGenerator:
+  default_file_extension = '.yml'
 
-  return '_'.join([filename_part for filename_part in filename_parts if filename_part]).lower() + '.yml'
+  def __init__(self, resource_yml: str, source_file_rel_path: str = None) -> None:
+    self.resource_yml = resource_yml
+    self.source_file_rel_path = source_file_rel_path
+
+  def _extract_kind(self, resource_yml: str) -> str:
+    match = re.search(r'(^kind:|\nkind:)(.+)', resource_yml)
+    if match:
+      return match.group(2).strip()
+
+    return None
+
+  def _extract_name(self, resource_yml: str) -> str:
+    match = re.search(r'(^metadata:|\nmetadata:).*', resource_yml)
+    if match:
+      match = re.search(r'(^\s\sname:|\n\s\sname:)(.+)', resource_yml[match.start():])
+      if match:
+        return match.group(2).strip()
+
+    return None
+
+  def _extract_api_version(self, resource_yml: str) -> str:
+    match = re.search(r'(^apiVersion:|\napiVersion:)(.+)', resource_yml)
+    if match:
+      return match.group(2).strip()
+
+    return None
+
+  def _extract_namespace(self, resource_yml: str) -> str:
+    match = re.search(r'(^metadata:|\nmetadata:).*', resource_yml)
+    if match:
+      match = re.search(r'(^\s\snamespace:|\n\s\snamespace:)(.+)', resource_yml[match.start():])
+      if match:
+        return match.group(2).strip()
+
+    return None
+
+  def _extract_file_rel_path(self, source_file_rel_path: str) -> str:
+    if source_file_rel_path:
+      rel_path = os.path.dirname(source_file_rel_path)
+      if rel_path:
+        return rel_path
+
+    return None
+
+  def _extract_source_file_name(self, source_file_rel_path: str) -> str:
+    if source_file_rel_path and os.path.basename(source_file_rel_path):
+      parts = os.path.basename(source_file_rel_path).removesuffix('.j2').split('.')
+      if len(parts) == 1:
+        return parts[0]
+      elif len(parts) > 1:
+        return '.'.join(parts[:-1])
+
+    return None
+
+  def _extract_file_extension(self, source_file_rel_path: str) -> str:
+    if source_file_rel_path:
+      parts = source_file_rel_path.removesuffix('.j2').split('.')
+      if len(parts) > 1:
+        return '.{}'.format(parts[-1])
+
+    return None
+
+  def generate_from_source_file(self) -> str:
+    source_file_rel_path = self._extract_file_rel_path(self.source_file_rel_path)
+    source_file_name = self._extract_source_file_name(self.source_file_rel_path)
+    source_file_extension = self._extract_file_extension(self.source_file_rel_path)
+
+    if not source_file_name:
+      log.debug("Filename cannot be constructed")
+      raise ValueError
+
+    if source_file_extension:
+      full_filename = '{}{}'.format(source_file_name, source_file_extension)
+    else:
+      full_filename = source_file_name
+
+    if source_file_rel_path:
+      return os.path.join(source_file_rel_path, full_filename)
+
+    return full_filename
+
+  def generate_from_k8s_resource(self) -> str:
+    source_file_rel_path = self._extract_file_rel_path(self.source_file_rel_path)
+    resource_kind = self._extract_kind(self.resource_yml)
+    resource_name = self._extract_name(self.resource_yml)
+    # resource_api_version = self._extract_api_version(self.resource_yml)
+    # resource_namespace = self._extract_namespace(self.resource_yml)
+
+    if not resource_kind:
+      log.debug("Filename cannot be constructed")
+      raise ValueError
+
+    elements = []
+    if resource_kind:
+      elements.append(resource_kind)
+    if resource_name:
+      elements.append(resource_name)
+
+    full_filename = '{}{}'.format('_'.join(elements), self.default_file_extension).lower()
+
+    if source_file_rel_path:
+      return os.path.join(source_file_rel_path, full_filename)
+
+    return full_filename
 
 
 def get_app_rel_path(env_name: str, app_name: str) -> str:
@@ -163,7 +247,7 @@ def merge_dicts(*dicts):
 
 def init_logging(loglevel: str) -> None:
   try:
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), defaults.LOG_CONFIG_FILE)) as f:
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), consts.DEFAULT_LOG_CONFIG_FILE)) as f:
       yaml_config = yaml.safe_load(f.read())
       if loglevel in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
         yaml_config['loggers']['root']['level'] = loglevel

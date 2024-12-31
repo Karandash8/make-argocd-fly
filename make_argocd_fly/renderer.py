@@ -20,7 +20,7 @@ class AbstractRenderer(ABC):
     pass
 
 
-class DummyRenderer(AbstractRenderer):
+class YamlRenderer(AbstractRenderer):
   def __init__(self) -> None:
     pass
 
