@@ -266,23 +266,18 @@ def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_kv(tmp_pa
   '''
 
   renderer.set_template_vars({'content': 'value 1'})
-  output_file_1 = '''\
+  output = '''\
     file_1.yml: |
       key_1: value 1
-  '''
-  output_file_2 = '''\
     file_2.yml: |
       key_2: value 2
-  '''
-  output_file_3 = '''\
     file_3.yml: |
       key_3: value 3
       multiline_key_3: |
         multiline value 3
   '''
-  assert textwrap.dedent(output_file_1) in renderer.render(textwrap.dedent(TEMPLATE))
-  assert textwrap.dedent(output_file_2) in renderer.render(textwrap.dedent(TEMPLATE))
-  assert textwrap.dedent(output_file_3) in renderer.render(textwrap.dedent(TEMPLATE))
+
+  assert textwrap.dedent(output) == renderer.render(textwrap.dedent(TEMPLATE))
 
 def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_list(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -316,17 +311,12 @@ def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_list(tmp_
   '''
 
   renderer.set_template_vars({'content': 'value 1'})
-  output_file_1 = '''\
+  output = '''\
     - key_1: value 1
-  '''
-  output_file_2 = '''\
     - key_2: value 2
-  '''
-  output_file_3 = '''\
     - key_3: value 3
       multiline_key_3: |
         multiline value 3
   '''
-  assert textwrap.dedent(output_file_1) in renderer.render(textwrap.dedent(TEMPLATE))
-  assert textwrap.dedent(output_file_2) in renderer.render(textwrap.dedent(TEMPLATE))
-  assert textwrap.dedent(output_file_3) in renderer.render(textwrap.dedent(TEMPLATE))
+
+  assert textwrap.dedent(output) == renderer.render(textwrap.dedent(TEMPLATE))

@@ -250,7 +250,7 @@ def init_logging(loglevel: str) -> None:
     with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), consts.DEFAULT_LOG_CONFIG_FILE)) as f:
       yaml_config = yaml.safe_load(f.read())
       if loglevel in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
-        yaml_config['loggers']['root']['level'] = loglevel
+        yaml_config['loggers']['make_argocd_fly']['level'] = loglevel
       logging.config.dictConfig(yaml_config)
   except FileNotFoundError:
     pass

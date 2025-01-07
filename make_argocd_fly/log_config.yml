@@ -10,7 +10,7 @@ handlers:
     class: logging.StreamHandler
     stream: ext://sys.stdout
 loggers:
-  root:
+  make_argocd_fly:
     level: INFO
     handlers:
       - console

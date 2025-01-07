@@ -107,7 +107,7 @@ class IncludeAllAsYamlKVExtension(Extension):
     return nodes.Output([result], lineno=lineno)
 
   def _render(self, path: str) -> str:
-    children = self.environment.loader.list_templates(path)
+    children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
 
     for child in children:
@@ -134,7 +134,7 @@ class IncludeAllAsYamlListExtension(Extension):
     return nodes.Output([result], lineno=lineno)
 
   def _render(self, path: str) -> str:
-    children = self.environment.loader.list_templates(path)
+    children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
 
     for child in children:
