@@ -10,7 +10,7 @@ import yamllint
 from make_argocd_fly import consts
 from make_argocd_fly.params import populate_params, get_params
 from make_argocd_fly.config import read_config, get_config
-from make_argocd_fly.utils import init_logging, latest_version_check
+from make_argocd_fly.utils import init_logging, latest_version_check, get_package_name, get_current_version
 from make_argocd_fly.application import application_factory
 
 
@@ -119,6 +119,7 @@ def cli_entry_point() -> None:
   parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
   parser.add_argument('--kube-linter', action='store_true', help='Run kube-linter against output directory (https://github.com/stackrox/kube-linter)')
   parser.add_argument('--loglevel', type=str, default=consts.DEFAULT_LOGLEVEL, help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
+  parser.add_argument('--version', action='version', version='{} {}'.format(get_package_name(), get_current_version()), help='Show version')
   args = parser.parse_args()
 
   main(**vars(args))
