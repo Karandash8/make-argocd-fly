@@ -262,32 +262,46 @@ def confirm_dialog() -> None:
     exit()
 
 
-def latest_version_check():
-  module_name = __name__.split('.')[0]
-  package_name = module_name.replace('_', '-')
+def get_module_name() -> str:
+  return __name__.split('.')[0]
 
+
+def get_package_name() -> str:
+  return get_module_name().replace('_', '-')
+
+
+def get_current_version() -> Version:
   try:
-    current_version = Version(version(module_name))
+    return Version(version(get_module_name()))
   except PackageNotFoundError:
     log.warning('Could not determine installed version of the package. Something is wrong or you are running from source.')
-
     confirm_dialog()
-    return
+    return None
 
+
+def get_latest_version() -> Version:
   try:
-    pypi_url = 'https://pypi.org/pypi/{}/json'.format(module_name)
+    pypi_url = 'https://pypi.org/pypi/{}/json'.format(get_module_name())
     response = urllib.request.urlopen(pypi_url).read().decode()
-    latest_version = max(Version(s) for s in json.loads(response)['releases'].keys())
+    return max(Version(s) for s in json.loads(response)['releases'].keys())
   except ssl.SSLCertVerificationError:
     log.warning('SSL Certificate verification failed. Could not determine latest version of the package. \
                 Likely you have an issue with your local Python installation.')
-
     confirm_dialog()
+    return None
+
+
+def latest_version_check():
+  current_version = get_current_version()
+  latest_version = get_latest_version()
+
+  if not current_version or not latest_version:
     return
 
   if current_version < latest_version:
-    log.warning('You are running {} ({}) but there is a newer version of the package available ({}).'.format(package_name, current_version,
+    log.warning('You are running {} ({}) but there is a newer version of the package available ({}).'.format(get_package_name(),
+                                                                                                             current_version,
                                                                                                              latest_version))
     confirm_dialog()
   else:
-    log.info('You are using the latest version of {} ({})'.format(package_name, current_version))
+    log.info('You are using the latest version of {} ({})'.format(get_package_name(), current_version))

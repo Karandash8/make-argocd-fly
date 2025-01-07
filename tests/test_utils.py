@@ -2,7 +2,8 @@ import logging
 import pytest
 import textwrap
 
-from make_argocd_fly.utils import extract_single_resource, merge_dicts, VarsResolver, FilePathGenerator
+from make_argocd_fly.utils import extract_single_resource, merge_dicts, VarsResolver, FilePathGenerator, get_module_name, \
+  get_package_name
 
 ###################
 ### FilePathGenerator
@@ -1072,7 +1073,6 @@ def test_merge_dicts_empty_nested_and_none_values():
 ### VarsResolver
 ################
 
-
 def test_vars_resolver_empty_vars():
   resolver = VarsResolver()
   vars = {}
@@ -1177,3 +1177,17 @@ def test_vars_resolver_var_from_different_source():
   result = resolver.resolve(vars, vars_source)
   assert result == {'var1': 'value2'}
   assert resolver.get_resolutions() == 1
+
+################
+### get_module_name
+################
+
+def test__get_module_name():
+  assert get_module_name() == 'make_argocd_fly'
+
+################
+### get_package_name
+################
+
+def test__get_package_name():
+  assert get_package_name() == 'make-argocd-fly'
