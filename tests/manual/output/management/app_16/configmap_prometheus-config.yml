@@ -6,8 +6,8 @@ metadata:
 data:
   key:
     another_key:
-      - key_composite:
-          key: value
       - namespace: kube-default
       - key: value 2
         key_1: that is a yaml
+      - key_composite:
+          key: value
