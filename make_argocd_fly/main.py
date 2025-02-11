@@ -56,7 +56,6 @@ def main(**kwargs) -> None:
   populate_params(**kwargs)
 
   params = get_params()
-  init_logging(params.get_loglevel())
   config = read_config(params.get_root_dir(), params.get_config_file(), params.get_source_dir(),
                        params.get_output_dir(), params.get_tmp_dir())
 
@@ -122,4 +121,5 @@ def cli_entry_point() -> None:
   parser.add_argument('--version', action='version', version='{} {}'.format(get_package_name(), get_current_version()), help='Show version')
   args = parser.parse_args()
 
+  init_logging(args.loglevel)
   main(**vars(args))
