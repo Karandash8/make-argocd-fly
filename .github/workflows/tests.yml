@@ -16,8 +16,6 @@ jobs:
     runs-on: make-argocd-fly
 
     steps:
-      - run: |
-          sleep 500000
       - uses: actions/checkout@v4
       - if: ${{ runner.arch == 'arm64' }}
         name: Set up Python
