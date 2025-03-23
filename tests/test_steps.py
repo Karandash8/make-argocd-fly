@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 from make_argocd_fly.consts import AppParamsNames
 from make_argocd_fly.steps import FindAppsStep, RenderYamlStep
-from make_argocd_fly.config import read_config
+from make_argocd_fly.config import populate_config
 from make_argocd_fly.utils import check_lists_equal
 
 ###################
@@ -61,7 +61,7 @@ async def test_FindAppsStep__run__single_app_same_env(tmp_path):
   config_file.write_text(textwrap.dedent(CONFIG))
   source_dir = tmp_path / 'source'
   source_dir.mkdir()
-  read_config(root_dir, config_file, source_dir)
+  populate_config(root_dir, config_file, source_dir)
 
   parent_app_env_name = "test_env"
   parent_app_name = "bootstrap"
@@ -101,7 +101,7 @@ async def test_FindAppsStep__run__multiple_apps_same_env(tmp_path):
   config_file.write_text(textwrap.dedent(CONFIG))
   source_dir = tmp_path / 'source'
   source_dir.mkdir()
-  read_config(root_dir, config_file, source_dir)
+  populate_config(root_dir, config_file, source_dir)
 
   parent_app_name = "bootstrap"
   parent_app_env_name = "test_env"
@@ -144,7 +144,7 @@ async def test_FindAppsStep__run__multiple_apps_different_envs(tmp_path):
   config_file.write_text(textwrap.dedent(CONFIG))
   source_dir = tmp_path / 'source'
   source_dir.mkdir()
-  read_config(root_dir, config_file, source_dir)
+  populate_config(root_dir, config_file, source_dir)
 
   parent_app_name = "bootstrap"
   parent_app_env_name = "test_env"

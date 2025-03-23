@@ -11,9 +11,27 @@ from importlib.metadata import version, PackageNotFoundError
 from packaging.version import Version
 
 from make_argocd_fly import consts
+from make_argocd_fly.exceptions import MissingDirectoryError
 
 
 log = logging.getLogger(__name__)
+
+
+def build_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
+  if not path:
+    log.error('Path is empty.')
+    raise Exception
+
+  if os.path.isabs(path):
+    abs_path = path
+  else:
+    abs_path = os.path.join(root_dir, path)
+
+  if (not allow_missing) and (not os.path.exists(abs_path)):
+    log.error('Path does not exist: {}'.format(abs_path))
+    raise MissingDirectoryError(abs_path)
+
+  return abs_path
 
 
 def check_lists_equal(list_1: list, list_2: list) -> bool:
