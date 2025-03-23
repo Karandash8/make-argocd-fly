@@ -1,121 +1,124 @@
 import logging
-import os
 import yaml
 
 from make_argocd_fly import consts
+from make_argocd_fly.utils import build_path
+from make_argocd_fly.exceptions import MissingConfigFileError, InvalidConfigFileError, UnknownEnvirontmentError, \
+  UnpopulatedConfigError, UnknownApplicationError
 
 
 log = logging.getLogger(__name__)
 
 
-# TODO: use getter decorators
 class Config:
   def __init__(self) -> None:
-    self.source_dir = consts.DEFAULT_SOURCE_DIR
-    self.output_dir = consts.DEFAULT_OUTPUT_DIR
-    self.tmp_dir = consts.DEFAULT_TMP_DIR
-    self.envs = consts.DEFAULT_ENVS
-    self.global_vars = consts.DEFAULT_GLOBAL_VARS
+    self.config = None
+    self._source_dir = None
+    self._output_dir = None
+    self._tmp_dir = None
 
-  def init_config(self, root_dir: str, config: dict, source_dir: str, output_dir: str, tmp_dir: str) -> None:
-    self.root_dir = root_dir
-    self.source_dir = source_dir
-    self.output_dir = output_dir
-    self.tmp_dir = tmp_dir
-    self.envs = config['envs'] if 'envs' in config else consts.DEFAULT_ENVS
-    self.global_vars = config['vars'] if 'vars' in config else consts.DEFAULT_GLOBAL_VARS
+  def populate_config(self, **kwargs) -> None:
+    self.__dict__.update(kwargs)
 
-  def get_source_dir(self) -> str:
-    return get_abs_path(self.root_dir, self.source_dir)
+  @property
+  def source_dir(self) -> str:
+    if not self._source_dir:
+      log.error('Config is not populated')
+      raise UnpopulatedConfigError()
 
-  def get_output_dir(self) -> str:
-    return get_abs_path(self.root_dir, self.output_dir, allow_missing=True)
+    return self._source_dir
 
-  def get_tmp_dir(self) -> str:
-    return get_abs_path(self.root_dir, self.tmp_dir, allow_missing=True)
+  @property
+  def output_dir(self) -> str:
+    if not self._output_dir:
+      log.error('Config is not populated')
+      raise UnpopulatedConfigError()
+
+    return self._output_dir
+
+  @property
+  def tmp_dir(self) -> str:
+    if not self._tmp_dir:
+      log.error('Config is not populated')
+      raise UnpopulatedConfigError()
+
+    return self._tmp_dir
 
   def get_envs(self) -> dict:
-    if not isinstance(self.envs, dict):
-      log.error('Config was not initialized.')
-      raise Exception
-    return self.envs
+    return self.config[consts.KEYWORK_ENVS] if consts.KEYWORK_ENVS in self.config else {}
 
   def get_global_vars(self) -> dict:
-    if not isinstance(self.global_vars, dict):
-      log.error('Config was not initialized.')
-      raise Exception
-    return self.global_vars
+    return self.config[consts.KEYWORK_VARS] if consts.KEYWORK_VARS in self.config else {}
 
   def get_env_vars(self, env_name: str) -> dict:
     envs = self.get_envs()
     if env_name not in envs:
       log.error('Environment {} is not defined'.format(env_name))
-      raise Exception
-    return envs[env_name]['vars'] if 'vars' in envs[env_name] else {}
+      raise UnknownEnvirontmentError(env_name)
+
+    return envs[env_name][consts.KEYWORK_VARS] if consts.KEYWORK_VARS in envs[env_name] else {}
 
   def get_app_vars(self, env_name: str, app_name: str) -> dict:
     envs = self.get_envs()
     if env_name not in envs:
       log.error('Environment {} is not defined'.format(env_name))
-      raise Exception
+      raise UnknownEnvirontmentError(env_name)
 
-    if app_name not in envs[env_name]['apps']:
+    if consts.KEYWORK_APPS not in envs[env_name] or app_name not in envs[env_name][consts.KEYWORK_APPS]:
       log.error('Application {} is not defined in environment {}'.format(app_name, env_name))
-      raise Exception
+      raise UnknownApplicationError(app_name, env_name)
 
-    return envs[env_name]['apps'][app_name]['vars'] if 'vars' in envs[env_name]['apps'][app_name] else {}
+    if consts.KEYWORK_VARS in envs[env_name][consts.KEYWORK_APPS][app_name]:
+      return envs[env_name][consts.KEYWORK_APPS][app_name][consts.KEYWORK_VARS]
+    else:
+      return {}
 
   def get_app_params(self, env_name: str, app_name: str) -> dict:
     envs = self.get_envs()
     if env_name not in envs:
       log.error('Environment {} is not defined'.format(env_name))
-      raise Exception
+      raise UnknownEnvirontmentError(env_name)
 
-    if app_name not in envs[env_name]['apps']:
+    if consts.KEYWORK_APPS not in envs[env_name] or app_name not in envs[env_name][consts.KEYWORK_APPS]:
       log.error('Application {} is not defined in environment {}'.format(app_name, env_name))
-      raise Exception
+      raise UnknownApplicationError(app_name, env_name)
 
-    return {key: value for key, value in envs[env_name]['apps'][app_name].items() if key != 'vars'}
+    return {key: value for key, value in envs[env_name][consts.KEYWORK_APPS][app_name].items() if key != consts.KEYWORK_VARS}
 
 
 config = Config()
 
 
-def get_abs_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
-  if not path:
-    log.error('Path is empty.')
-    raise Exception
-
-  if os.path.isabs(path):
-    abs_path = path
-  else:
-    abs_path = os.path.join(root_dir, path)
-
-  if (not allow_missing) and (not os.path.exists(abs_path)):
-    log.error('Path does not exist: {}'.format(abs_path))
-    raise Exception
-
-  return abs_path
-
-
-def read_config(root_dir: str = consts.DEFAULT_ROOT_DIR,
-                config_file: str = consts.DEFAULT_CONFIG_FILE,
-                source_dir: str = consts.DEFAULT_SOURCE_DIR,
-                output_dir: str = consts.DEFAULT_OUTPUT_DIR,
-                tmp_dir: str = consts.DEFAULT_TMP_DIR) -> Config:
-  root_dir = os.path.abspath(root_dir)
+def _read_config_file(config_file: str) -> dict:
   config_content = {}
 
-  with open(get_abs_path(root_dir, config_file)) as f:
-    config_content = yaml.safe_load(f.read())
+  try:
+    with open(config_file) as f:
+      config_content = yaml.safe_load(f.read())
+  except FileNotFoundError:
+    log.error('Config file {} not found'.format(config_file))
+    raise MissingConfigFileError(config_file)
+  except yaml.YAMLError:
+    log.error('Invalid YAML config file {}'.format(config_file))
+    raise InvalidConfigFileError(config_file)
 
-  config.init_config(root_dir, config_content, source_dir, output_dir, tmp_dir)
+  return config_content
 
-  log.debug('Root directory: {}'.format(root_dir))
-  log.debug('Config file: {}'.format(get_abs_path(root_dir, config_file)))
-  log.debug('Source directory: {}'.format(config.get_source_dir()))
-  log.debug('Output directory: {}'.format(config.get_output_dir()))
-  log.debug('Temporary directory: {}'.format(config.get_tmp_dir()))
+
+def populate_config(root_dir: str = consts.DEFAULT_ROOT_DIR,
+                    # TODO: deprecate config_file and pass config directory instead
+                    config_file: str = consts.DEFAULT_CONFIG_FILE,
+                    source_dir: str = consts.DEFAULT_SOURCE_DIR,
+                    output_dir: str = consts.DEFAULT_OUTPUT_DIR,
+                    tmp_dir: str = consts.DEFAULT_TMP_DIR) -> Config:
+  config.populate_config(config=_read_config_file(build_path(root_dir, config_file)),
+                         _source_dir=build_path(root_dir, source_dir),
+                         _output_dir=build_path(root_dir, output_dir, allow_missing=True),
+                         _tmp_dir=build_path(root_dir, tmp_dir, allow_missing=True))
+
+  log.debug('Source directory: {}'.format(config.source_dir))
+  log.debug('Output directory: {}'.format(config.output_dir))
+  log.debug('Temporary directory: {}'.format(config.tmp_dir))
 
   return config
 

@@ -10,7 +10,7 @@ except ImportError:
   from yaml import SafeLoader
 from yaml import SafeDumper
 
-from make_argocd_fly.exceptions import MissingSourceResourcesError
+from make_argocd_fly.exceptions import MissingApplicationDirectoryError
 
 log = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class ResourceViewer:
 
   def build(self) -> None:
     if not os.path.exists(self.root_element_abs_path):
-      raise MissingSourceResourcesError('Path does not exist {}'.format(self.root_element_abs_path))
+      raise MissingApplicationDirectoryError(self.root_element_abs_path)
 
     path = os.path.join(self.root_element_abs_path, self.element_rel_path)
     if not os.path.exists(path):

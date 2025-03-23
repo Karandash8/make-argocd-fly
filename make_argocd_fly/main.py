@@ -9,7 +9,7 @@ import yamllint
 
 from make_argocd_fly import consts
 from make_argocd_fly.params import populate_params, get_params
-from make_argocd_fly.config import read_config, get_config
+from make_argocd_fly.config import populate_config, get_config
 from make_argocd_fly.utils import init_logging, latest_version_check, get_package_name, get_current_version
 from make_argocd_fly.application import application_factory
 
@@ -22,8 +22,8 @@ log = logging.getLogger(__name__)
 async def generate() -> None:
   config = get_config()
   params = get_params()
-  render_apps = params.get_render_apps()
-  render_envs = params.get_render_envs()
+  render_apps = params.render_apps
+  render_envs = params.render_envs
 
   apps_to_render = render_apps.split(',') if render_apps is not None else []
   envs_to_render = render_envs.split(',') if render_envs is not None else []
@@ -38,7 +38,7 @@ async def generate() -> None:
       if apps_to_render and app_name not in apps_to_render:
         continue
 
-      application = await application_factory(env_name, app_name, os.path.join(config.get_source_dir(), app_name))
+      application = await application_factory(env_name, app_name, os.path.join(config.source_dir, app_name))
       apps.append(application)
 
   # TODO: convert to TaskGroup
@@ -53,45 +53,44 @@ async def generate() -> None:
 
 
 def main(**kwargs) -> None:
-  populate_params(**kwargs)
+  params = populate_params(**kwargs)
 
-  params = get_params()
-  config = read_config(params.get_root_dir(), params.get_config_file(), params.get_source_dir(),
-                       params.get_output_dir(), params.get_tmp_dir())
+  config = populate_config(params.root_dir, params.config_file, params.source_dir,
+                           params.output_dir, params.tmp_dir)
 
-  if not params.get_skip_latest_version_check():
+  if not params.skip_latest_version_check:
     latest_version_check()
   else:
     log.warning('Skipping latest version check')
 
-  tmp_dir = config.get_tmp_dir()
+  tmp_dir = config.tmp_dir
   if os.path.exists(tmp_dir):
     shutil.rmtree(tmp_dir)
 
-  if params.get_remove_output_dir():
+  if params.remove_output_dir:
     log.info('Wiping output directory')
-    if os.path.exists(config.get_output_dir()):
-      shutil.rmtree(config.get_output_dir())
+    if os.path.exists(config.output_dir):
+      shutil.rmtree(config.output_dir)
 
-  if not params.get_skip_generate():
+  if not params.skip_generate:
     asyncio.run(generate())
 
-  if not params.get_preserve_tmp_dir() and os.path.exists(tmp_dir):
+  if not params.preserve_tmp_dir and os.path.exists(tmp_dir):
     shutil.rmtree(tmp_dir)
 
   # TODO: it does not make sense to write yamls on disk and then read them again to run through linters
-  if params.get_yaml_linter():
+  if params.yaml_linter:
     log.info('Running yamllint')
-    process = subprocess.Popen(['yamllint', '-d', '{extends: default, rules: {line-length: disable}}', config.get_output_dir()],
+    process = subprocess.Popen(['yamllint', '-d', '{extends: default, rules: {line-length: disable}}', config.output_dir],
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                universal_newlines=True)
     stdout, stderr = process.communicate()
 
     log.info('{} {}\n\n{}'.format(yamllint.APP_NAME, yamllint.APP_VERSION, stdout))
 
-  if params.get_kube_linter():
+  if params.kube_linter:
     log.info('Running kube-linter')
-    process = subprocess.Popen(['kube-linter', 'lint', config.get_output_dir()],
+    process = subprocess.Popen(['kube-linter', 'lint', config.output_dir],
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                universal_newlines=True)
     stdout, stderr = process.communicate()

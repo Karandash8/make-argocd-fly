@@ -3,7 +3,7 @@ import pytest
 import textwrap
 
 from make_argocd_fly.utils import extract_single_resource, merge_dicts, VarsResolver, FilePathGenerator, get_module_name, \
-  get_package_name
+  get_package_name, build_path
 
 ###################
 ### FilePathGenerator
@@ -1191,3 +1191,75 @@ def test__get_module_name():
 
 def test__get_package_name():
   assert get_package_name() == 'make-argocd-fly'
+
+################
+### build_path
+################
+
+def test_build_path_with_relative_path_in_current_directory(tmp_path):
+  root_dir = tmp_path
+  path = 'config.py'
+  expected = tmp_path / 'config.py'
+  expected.write_text('test')
+
+  assert build_path(root_dir, path) == str(expected)
+
+def test_build_path_with_absolute_path_in_current_directory(tmp_path):
+  root_dir = tmp_path
+  path = tmp_path / 'config.py'
+  expected = tmp_path / 'config.py'
+  expected.write_text('test')
+
+  assert build_path(root_dir, path) == expected
+
+def test_build_path_with_relative_path_in_subdirectory(tmp_path):
+  root_dir = tmp_path
+  src_dir = tmp_path / 'source'
+  src_dir.mkdir()
+  path = 'source/app.py'
+  expected = tmp_path / 'source/app.py'
+  expected.write_text('test')
+
+  assert build_path(str(root_dir), path) == str(expected)
+
+def test_build_path_with_absolute_path_in_subdirectory(tmp_path):
+  root_dir = tmp_path
+  src_dir = tmp_path / 'source'
+  src_dir.mkdir()
+  path = tmp_path / 'source/app.py'
+  expected = tmp_path / 'source/app.py'
+  expected.write_text('test')
+
+  assert build_path(root_dir, path) == expected
+
+def test_build_path_with_empty_path(tmp_path, caplog):
+  root_dir = tmp_path
+  path = ''
+
+  with pytest.raises(Exception):
+    build_path(root_dir, path)
+  assert 'Path is empty.' in caplog.text
+
+def test_build_path_with_none_path(tmp_path, caplog):
+  root_dir = tmp_path
+  path = None
+
+  with pytest.raises(Exception):
+    build_path(root_dir, path)
+  assert 'Path is empty.' in caplog.text
+
+def test_build_path_with_nonexistent_path(tmp_path, caplog):
+  root_dir = str(tmp_path)
+  path = 'nonexistent_file.py'
+  non_existent_path = tmp_path / 'nonexistent_file.py'
+
+  with pytest.raises(Exception):
+    build_path(root_dir, path)
+  assert 'Path does not exist: {}'.format(non_existent_path) in caplog.text
+
+def test_build_path_with_nonexistent_path_allow_missing(tmp_path, caplog):
+  root_dir = str(tmp_path)
+  path = 'nonexistent_file.py'
+  non_existent_path = tmp_path / 'nonexistent_file.py'
+
+  assert build_path(root_dir, path, allow_missing=True) == str(non_existent_path)

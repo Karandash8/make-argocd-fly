@@ -11,7 +11,7 @@ from make_argocd_fly.config import get_config
 from make_argocd_fly.params import get_params
 from make_argocd_fly.steps import FindAppsStep, RenderYamlStep, RenderJinjaFromViewerStep, RenderJinjaFromMemoryStep, \
   WriteResourcesStep, ReadSourceStep, RunKustomizeStep
-from make_argocd_fly.exceptions import MissingSourceResourcesError
+from make_argocd_fly.exceptions import MissingApplicationDirectoryError
 
 log = logging.getLogger(__name__)
 
@@ -88,22 +88,22 @@ class AppOfAppsApplication(AbstractApplication):
                                 {
                                   '__application': {
                                     'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
-                                    'path': os.path.join(os.path.basename(self.config.get_output_dir()), env_name, app_name)
+                                    'path': os.path.join(os.path.basename(self.config.output_dir), env_name, app_name)
                                   },
                                   'env_name': env_name,
                                   'app_name': app_name
                                 })
       global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                       global_vars,
-                                                      var_identifier=self.params.get_var_identifier())
+                                                      var_identifier=self.params.var_identifier)
       env_vars_resolved = merge_dicts(global_vars_resolved,
                                       VarsResolver.resolve_all(self.config.get_env_vars(env_name),
                                                                merge_dicts(global_vars_resolved, self.config.get_env_vars(self.env_name)),
-                                                               var_identifier=self.params.get_var_identifier()))
+                                                               var_identifier=self.params.var_identifier))
       template_vars = merge_dicts(env_vars_resolved,
                                   VarsResolver.resolve_all(self.config.get_app_vars(env_name, app_name),
                                                            merge_dicts(env_vars_resolved, self.config.get_app_vars(env_name, app_name)),
-                                                           var_identifier=self.params.get_var_identifier()))
+                                                           var_identifier=self.params.var_identifier))
 
       self.render_jinja_step.configure(self.env_name, self.app_name, self.APPLICATION_RESOUCE_TEMPLATE, template_vars)
       await self.render_jinja_step.run()
@@ -111,11 +111,11 @@ class AppOfAppsApplication(AbstractApplication):
     log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
 
     # Clean up output directory for the application
-    app_output_dir = os.path.join(self.config.get_output_dir(), get_app_rel_path(self.env_name, self.app_name))
+    app_output_dir = os.path.join(self.config.output_dir, get_app_rel_path(self.env_name, self.app_name))
     if os.path.exists(app_output_dir):
       shutil.rmtree(app_output_dir)
 
-    self.write_resources_step.configure(self.config.get_output_dir(), self.render_jinja_step.get_resources())
+    self.write_resources_step.configure(self.config.output_dir, self.render_jinja_step.get_resources())
     await self.write_resources_step.run()
     log.info('Updated application {} in environment {}'.format(self.app_name, self.env_name))
 
@@ -139,17 +139,17 @@ class SimpleApplication(AbstractApplication):
                               })
     global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                     global_vars,
-                                                    var_identifier=self.params.get_var_identifier())
+                                                    var_identifier=self.params.var_identifier)
     env_vars_resolved = merge_dicts(global_vars_resolved,
                                     VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
                                                              merge_dicts(global_vars_resolved, self.config.get_env_vars(self.env_name)),
-                                                             var_identifier=self.params.get_var_identifier()))
+                                                             var_identifier=self.params.var_identifier))
     template_vars = merge_dicts(env_vars_resolved,
                                 VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
                                                          merge_dicts(env_vars_resolved, self.config.get_app_vars(self.env_name, self.app_name)),
-                                                         var_identifier=self.params.get_var_identifier()))
+                                                         var_identifier=self.params.var_identifier))
 
-    if self.params.get_print_vars():
+    if self.params.print_vars:
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml)$')
@@ -163,11 +163,11 @@ class SimpleApplication(AbstractApplication):
     log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
 
     # Clean up output directory for the application
-    app_output_dir = os.path.join(self.config.get_output_dir(), get_app_rel_path(self.env_name, self.app_name))
+    app_output_dir = os.path.join(self.config.output_dir, get_app_rel_path(self.env_name, self.app_name))
     if os.path.exists(app_output_dir):
       shutil.rmtree(app_output_dir)
 
-    self.write_resources_step.configure(self.config.get_output_dir(), self.render_yaml_step.get_resources() + self.render_jinja_step.get_resources())
+    self.write_resources_step.configure(self.config.output_dir, self.render_yaml_step.get_resources() + self.render_jinja_step.get_resources())
     await self.write_resources_step.run()
 
     log.info('Updated application {} in environment {}'.format(self.app_name, self.env_name))
@@ -195,17 +195,17 @@ class KustomizeApplication(AbstractApplication):
                               })
     global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                     global_vars,
-                                                    var_identifier=self.params.get_var_identifier())
+                                                    var_identifier=self.params.var_identifier)
     env_vars_resolved = merge_dicts(global_vars_resolved,
                                     VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
                                                              merge_dicts(global_vars_resolved, self.config.get_env_vars(self.env_name)),
-                                                             var_identifier=self.params.get_var_identifier()))
+                                                             var_identifier=self.params.var_identifier))
     template_vars = merge_dicts(env_vars_resolved,
                                 VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
                                                          merge_dicts(env_vars_resolved, self.config.get_app_vars(self.env_name, self.app_name)),
-                                                         var_identifier=self.params.get_var_identifier()))
+                                                         var_identifier=self.params.var_identifier))
 
-    if self.params.get_print_vars():
+    if self.params.print_vars:
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml)$', ['base', self.env_name])
@@ -216,10 +216,10 @@ class KustomizeApplication(AbstractApplication):
     self.render_jinja_step.configure(self.env_name, self.app_name, j2_children, template_vars)
     await self.render_jinja_step.run()
 
-    self.tmp_write_resources_step.configure(self.config.get_tmp_dir(), self.render_yaml_step.get_resources() + self.render_jinja_step.get_resources())
+    self.tmp_write_resources_step.configure(self.config.tmp_dir, self.render_yaml_step.get_resources() + self.render_jinja_step.get_resources())
     await self.tmp_write_resources_step.run()
 
-    self.tmp_read_source_step.configure(os.path.join(self.config.get_tmp_dir(), get_app_rel_path(self.env_name, self.app_name)))
+    self.tmp_read_source_step.configure(os.path.join(self.config.tmp_dir, get_app_rel_path(self.env_name, self.app_name)))
     await self.tmp_read_source_step.run()
 
     self.run_kustomize_step.configure(self.env_name, self.app_name, self.tmp_read_source_step.get_viewer())
@@ -228,11 +228,11 @@ class KustomizeApplication(AbstractApplication):
     log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
 
     # Clean up output directory for the application
-    app_output_dir = os.path.join(self.config.get_output_dir(), get_app_rel_path(self.env_name, self.app_name))
+    app_output_dir = os.path.join(self.config.output_dir, get_app_rel_path(self.env_name, self.app_name))
     if os.path.exists(app_output_dir):
       shutil.rmtree(app_output_dir)
 
-    self.write_resources_step.configure(self.config.get_output_dir(), self.run_kustomize_step.get_resources())
+    self.write_resources_step.configure(self.config.output_dir, self.run_kustomize_step.get_resources())
     await self.write_resources_step.run()
 
     log.info('Updated application {} in environment {}'.format(self.app_name, self.env_name))
@@ -252,5 +252,5 @@ async def application_factory(env_name: str, app_name: str, source_path: str) ->
       return KustomizeApplication(app_name, env_name, viewer)
     else:
       return SimpleApplication(app_name, env_name, viewer)
-  except MissingSourceResourcesError:
+  except MissingApplicationDirectoryError:
     return AppOfAppsApplication(app_name, env_name)

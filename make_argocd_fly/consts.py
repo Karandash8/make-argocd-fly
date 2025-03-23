@@ -6,10 +6,13 @@ DEFAULT_SOURCE_DIR = 'source'
 DEFAULT_OUTPUT_DIR = 'output'
 DEFAULT_TMP_DIR = '.tmp'
 DEFAULT_LOG_CONFIG_FILE = 'log_config.yml'
-DEFAULT_ENVS = {}
-DEFAULT_GLOBAL_VARS = {}
 DEFAULT_VAR_IDENTIFIER = '$'
 DEFAULT_LOGLEVEL = 'INFO'
+
+KEYWORK_ENVS = 'envs'
+KEYWORK_APPS = 'apps'
+KEYWORK_VARS = 'vars'
+KEYWORK_PARAMS = 'params'
 
 
 class AppParamsNames:
