@@ -7,6 +7,7 @@ from make_argocd_fly.consts import AppParamsNames
 from make_argocd_fly.steps import FindAppsStep, RenderYamlStep
 from make_argocd_fly.config import populate_config
 from make_argocd_fly.utils import check_lists_equal
+from make_argocd_fly.exceptions import InternalError
 
 ###################
 ### FindAppsStep
@@ -36,7 +37,7 @@ def test_FindAppsStep__get_apps__no_elements(find_apps_step):
 async def test_FindAppsStep__run__without_configure(caplog):
   find_apps_step = FindAppsStep()
 
-  with pytest.raises(Exception):
+  with pytest.raises(InternalError):
     await find_apps_step.run()
   assert 'Step is not configured' in caplog.text
 
@@ -196,7 +197,7 @@ def test_RenderYamlStep___generate_file_path__step_is_not_configured(render_yaml
     ''')
   source_file_path = 'path/file.txt'
 
-  with pytest.raises(Exception):
+  with pytest.raises(InternalError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
   assert 'Step is not configured' in caplog.text
 
@@ -288,7 +289,7 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_not_in_the
 
   render_yaml_step.configure(env_name, app_name, yml_children)
 
-  with pytest.raises(Exception):
+  with pytest.raises(ValueError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
   assert 'Filename cannot be constructed'
 
@@ -357,7 +358,7 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_str(ren
 
   render_yaml_step.configure(env_name, app_name, yml_children)
 
-  with pytest.raises(Exception):
+  with pytest.raises(InternalError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
   assert 'Application parameter {} must be a list'.format(AppParamsNames.NON_K8S_FILES_TO_RENDER) in caplog.text
   mock_config.get_app_params.assert_called_once_with(env_name, app_name)
@@ -382,7 +383,7 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering(render_yaml_step
 
   render_yaml_step.configure(env_name, app_name, yml_children)
 
-  with pytest.raises(Exception):
+  with pytest.raises(ValueError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
   assert 'Exclude rendering for file {}'.format(source_file_path) in caplog.text
   mock_config.get_app_params.assert_called_once_with(env_name, app_name)
@@ -407,7 +408,7 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir(render_ya
 
   render_yaml_step.configure(env_name, app_name, yml_children)
 
-  with pytest.raises(Exception):
+  with pytest.raises(ValueError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
   assert 'Exclude rendering for file {}'.format(source_file_path) in caplog.text
   mock_config.get_app_params.assert_called_once_with(env_name, app_name)
@@ -432,7 +433,7 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir_2(render_
 
   render_yaml_step.configure(env_name, app_name, yml_children)
 
-  with pytest.raises(Exception):
+  with pytest.raises(ValueError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
   assert 'Exclude rendering for file {}'.format(source_file_path) in caplog.text
   mock_config.get_app_params.assert_called_once_with(env_name, app_name)
@@ -457,7 +458,7 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering_as_str(render_ya
 
   render_yaml_step.configure(env_name, app_name, yml_children)
 
-  with pytest.raises(Exception):
+  with pytest.raises(InternalError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
   assert 'Application parameter {} must be a list'.format(AppParamsNames.EXCLUDE_RENDERING) in caplog.text
   mock_config.get_app_params.assert_called_once_with(env_name, app_name)

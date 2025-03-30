@@ -1,8 +1,7 @@
 import pytest
 import textwrap
 from make_argocd_fly.config import populate_config, Config, _read_config_file
-from make_argocd_fly.exceptions import InvalidConfigFileError, MissingConfigFileError, MissingDirectoryError, \
-  UnpopulatedConfigError, UnknownEnvirontmentError, UnknownApplicationError
+from make_argocd_fly.exceptions import ConfigFileError, InternalError
 
 
 ##################
@@ -56,19 +55,19 @@ def test_populate_config__missing_source_dir(tmp_path):
   config_file_path = tmp_path / config_file
   config_file_path.write_text('test')
 
-  with pytest.raises(MissingDirectoryError):
+  with pytest.raises(InternalError):
     populate_config(root_dir=root_dir)
 
 def test_populate_config__not_populated_config(tmp_path):
   config = Config()
 
-  with pytest.raises(UnpopulatedConfigError):
+  with pytest.raises(InternalError):
     config.source_dir
 
-  with pytest.raises(UnpopulatedConfigError):
+  with pytest.raises(InternalError):
     config.output_dir
 
-  with pytest.raises(UnpopulatedConfigError):
+  with pytest.raises(InternalError):
     config.tmp_dir
 
 
@@ -112,14 +111,14 @@ def test__read_config_file__invalid_config_file(tmp_path):
   config_file = root_dir / 'config.yml'
   config_file.write_text(textwrap.dedent(CONFIG))
 
-  with pytest.raises(InvalidConfigFileError):
+  with pytest.raises(ConfigFileError):
     _read_config_file(config_file)
 
 def test__read_config_file__missing_config_file(tmp_path):
   root_dir = tmp_path
   config_file = root_dir / 'config.yml'
 
-  with pytest.raises(MissingConfigFileError):
+  with pytest.raises(InternalError):
     _read_config_file(config_file)
 
 ##################
@@ -263,7 +262,7 @@ def test_Config__get_env_vars__missing_env(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  with pytest.raises(UnknownEnvirontmentError):
+  with pytest.raises(ConfigFileError):
     config.get_env_vars('test_env2')
 
 ##################
@@ -307,7 +306,7 @@ def test_Config__get_app_vars__missing_env(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  with pytest.raises(UnknownEnvirontmentError):
+  with pytest.raises(ConfigFileError):
     config.get_app_vars('test_env2', 'test_app')
 
 def test_Config__get_app_vars__undefined_apps(tmp_path):
@@ -325,7 +324,7 @@ def test_Config__get_app_vars__undefined_apps(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  with pytest.raises(UnknownApplicationError):
+  with pytest.raises(ConfigFileError):
     config.get_app_vars('test_env', 'test_app')
 
 def test_Config__get_app_vars__missing_app(tmp_path):
@@ -345,7 +344,7 @@ def test_Config__get_app_vars__missing_app(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  with pytest.raises(UnknownApplicationError):
+  with pytest.raises(ConfigFileError):
     config.get_app_vars('test_env', 'test_app2')
 
 def test_Config__get_app_vars__undefined_vars(tmp_path):
@@ -408,7 +407,7 @@ def test_Config__get_app_params__missing_env(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  with pytest.raises(UnknownEnvirontmentError):
+  with pytest.raises(ConfigFileError):
     config.get_app_params('test_env2', 'test_app')
 
 def test_Config__get_app_params__undefined_apps(tmp_path):
@@ -426,7 +425,7 @@ def test_Config__get_app_params__undefined_apps(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  with pytest.raises(UnknownApplicationError):
+  with pytest.raises(ConfigFileError):
     config.get_app_params('test_env', 'test_app')
 
 def test_Config__get_app_params__missing_app(tmp_path):
@@ -446,5 +445,5 @@ def test_Config__get_app_params__missing_app(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  with pytest.raises(UnknownApplicationError):
+  with pytest.raises(ConfigFileError):
     config.get_app_params('test_env', 'test_app2')

@@ -2,43 +2,35 @@ class BaseError(Exception):
   pass
 
 
-class MissingDirectoryError(BaseError):
-  def __init__(self, directory: str) -> None:
-    self.directory = directory
-    super().__init__('Missing directory {}'.format(directory))
-
-
 class MissingApplicationDirectoryError(BaseError):
   def __init__(self, directory: str) -> None:
     self.directory = directory
     super().__init__('Missing application directory {}'.format(directory))
 
 
-class UnpopulatedConfigError(BaseError):
+class InternalError(BaseError):
   def __init__(self) -> None:
-    super().__init__('Config is not populated')
+    super().__init__('Internal error')
 
 
-class MissingConfigFileError(BaseError):
-  def __init__(self, config_file: str) -> None:
-    self.directory = config_file
-    super().__init__('Missing config file {}'.format(config_file))
+class ConfigFileError(BaseError):
+  def __init__(self) -> None:
+    super().__init__('Config file error')
 
 
-class InvalidConfigFileError(BaseError):
-  def __init__(self, config_file: str) -> None:
-    self.directory = config_file
-    super().__init__('Invalid YAML config file {}'.format(config_file))
+class UndefinedTemplateVariableError(BaseError):
+  def __init__(self, variable_name: str) -> None:
+    super().__init__('Variable {} is undefined'.format(variable_name))
 
 
-class UnknownEnvirontmentError(BaseError):
-  def __init__(self, env_name: str) -> None:
-    self.env_name = env_name
-    super().__init__('Unknown environment {}'.format(env_name))
-
-
-class UnknownApplicationError(BaseError):
-  def __init__(self, app_name: str, env_name: str) -> None:
+class TemplateRenderingError(BaseError):
+  def __init__(self, template_filename: str, app_name: str, env_name: str) -> None:
+    self.template_filename = template_filename
     self.app_name = app_name
     self.env_name = env_name
-    super().__init__('Unknown application {} in environment {}'.format(app_name, env_name))
+    super().__init__('Error rendering template {}'.format(template_filename))
+
+
+class UnknownJinja2Error(BaseError):
+  def __init__(self) -> None:
+    super().__init__('Unknown error in jinja2 template')

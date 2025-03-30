@@ -11,7 +11,8 @@ from importlib.metadata import version, PackageNotFoundError
 from packaging.version import Version
 
 from make_argocd_fly import consts
-from make_argocd_fly.exceptions import MissingDirectoryError
+from make_argocd_fly.params import get_params
+from make_argocd_fly.exceptions import UnknownJinja2Error, InternalError
 
 
 log = logging.getLogger(__name__)
@@ -19,8 +20,8 @@ log = logging.getLogger(__name__)
 
 def build_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
   if not path:
-    log.error('Path is empty.')
-    raise Exception
+    log.error('Path is empty')
+    raise InternalError
 
   if os.path.isabs(path):
     abs_path = path
@@ -29,7 +30,7 @@ def build_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
 
   if (not allow_missing) and (not os.path.exists(abs_path)):
     log.error('Path does not exist: {}'.format(abs_path))
-    raise MissingDirectoryError(abs_path)
+    raise InternalError
 
   return abs_path
 
@@ -310,6 +311,10 @@ def get_latest_version() -> Version:
 
 
 def latest_version_check():
+  if get_params().skip_latest_version_check:
+    log.warning('Skipping latest version check')
+    return
+
   current_version = get_current_version()
   latest_version = get_latest_version()
 
@@ -323,3 +328,18 @@ def latest_version_check():
     confirm_dialog()
   else:
     log.info('You are using the latest version of {} ({})'.format(get_package_name(), current_version))
+
+
+def extract_undefined_variable(message: str) -> str:
+  var_match = re.search(r'\'(.+?)\' is undefined', message)
+  attr_match = re.search(r'has no attribute \'(.+?)\'', message)
+
+  variable_name = None
+  if var_match:
+    variable_name = var_match.group(1)
+  elif attr_match:
+    variable_name = attr_match.group(1)
+  else:
+    raise UnknownJinja2Error
+
+  return variable_name

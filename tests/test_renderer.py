@@ -3,6 +3,7 @@ import jinja2
 import textwrap
 from make_argocd_fly.resource import ResourceViewer
 from make_argocd_fly.renderer import JinjaRenderer
+from make_argocd_fly.exceptions import UndefinedTemplateVariableError
 
 ###############
 ### _get_source
@@ -129,7 +130,7 @@ def test_JinjaRenderer_base_loader_render_with_undefined_var():
   Template content {{ undefined_var }}
   '''
 
-  with pytest.raises(jinja2.exceptions.UndefinedError):
+  with pytest.raises(UndefinedTemplateVariableError):
     assert renderer.render(TEMPLATE)
 
 def test_JinjaRenderer_base_loader_render_with_include():
