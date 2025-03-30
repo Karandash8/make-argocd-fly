@@ -11,6 +11,7 @@ from importlib.metadata import version, PackageNotFoundError
 from packaging.version import Version
 
 from make_argocd_fly import consts
+from make_argocd_fly.params import get_params
 from make_argocd_fly.exceptions import UnknownJinja2Error, InternalError
 
 
@@ -310,6 +311,10 @@ def get_latest_version() -> Version:
 
 
 def latest_version_check():
+  if get_params().skip_latest_version_check:
+    log.warning('Skipping latest version check')
+    return
+
   current_version = get_current_version()
   latest_version = get_latest_version()
 
@@ -326,8 +331,8 @@ def latest_version_check():
 
 
 def extract_undefined_variable(message: str) -> str:
-  var_match = re.search(r"'(.+?)' is undefined", message)
-  attr_match = re.search(r"has no attribute '(.+?)'", message)
+  var_match = re.search(r'\'(.+?)\' is undefined', message)
+  attr_match = re.search(r'has no attribute \'(.+?)\'', message)
 
   variable_name = None
   if var_match:
