@@ -11,7 +11,9 @@ name: Release
 # on:
 #   release:
 #     types: [published]
-on: workflow_dispatch
+on:
+  push:
+    branches: [ "update-release-pipeline" ]
 
 permissions:
   contents: read
