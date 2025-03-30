@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "make-argocd-fly"
 description = "A tool to generate Kubernetes manifests from templates"
-license = "GPL-3.0-or-later"
+license = "GPL-3.0-only"
 authors = [
     {name = "Andrei Lapin", email = "karandash8@gmail.com"},
 ]
