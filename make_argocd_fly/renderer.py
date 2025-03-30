@@ -213,7 +213,7 @@ class JinjaRenderer(AbstractRenderer):
     try:
       rendered = template.render(self.template_vars)
     except jinja2.exceptions.UndefinedError as e:
-      variable_name = extract_undefined_variable(e.message)
+      variable_name = extract_undefined_variable(str(e))
 
       log.error('Variable "{}" is undefined'.format(variable_name))
       raise UndefinedTemplateVariableError(variable_name) from None
