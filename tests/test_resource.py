@@ -1,6 +1,6 @@
 import pytest
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
-from make_argocd_fly.exceptions import MissingApplicationDirectoryError
+from make_argocd_fly.exceptions import MissingApplicationDirectoryError, InternalError
 
 ##################
 ### ResourceViewer
@@ -71,7 +71,7 @@ def test_ResourceViewer_build_with_non_existing_child_path(tmp_path, caplog):
   element_path = 'other_element'
   resource_viewer = ResourceViewer(str(dir_root), element_path)
 
-  with pytest.raises(Exception):
+  with pytest.raises(InternalError):
     resource_viewer.build()
   assert 'Path does not exist' in caplog.text
 
@@ -247,7 +247,7 @@ def test_ResourceWriter_store_resource_duplicate(tmp_path, caplog):
   env_name = 'env'
 
   resource_writer.store_resource('/a/b/c', 'resource body 1')
-  with pytest.raises(Exception):
+  with pytest.raises(InternalError):
       resource_writer.store_resource('/a/b/c', 'resource body 1')
   assert 'Resource (/a/b/c) already exists' in caplog.text
 
@@ -257,10 +257,10 @@ def test_ResourceWriter_store_resource_undefined_dir_rel_path(tmp_path, caplog):
   resource_writer = ResourceWriter(str(dir_output))
   env_name = 'env'
 
-  with pytest.raises(Exception):
+  with pytest.raises(InternalError):
     resource_writer.store_resource(None, 'resource body 1')
   assert 'Parameter `file_path` is undefined' in caplog.text
 
-  with pytest.raises(Exception):
+  with pytest.raises(InternalError):
     resource_writer.store_resource('', 'resource body 1')
   assert 'Parameter `file_path` is undefined' in caplog.text

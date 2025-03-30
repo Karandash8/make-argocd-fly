@@ -12,6 +12,7 @@ from make_argocd_fly.params import populate_params, get_params
 from make_argocd_fly.config import populate_config, get_config
 from make_argocd_fly.utils import init_logging, latest_version_check, get_package_name, get_current_version
 from make_argocd_fly.application import application_factory
+from make_argocd_fly.exceptions import TemplateRenderingError, InternalError, ConfigFileError
 
 
 logging.basicConfig(level=consts.DEFAULT_LOGLEVEL)
@@ -46,57 +47,69 @@ async def generate() -> None:
   log.info('Processing applications')
   try:
     await asyncio.gather(*[asyncio.create_task(app.process()) for app in apps])
-  except Exception:
+  except Exception as e:
     for task in asyncio.all_tasks():
       task.cancel()
-    raise Exception
+    raise e
 
 
 def main(**kwargs) -> None:
-  params = populate_params(**kwargs)
+  try:
+    params = populate_params(**kwargs)
 
-  config = populate_config(params.root_dir, params.config_file, params.source_dir,
-                           params.output_dir, params.tmp_dir)
+    config = populate_config(params.root_dir, params.config_file, params.source_dir,
+                            params.output_dir, params.tmp_dir)
 
-  if not params.skip_latest_version_check:
-    latest_version_check()
-  else:
-    log.warning('Skipping latest version check')
+    if not params.skip_latest_version_check:
+      latest_version_check()
+    else:
+      log.warning('Skipping latest version check')
 
-  tmp_dir = config.tmp_dir
-  if os.path.exists(tmp_dir):
-    shutil.rmtree(tmp_dir)
+    tmp_dir = config.tmp_dir
+    if os.path.exists(tmp_dir):
+      shutil.rmtree(tmp_dir)
 
-  if params.remove_output_dir:
-    log.info('Wiping output directory')
-    if os.path.exists(config.output_dir):
-      shutil.rmtree(config.output_dir)
+    if params.remove_output_dir:
+      log.info('Wiping output directory')
+      if os.path.exists(config.output_dir):
+        shutil.rmtree(config.output_dir)
 
-  if not params.skip_generate:
-    asyncio.run(generate())
+    if not params.skip_generate:
+      asyncio.run(generate())
 
-  if not params.preserve_tmp_dir and os.path.exists(tmp_dir):
-    shutil.rmtree(tmp_dir)
+    if not params.preserve_tmp_dir and os.path.exists(tmp_dir):
+      shutil.rmtree(tmp_dir)
 
-  # TODO: it does not make sense to write yamls on disk and then read them again to run through linters
-  if params.yaml_linter:
-    log.info('Running yamllint')
-    process = subprocess.Popen(['yamllint', '-d', '{extends: default, rules: {line-length: disable}}', config.output_dir],
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                               universal_newlines=True)
-    stdout, stderr = process.communicate()
+    # TODO: it does not make sense to write yamls on disk and then read them again to run through linters
+    if params.yaml_linter:
+      log.info('Running yamllint')
+      process = subprocess.Popen(['yamllint', '-d', '{extends: default, rules: {line-length: disable}}', config.output_dir],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                universal_newlines=True)
+      stdout, stderr = process.communicate()
 
-    log.info('{} {}\n\n{}'.format(yamllint.APP_NAME, yamllint.APP_VERSION, stdout))
+      log.info('{} {}\n\n{}'.format(yamllint.APP_NAME, yamllint.APP_VERSION, stdout))
 
-  if params.kube_linter:
-    log.info('Running kube-linter')
-    process = subprocess.Popen(['kube-linter', 'lint', config.output_dir],
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                               universal_newlines=True)
-    stdout, stderr = process.communicate()
+    if params.kube_linter:
+      log.info('Running kube-linter')
+      process = subprocess.Popen(['kube-linter', 'lint', config.output_dir],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                universal_newlines=True)
+      stdout, stderr = process.communicate()
 
-    log.info(stdout)
-    log.info(stderr)
+      log.info(stdout)
+      log.info(stderr)
+  except TemplateRenderingError as e:
+    log.critical('Error generating application {} in environment {}'.format(e.app_name, e.env_name))
+    exit(1)
+  except InternalError:
+    log.critical('Internal error')
+    exit(1)
+  except ConfigFileError:
+    log.critical('Config file error')
+    exit(1)
+  except Exception as e:
+    raise e
 
 
 def cli_entry_point() -> None:

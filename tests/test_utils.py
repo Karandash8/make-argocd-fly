@@ -4,6 +4,7 @@ import textwrap
 
 from make_argocd_fly.utils import extract_single_resource, merge_dicts, VarsResolver, FilePathGenerator, get_module_name, \
   get_package_name, build_path
+from make_argocd_fly.exceptions import InternalError
 
 ###################
 ### FilePathGenerator
@@ -628,7 +629,7 @@ def test_FilePathGenerator__generate_from_source_file_path__without_source_file(
 
   generator = FilePathGenerator(None, source_file_rel_path)
 
-  with pytest.raises(Exception):
+  with pytest.raises(ValueError):
     generator.generate_from_source_file()
   assert 'Filename cannot be constructed' in caplog.text
 
@@ -673,7 +674,7 @@ def test_FilePathGenerator__generate_from_k8s_resource__from_empty(caplog):
 
   generator = FilePathGenerator(resource_yml, None)
 
-  with pytest.raises(Exception):
+  with pytest.raises(ValueError):
     generator.generate_from_k8s_resource()
   assert 'Filename cannot be constructed' in caplog.text
 
@@ -688,7 +689,7 @@ def test_FilePathGenerator__generate_from_k8s_resource__missing_resource_kind(ca
 
   generator = FilePathGenerator(resource_yml, None)
 
-  with pytest.raises(Exception):
+  with pytest.raises(ValueError):
     generator.generate_from_k8s_resource()
   assert 'Filename cannot be constructed' in caplog.text
 
@@ -1236,24 +1237,24 @@ def test_build_path_with_empty_path(tmp_path, caplog):
   root_dir = tmp_path
   path = ''
 
-  with pytest.raises(Exception):
+  with pytest.raises(InternalError):
     build_path(root_dir, path)
-  assert 'Path is empty.' in caplog.text
+  assert 'Path is empty' in caplog.text
 
 def test_build_path_with_none_path(tmp_path, caplog):
   root_dir = tmp_path
   path = None
 
-  with pytest.raises(Exception):
+  with pytest.raises(InternalError):
     build_path(root_dir, path)
-  assert 'Path is empty.' in caplog.text
+  assert 'Path is empty' in caplog.text
 
 def test_build_path_with_nonexistent_path(tmp_path, caplog):
   root_dir = str(tmp_path)
   path = 'nonexistent_file.py'
   non_existent_path = tmp_path / 'nonexistent_file.py'
 
-  with pytest.raises(Exception):
+  with pytest.raises(InternalError):
     build_path(root_dir, path)
   assert 'Path does not exist: {}'.format(non_existent_path) in caplog.text
 

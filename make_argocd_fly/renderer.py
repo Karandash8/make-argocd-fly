@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import socket
+import jinja2
 import typing as t
 from abc import ABC, abstractmethod
 from jinja2 import Environment, BaseLoader, FunctionLoader, nodes, StrictUndefined
@@ -10,6 +11,8 @@ from jinja2.exceptions import TemplateNotFound
 from markupsafe import Markup
 
 from make_argocd_fly.resource import ResourceViewer
+from make_argocd_fly.exceptions import UndefinedTemplateVariableError
+from make_argocd_fly.utils import extract_undefined_variable
 
 log = logging.getLogger(__name__)
 
@@ -161,7 +164,8 @@ class JinjaRenderer(AbstractRenderer):
                                        IncludeAllAsYamlListExtension,
                                        DigExtension,
                                        'jinja2_ansible_filters.AnsibleCoreFiltersExtension'],
-                           loader=self.loader, undefined=StrictUndefined)
+                           loader=self.loader,
+                           undefined=StrictUndefined)
 
     self.template_vars = {}
     self.filename = '<template>'
@@ -206,4 +210,12 @@ class JinjaRenderer(AbstractRenderer):
     template = self.env.from_string(content)
     template.filename = self.filename
 
-    return template.render(self.template_vars)
+    try:
+      rendered = template.render(self.template_vars)
+    except jinja2.exceptions.UndefinedError as e:
+      variable_name = extract_undefined_variable(e.message)
+
+      log.error('Variable "{}" is undefined'.format(variable_name))
+      raise UndefinedTemplateVariableError(variable_name) from None
+
+    return rendered

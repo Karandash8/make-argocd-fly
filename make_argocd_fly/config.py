@@ -3,8 +3,7 @@ import yaml
 
 from make_argocd_fly import consts
 from make_argocd_fly.utils import build_path
-from make_argocd_fly.exceptions import MissingConfigFileError, InvalidConfigFileError, UnknownEnvirontmentError, \
-  UnpopulatedConfigError, UnknownApplicationError
+from make_argocd_fly.exceptions import InternalError, ConfigFileError
 
 
 log = logging.getLogger(__name__)
@@ -24,7 +23,7 @@ class Config:
   def source_dir(self) -> str:
     if not self._source_dir:
       log.error('Config is not populated')
-      raise UnpopulatedConfigError()
+      raise InternalError
 
     return self._source_dir
 
@@ -32,7 +31,7 @@ class Config:
   def output_dir(self) -> str:
     if not self._output_dir:
       log.error('Config is not populated')
-      raise UnpopulatedConfigError()
+      raise InternalError
 
     return self._output_dir
 
@@ -40,7 +39,7 @@ class Config:
   def tmp_dir(self) -> str:
     if not self._tmp_dir:
       log.error('Config is not populated')
-      raise UnpopulatedConfigError()
+      raise InternalError
 
     return self._tmp_dir
 
@@ -54,7 +53,7 @@ class Config:
     envs = self.get_envs()
     if env_name not in envs:
       log.error('Environment {} is not defined'.format(env_name))
-      raise UnknownEnvirontmentError(env_name)
+      raise ConfigFileError
 
     return envs[env_name][consts.KEYWORK_VARS] if consts.KEYWORK_VARS in envs[env_name] else {}
 
@@ -62,11 +61,11 @@ class Config:
     envs = self.get_envs()
     if env_name not in envs:
       log.error('Environment {} is not defined'.format(env_name))
-      raise UnknownEnvirontmentError(env_name)
+      raise ConfigFileError
 
     if consts.KEYWORK_APPS not in envs[env_name] or app_name not in envs[env_name][consts.KEYWORK_APPS]:
       log.error('Application {} is not defined in environment {}'.format(app_name, env_name))
-      raise UnknownApplicationError(app_name, env_name)
+      raise ConfigFileError
 
     if consts.KEYWORK_VARS in envs[env_name][consts.KEYWORK_APPS][app_name]:
       return envs[env_name][consts.KEYWORK_APPS][app_name][consts.KEYWORK_VARS]
@@ -77,11 +76,11 @@ class Config:
     envs = self.get_envs()
     if env_name not in envs:
       log.error('Environment {} is not defined'.format(env_name))
-      raise UnknownEnvirontmentError(env_name)
+      raise ConfigFileError
 
     if consts.KEYWORK_APPS not in envs[env_name] or app_name not in envs[env_name][consts.KEYWORK_APPS]:
       log.error('Application {} is not defined in environment {}'.format(app_name, env_name))
-      raise UnknownApplicationError(app_name, env_name)
+      raise ConfigFileError
 
     return {key: value for key, value in envs[env_name][consts.KEYWORK_APPS][app_name].items() if key != consts.KEYWORK_VARS}
 
@@ -97,10 +96,10 @@ def _read_config_file(config_file: str) -> dict:
       config_content = yaml.safe_load(f.read())
   except FileNotFoundError:
     log.error('Config file {} not found'.format(config_file))
-    raise MissingConfigFileError(config_file)
+    raise InternalError
   except yaml.YAMLError:
     log.error('Invalid YAML config file {}'.format(config_file))
-    raise InvalidConfigFileError(config_file)
+    raise ConfigFileError
 
   return config_content
 

@@ -4,13 +4,10 @@ import re
 import asyncio
 import yaml
 import yaml.composer
-try:
-  from yaml import CSafeLoader as SafeLoader
-except ImportError:
-  from yaml import SafeLoader
+import yaml.parser
 from yaml import SafeDumper
 
-from make_argocd_fly.exceptions import MissingApplicationDirectoryError
+from make_argocd_fly.exceptions import MissingApplicationDirectoryError, InternalError
 
 log = logging.getLogger(__name__)
 
@@ -40,10 +37,6 @@ def represent_str(dumper, data):
 yaml.add_representer(str, represent_str, Dumper=YamlDumper)
 
 
-class YamlLoader(SafeLoader):
-  pass
-
-
 class ResourceViewer:
   def __init__(self, root_element_abs_path: str, element_rel_path: str = '.', is_dir: bool = True) -> None:
     self.root_element_abs_path = root_element_abs_path
@@ -65,7 +58,7 @@ class ResourceViewer:
     path = os.path.join(self.root_element_abs_path, self.element_rel_path)
     if not os.path.exists(path):
       log.error('Path does not exist {}'.format(path))
-      raise Exception
+      raise InternalError
 
     if self.is_dir:
       for child_name in os.listdir(path):
@@ -136,29 +129,23 @@ class ResourceWriter:
     self.output_dir_abs_path = output_dir_abs_path
     self.resources = {}
 
-  def store_resource(self, file_path: str, resource_yml: str) -> None:
+  def store_resource(self, file_path: str, yaml_object: str) -> None:
     if not file_path:
       log.error('Parameter `file_path` is undefined')
-      raise Exception
+      raise InternalError
 
     if file_path in self.resources:
       log.error('Resource ({}) already exists'.format(file_path))
-      raise Exception
+      raise InternalError
 
-    self.resources[file_path] = resource_yml
+    self.resources[file_path] = yaml_object
 
-  async def _write_resource(self, file_path: str, resource_yml: str) -> None:
+  async def _write_resource(self, file_path: str, yaml_object: str) -> None:
     path = os.path.join(self.output_dir_abs_path, os.path.dirname(file_path))
     os.makedirs(path, exist_ok=True)
 
-    try:
-      yaml_obj = yaml.load(resource_yml, Loader=YamlLoader)
-    except yaml.composer.ComposerError:
-      log.error('Error parsing yaml to write as file {}. Yaml:\n{}'.format(file_path, resource_yml))
-      raise Exception
-
     with open(os.path.join(self.output_dir_abs_path, file_path), 'w') as f:
-      yaml.dump(yaml_obj, f, Dumper=YamlDumper,
+      yaml.dump(yaml_object, f, Dumper=YamlDumper,
                 default_flow_style=False,
                 sort_keys=False,
                 allow_unicode=True,
@@ -168,9 +155,9 @@ class ResourceWriter:
   async def write_resources(self) -> None:
     try:
       await asyncio.gather(
-        *[asyncio.create_task(self._write_resource(file_path, resource_yml)) for file_path, resource_yml in self.resources.items()]
+        *[asyncio.create_task(self._write_resource(file_path, yaml_object)) for file_path, yaml_object in self.resources.items()]
       )
-    except Exception:
+    except Exception as e:
       for task in asyncio.all_tasks():
         task.cancel()
-      raise Exception
+      raise e
