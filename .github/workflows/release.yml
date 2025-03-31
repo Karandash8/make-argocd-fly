@@ -79,7 +79,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Clone Repository
-        run: git clone --depth 1 --branch v1.8.14 https://github.com/pypa/gh-action-pypi-publish.git
+        run: git clone --depth 1 --branch v1.12.4 https://github.com/pypa/gh-action-pypi-publish.git
       - name: Install pip packages
         run: |
           cd gh-action-pypi-publish
@@ -89,7 +89,7 @@ jobs:
         run: |
           sudo mkdir /app
           sudo chown -R runner:runner /app
-          cp gh-action-pypi-publish/twine-upload.sh gh-action-pypi-publish/print-hash.py gh-action-pypi-publish/oidc-exchange.py /app
+          cp gh-action-pypi-publish/twine-upload.sh gh-action-pypi-publish/*.py /app
           cp -r dist /app/dist
           chmod +x /app/twine-upload.sh
       - name: Publish package to TestPyPI
@@ -103,6 +103,7 @@ jobs:
           INPUT_VERIFY_METADATA=true \
           INPUT_SKIP_EXISTING=false \
           INPUT_PRINT_HASH=false \
+          INPUT_ATTESTATIONS=false \
           /app/twine-upload.sh
 
   publish-to-pypi:
@@ -135,7 +136,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Clone Repository
-        run: git clone --depth 1 --branch v1.8.14 https://github.com/pypa/gh-action-pypi-publish.git
+        run: git clone --depth 1 --branch v1.12.4 https://github.com/pypa/gh-action-pypi-publish.git
       - name: Install pip packages
         run: |
           cd gh-action-pypi-publish
@@ -145,7 +146,7 @@ jobs:
         run: |
           sudo mkdir /app
           sudo chown -R runner:runner /app
-          cp gh-action-pypi-publish/twine-upload.sh gh-action-pypi-publish/print-hash.py gh-action-pypi-publish/oidc-exchange.py /app
+          cp gh-action-pypi-publish/twine-upload.sh gh-action-pypi-publish/*.py /app
           cp -r dist /app/dist
           chmod +x /app/twine-upload.sh
       - name: Publish package to PyPI
@@ -159,4 +160,5 @@ jobs:
           INPUT_VERIFY_METADATA=true \
           INPUT_SKIP_EXISTING=false \
           INPUT_PRINT_HASH=false \
+          INPUT_ATTESTATIONS=false \
           /app/twine-upload.sh
