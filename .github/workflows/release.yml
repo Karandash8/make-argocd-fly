@@ -8,12 +8,9 @@
 
 name: Release
 
-# on:
-#   release:
-#     types: [published]
 on:
-  push:
-    branches: [ "update-release-pipeline" ]
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -109,58 +106,59 @@ jobs:
           INPUT_ATTESTATIONS=false \
           /app/twine-upload.sh
 
-  # publish-to-pypi:
-  #   name: Publish make-argocd-fly to PyPI
-  #   needs:
-  #     - publish-to-testpypi
-  #   runs-on: make-argocd-fly
+  publish-to-pypi:
+    name: Publish make-argocd-fly to PyPI
+    needs:
+      - publish-to-testpypi
+    runs-on: make-argocd-fly
 
-  #   environment:
-  #     name: pypi
-  #     url: https://pypi.org/p/make-argocd-fly
+    environment:
+      name: pypi
+      url: https://pypi.org/p/make-argocd-fly
 
-  #   permissions:
-  #     id-token: write
+    permissions:
+      id-token: write
 
-  #   steps:
-  #     - name: Download all the dists
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: python-package-distributions
-  #         path: dist/
-  #     - if: ${{ runner.arch == 'arm64' }}
-  #       name: Set up Python
-  #       uses: deadsnakes/action@v3.1.0
-  #       with:
-  #         python-version: "3.11"
-  #     - if: ${{ runner.arch == 'amd64' }}
-  #       name: Set up Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: '3.11'
-  #     - name: Clone Repository
-  #       run: git clone --depth 1 --branch v1.8.14 https://github.com/pypa/gh-action-pypi-publish.git
-  #     - name: Install pip packages
-  #       run: |
-  #         cd gh-action-pypi-publish
-  #         PIP_CONSTRAINT=requirements/runtime-prerequisites.txt pip install -r requirements/runtime-prerequisites.in
-  #         PIP_CONSTRAINT=requirements/runtime.txt pip install -r requirements/runtime.in
-  #     - name: Prepare scripts
-  #       run: |
-  #         sudo mkdir /app
-  #         sudo chown -R runner:runner /app
-  #         cp gh-action-pypi-publish/twine-upload.sh gh-action-pypi-publish/print-hash.py gh-action-pypi-publish/oidc-exchange.py /app
-  #         cp -r dist /app/dist
-  #         chmod +x /app/twine-upload.sh
-  #     - name: Publish package to PyPI
-  #       run: |
-  #         PYTHONPATH=/usr/lib/python3/site-packages \
-  #         INPUT_USER=__token__ \
-  #         INPUT_PASSWORD="" \
-  #         INPUT_VERBOSE=false \
-  #         INPUT_REPOSITORY_URL=https://upload.pypi.org/legacy/ \
-  #         INPUT_PACKAGES_DIR=/app/dist \
-  #         INPUT_VERIFY_METADATA=true \
-  #         INPUT_SKIP_EXISTING=false \
-  #         INPUT_PRINT_HASH=false \
-  #         /app/twine-upload.sh
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+      - if: ${{ runner.arch == 'arm64' }}
+        name: Set up Python
+        uses: deadsnakes/action@v3.1.0
+        with:
+          python-version: "3.11"
+      - if: ${{ runner.arch == 'amd64' }}
+        name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Clone Repository
+        run: git clone --depth 1 --branch v1.12.4 https://github.com/pypa/gh-action-pypi-publish.git
+      - name: Install pip packages
+        run: |
+          cd gh-action-pypi-publish
+          PIP_CONSTRAINT=requirements/runtime-prerequisites.txt pip install -r requirements/runtime-prerequisites.in
+          PIP_CONSTRAINT=requirements/runtime.txt pip install -r requirements/runtime.in
+      - name: Prepare scripts
+        run: |
+          sudo mkdir /app
+          sudo chown -R runner:runner /app
+          cp gh-action-pypi-publish/twine-upload.sh gh-action-pypi-publish/*.py /app
+          cp -r dist /app/dist
+          chmod +x /app/twine-upload.sh
+      - name: Publish package to PyPI
+        run: |
+          PYTHONPATH=/usr/lib/python3/site-packages \
+          INPUT_USER=__token__ \
+          INPUT_PASSWORD="" \
+          INPUT_VERBOSE=false \
+          INPUT_REPOSITORY_URL=https://upload.pypi.org/legacy/ \
+          INPUT_PACKAGES_DIR=/app/dist \
+          INPUT_VERIFY_METADATA=true \
+          INPUT_SKIP_EXISTING=false \
+          INPUT_PRINT_HASH=false \
+          INPUT_ATTESTATIONS=false \
+          /app/twine-upload.sh
