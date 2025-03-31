@@ -106,7 +106,7 @@ jobs:
           INPUT_VERIFY_METADATA=true \
           INPUT_SKIP_EXISTING=false \
           INPUT_PRINT_HASH=false \
-          INPUT_ATTESTATIONS=true \
+          INPUT_ATTESTATIONS=false \
           /app/twine-upload.sh
 
   # publish-to-pypi:
