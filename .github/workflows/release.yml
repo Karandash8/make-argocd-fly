@@ -82,7 +82,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Clone Repository
-        run: git clone --depth 1 --branch v1.8.14 https://github.com/pypa/gh-action-pypi-publish.git
+        run: git clone --depth 1 --branch v1.12.4 https://github.com/pypa/gh-action-pypi-publish.git
       - name: Install pip packages
         run: |
           cd gh-action-pypi-publish
@@ -98,7 +98,7 @@ jobs:
       - name: Publish package to TestPyPI
         run: |
           PYTHONPATH=/usr/lib/python3/site-packages \
-          # INPUT_USER=__token__ \
+          INPUT_USER=__token__ \
           INPUT_PASSWORD="" \
           INPUT_VERBOSE=false \
           INPUT_REPOSITORY_URL=https://test.pypi.org/legacy/ \
