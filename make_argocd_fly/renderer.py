@@ -98,7 +98,8 @@ class IncludeRawExtension(Extension):
     content = loaded_template[0] if loaded_template else ''
 
     return Markup(content)
-  
+
+
 # This extension is used to output the name of the file as a yaml list
 class IncludeAllAsYamlNamesListExtension(Extension):
   tags = {"include_all_as_yaml_names_list"}
@@ -131,8 +132,9 @@ class IncludeAllAsYamlNamesListExtension(Extension):
           continue
 
       yaml_names_as_list.append('- {}{}\n'.format(base_path, child_name))
-      
+
     return Markup(''.join(yaml_names_as_list))
+
 
 class IncludeAllAsYamlKVExtension(Extension):
   tags = {"include_all_as_yaml_kv"}
@@ -163,8 +165,9 @@ class IncludeAllAsYamlKVExtension(Extension):
           continue
 
         kv_as_yaml_str.append('{}: |\n  {}\n'.format(child_name, re.sub('\n', '\n  ', child_content.strip())))
-      
+
     return Markup(''.join(kv_as_yaml_str))
+
 
 class IncludeAllAsYamlListExtension(Extension):
   tags = {"include_all_as_yaml_list"}
