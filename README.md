@@ -232,10 +232,12 @@ use the following block:
 
   ```
   {%- filter indent(width=6) %}
-  {% include_all_as_yaml_names_list 'files/' %}
+  {% include_all_as_yaml_names_list 'files/', '/etc/' %}
   {% endfilter %}
   ```
 
+  Note that it takes two parameters, first is directory that will be listed and second is a prefix, path to file maybe, you can add to combine with the filename.
+  
   Example:
   ```tests/manual/source/app_17```
   
