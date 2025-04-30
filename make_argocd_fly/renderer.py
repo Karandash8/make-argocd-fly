@@ -111,7 +111,7 @@ class IncludeAllAsYamlNamesListExtension(Extension):
     return nodes.Output([result], lineno=lineno)
 
   def _render(self, path: str, base_path: str = None) -> str:
-    base_path = base_path or self.base_path
+    base_path = base_path or ''
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     yaml_names_as_list = []
 
