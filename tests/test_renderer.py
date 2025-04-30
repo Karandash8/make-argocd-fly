@@ -321,3 +321,35 @@ def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_list(tmp_
   '''
 
   assert textwrap.dedent(output) == renderer.render(textwrap.dedent(TEMPLATE))
+  
+def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_names_list(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_0 = dir_root / 'dir_0'
+  dir_0.mkdir()
+  files = dir_0 / 'files'
+  files.mkdir()
+  files_subdir = files / 'files_subdir'
+  files_subdir.mkdir()
+  FILE_1 = 'key_1: {{ content }}'
+  file_1 = files / 'file_1.yml.j2'
+  file_1.write_text(FILE_1)
+  FILE_2 = 'key_2: value 2'
+  file_2 = files / 'file_2.yml'
+  file_2.write_text(FILE_2)
+
+  resource_viewer = ResourceViewer(str(dir_0))
+  resource_viewer.build()
+  renderer = JinjaRenderer(resource_viewer)
+
+  TEMPLATE = '''\
+    {% include_all_as_yaml_names_list 'files', '/etc/' %}
+  '''
+
+  renderer.set_template_vars({'content': 'value 1'})
+  output = '''\
+    - /etc/file_1.yml
+    - /etc/file_2.yml
+  '''
+
+  assert textwrap.dedent(output) == renderer.render(textwrap.dedent(TEMPLATE))

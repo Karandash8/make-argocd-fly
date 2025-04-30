@@ -100,6 +100,42 @@ class IncludeRawExtension(Extension):
     return Markup(content)
 
 
+# This extension is used to output the name of the file as a yaml list
+class IncludeAllAsYamlNamesListExtension(Extension):
+  tags = {"include_all_as_yaml_names_list"}
+
+  def parse(self, parser):
+    lineno = parser.stream.expect("name:include_all_as_yaml_names_list").lineno
+    template = parser.parse_expression()
+    base_path = parser.parse_expression() if parser.stream.skip_if("comma") else None
+    result = self.call_method("_render", [template, base_path], lineno=lineno)
+    return nodes.Output([result], lineno=lineno)
+
+  def _render(self, path: str, base_path: str = None) -> str:
+    base_path = base_path or ''
+    children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
+    yaml_names_as_list = []
+
+    for child in children:
+      if child.name.endswith('.j2'):
+        loaded_template = self.environment.loader.get_rendered(self.environment, child.element_rel_path)
+        child_name = child.name[:-3]
+      else:
+        loaded_template = self.environment.loader.get_source(self.environment, child.element_rel_path)
+        child_name = child.name
+
+      if loaded_template:
+        child_content = loaded_template[0]
+        # if child_content is empty, skip adding it to the yaml
+        if child_content == '':
+          log.debug('No content in ' + child_name + ', not adding to yaml')
+          continue
+
+      yaml_names_as_list.append('- {}{}\n'.format(base_path, child_name))
+
+    return Markup(''.join(yaml_names_as_list))
+
+
 class IncludeAllAsYamlKVExtension(Extension):
   tags = {"include_all_as_yaml_kv"}
 
@@ -121,8 +157,14 @@ class IncludeAllAsYamlKVExtension(Extension):
         loaded_template = self.environment.loader.get_source(self.environment, child.element_rel_path)
         child_name = child.name
 
-      child_content = loaded_template[0] if loaded_template else ''
-      kv_as_yaml_str.append('{}: |\n  {}\n'.format(child_name, re.sub('\n', '\n  ', child_content.strip())))
+      if loaded_template:
+        child_content = loaded_template[0]
+        # if child_content is empty, skip adding it to the yaml
+        if child_content == '':
+          log.debug('No content in ' + child_name + ', not adding to yaml')
+          continue
+
+        kv_as_yaml_str.append('{}: |\n  {}\n'.format(child_name, re.sub('\n', '\n  ', child_content.strip())))
 
     return Markup(''.join(kv_as_yaml_str))
 
@@ -146,7 +188,11 @@ class IncludeAllAsYamlListExtension(Extension):
       else:
         loaded_template = self.environment.loader.get_source(self.environment, child.element_rel_path)
 
-      child_content = loaded_template[0] if loaded_template else ''
+      if loaded_template:
+        child_content = loaded_template[0]
+        # if child_content is empty, skip adding it to the yaml
+        if child_content == '':
+          continue
       kv_as_yaml_str.append('- {}\n'.format(re.sub('\n', '\n  ', child_content.strip())))
 
     return Markup(''.join(kv_as_yaml_str))
@@ -160,6 +206,7 @@ class JinjaRenderer(AbstractRenderer):
     else:
       self.loader = BaseLoader()
     self.env = Environment(extensions=[IncludeRawExtension,
+                                       IncludeAllAsYamlNamesListExtension,
                                        IncludeAllAsYamlKVExtension,
                                        IncludeAllAsYamlListExtension,
                                        DigExtension,
