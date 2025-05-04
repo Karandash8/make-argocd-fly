@@ -7,6 +7,7 @@ import json
 import ssl
 import yaml
 import urllib.request
+from typing import Optional, List
 from importlib.metadata import version, PackageNotFoundError
 from packaging.version import Version
 
@@ -240,9 +241,12 @@ def get_app_rel_path(env_name: str, app_name: str) -> str:
   return os.path.join(env_name, app_name)
 
 
-def merge_lists_without_duplicates(*lists, key_path: list = []):
+def merge_lists_without_duplicates(*lists, key_path: Optional[List] = None):
   if not lists:
     return []
+
+  if key_path is None:
+    key_path = []
 
   merged = []
 
@@ -257,9 +261,12 @@ def merge_lists_without_duplicates(*lists, key_path: list = []):
   return merged
 
 
-def merge_dicts_without_duplicates(*dicts, key_path: list = []):
+def merge_dicts_without_duplicates(*dicts, key_path: Optional[List] = None):
   if not dicts:
     return {}
+
+  if key_path is None:
+    key_path = []
 
   merged = {}
 
