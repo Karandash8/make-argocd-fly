@@ -8,6 +8,7 @@ import subprocess
 import yamllint
 
 from make_argocd_fly import consts
+from make_argocd_fly.warnings import init_warnings
 from make_argocd_fly.params import populate_params, get_params
 from make_argocd_fly.config import populate_config, get_config
 from make_argocd_fly.utils import init_logging, latest_version_check, get_package_name, get_current_version
@@ -90,7 +91,7 @@ def remove_dir(dir: str) -> None:
 def main(**kwargs) -> None:
   try:
     params = populate_params(**kwargs)
-    config = populate_config(params.root_dir, params.config_file, params.source_dir,
+    config = populate_config(params.root_dir, params.config_file, params.config_dir, params.source_dir,
                              params.output_dir, params.tmp_dir)
 
     latest_version_check()
@@ -125,7 +126,8 @@ def main(**kwargs) -> None:
 def cli_entry_point() -> None:
   parser = argparse.ArgumentParser(prog='make-argocd-fly', description='Render ArgoCD Applications.')
   parser.add_argument('--root-dir', type=str, default=consts.DEFAULT_ROOT_DIR, help='Root directory (default: current directory)')
-  parser.add_argument('--config-file', type=str, default=consts.DEFAULT_CONFIG_FILE, help='Configuration file (default: config.yml)')
+  parser.add_argument('--config-file', type=str, default=consts.DEFAULT_CONFIG_FILE, help='Configuration file (default: config.yml) # DEPRECATED')
+  parser.add_argument('--config-dir', type=str, default=consts.DEFAULT_CONFIG_DIR, help='Configuration files directory (default: config)')
   parser.add_argument('--source-dir', type=str, default=consts.DEFAULT_SOURCE_DIR, help='Source files directory (default: source)')
   parser.add_argument('--output-dir', type=str, default=consts.DEFAULT_OUTPUT_DIR, help='Output files directory (default: output)')
   parser.add_argument('--tmp-dir', type=str, default=consts.DEFAULT_TMP_DIR, help='Temporary files directory (default: .tmp)')
@@ -135,7 +137,7 @@ def cli_entry_point() -> None:
   parser.add_argument('--preserve-tmp-dir', action='store_true', help='Preserve temporary directory')
   parser.add_argument('--remove-output-dir', action='store_true', help='Remove output directory')
   parser.add_argument('--print-vars', action='store_true', help='Print variables for each application')
-  parser.add_argument('--var-identifier', type=str, default=consts.DEFAULT_VAR_IDENTIFIER, help='Variable prefix in config.yml file (default: $)')
+  parser.add_argument('--var-identifier', type=str, default=consts.DEFAULT_VAR_IDENTIFIER, help='Variable prefix in configuration files (default: $)')
   parser.add_argument('--skip-latest-version-check', action='store_true', help='Skip latest version check')
   parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
   parser.add_argument('--kube-linter', action='store_true', help='Run kube-linter against output directory (https://github.com/stackrox/kube-linter)')
@@ -144,4 +146,5 @@ def cli_entry_point() -> None:
   args = parser.parse_args()
 
   init_logging(args.loglevel)
+  init_warnings()
   main(**vars(args))

@@ -2,7 +2,7 @@
   [![cov](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Karandash8/26eb92c97bbfac22b938afebac85e7cd/raw/covbadge.json)](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Karandash8/26eb92c97bbfac22b938afebac85e7cd/raw/covbadge.json)
 
 ## Description
-`make-argocd-fly` is a tool designed to simplify the generation of Kubernetes manifests for deployment in complex, multi-cluster, and multi-application environments. It leverages YAML, Jinja2 templates, Kustomize files, and Helm charts through Kustomize, streamlining the process of creating and maintaining Kubernetes resources. Although the generated manifests can be deployed using any external tool, such as kubectl, `make-argocd-fly` provides native integration with ArgoCD, enhancing the overall deployment experience.
+`make-argocd-fly` simplifies generation of Kubernetes manifests in multi-cluster and multi-application environments. It leverages YAML, Jinja2 templates, Kustomize files, and Helm charts through Kustomize, streamlining the process of creating and maintaining Kubernetes resources. Although the generated manifests can be deployed using any external tool, such as kubectl, `make-argocd-fly` provides native integration with ArgoCD, enhancing the overall deployment experience.
 
 With `make-argocd-fly`, you can develop resources in various formats, specify deployment details in a configuration file, generate the final manifests effortlessly, and push them to a repository for ArgoCD to deploy to a Kubernetes cluster. This approach promotes transparency in what is being deployed and where, simplifies both maintenance and development, and assists in debugging issues.
 
@@ -21,8 +21,8 @@ With `make-argocd-fly`, you can develop resources in various formats, specify de
 - `yamllint` (IF USED) is expected to be installed locally (https://github.com/adrienverge/yamllint).
 - `kube-linter` (IF USED) is expected to be installed locally (https://github.com/stackrox/kube-linter).
 
-### Configuration file (`config.yml`)
-The following structure is expected:
+### Configuration files (`config/*.yml`)
+All configuration files are merged together at runtime and the following structure is expected:
 ```
 envs:
   <environment_name_1>:
@@ -39,11 +39,11 @@ vars:
 Application names must correspond to the relative paths from the source directory to the application directory, e.g., ```grafana```, ```path/to/grafana``` .
 
 Example configuration file:
-```tests/examples/app_types/config.yml```
+```tests/examples/app_types/config/config.yml```
 
 ### Source directory structure
 Example directory structure:
-```tests/examples/app_types/source```
+```tests/examples/app_types/source/```
 
 ## Execution
 ```
@@ -53,10 +53,9 @@ pip install make-argocd-fly
 ```
 
 ```
-make-argocd-fly -h
-usage: make-argocd-fly [-h] [--root-dir ROOT_DIR] [--config-file CONFIG_FILE] [--source-dir SOURCE_DIR] [--output-dir OUTPUT_DIR] [--tmp-dir TMP_DIR] [--render-apps RENDER_APPS]
-                       [--render-envs RENDER_ENVS] [--skip-generate] [--preserve-tmp-dir] [--remove-output-dir] [--print-vars] [--var-identifier VAR_IDENTIFIER]
-                       [--skip-latest-version-check] [--yaml-linter] [--kube-linter] [--loglevel LOGLEVEL] [--version]
+usage: make-argocd-fly [-h] [--root-dir ROOT_DIR] [--config-file CONFIG_FILE] [--config-dir CONFIG_DIR] [--source-dir SOURCE_DIR] [--output-dir OUTPUT_DIR] [--tmp-dir TMP_DIR]
+                       [--render-apps RENDER_APPS] [--render-envs RENDER_ENVS] [--skip-generate] [--preserve-tmp-dir] [--remove-output-dir] [--print-vars]
+                       [--var-identifier VAR_IDENTIFIER] [--skip-latest-version-check] [--yaml-linter] [--kube-linter] [--loglevel LOGLEVEL] [--version]
 
 Render ArgoCD Applications.
 
@@ -64,7 +63,9 @@ options:
   -h, --help            show this help message and exit
   --root-dir ROOT_DIR   Root directory (default: current directory)
   --config-file CONFIG_FILE
-                        Configuration file (default: config.yml)
+                        Configuration file (default: config.yml) # DEPRECATED
+  --config-dir CONFIG_DIR
+                        Configuration files directory (default: config)
   --source-dir SOURCE_DIR
                         Source files directory (default: source)
   --output-dir OUTPUT_DIR
@@ -79,7 +80,7 @@ options:
   --remove-output-dir   Remove output directory
   --print-vars          Print variables for each application
   --var-identifier VAR_IDENTIFIER
-                        Variable prefix in config.yml file (default: $)
+                        Variable prefix in configuration files (default: $)
   --skip-latest-version-check
                         Skip latest version check
   --yaml-linter         Run yamllint against output directory (https://github.com/adrienverge/yamllint)
@@ -237,10 +238,10 @@ use the following block:
   ```
 
   Note that it takes two parameters, first is directory that will be listed and second is a prefix, path to file maybe, you can add to combine with the filename.
-  
+
   Example:
   ```tests/manual/source/app_17```
-  
+
 - To perform a DNS lookup, use the following filter:
 
   ```

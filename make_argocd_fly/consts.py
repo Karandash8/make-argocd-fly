@@ -1,7 +1,8 @@
 import os
 
 DEFAULT_ROOT_DIR = os.getcwd()
-DEFAULT_CONFIG_FILE = 'config.yml'
+DEFAULT_CONFIG_FILE = 'config.yml'  # DEPRECATED
+DEFAULT_CONFIG_DIR = 'config'
 DEFAULT_SOURCE_DIR = 'source'
 DEFAULT_OUTPUT_DIR = 'output'
 DEFAULT_TMP_DIR = '.tmp'
