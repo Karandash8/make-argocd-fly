@@ -9,7 +9,8 @@ log = logging.getLogger(__name__)
 class Params:
   def __init__(self) -> None:
     self.root_dir = consts.DEFAULT_ROOT_DIR
-    self.config_file = consts.DEFAULT_CONFIG_FILE
+    self.config_file = consts.DEFAULT_CONFIG_FILE  # DEPRECATED
+    self.config_dir = consts.DEFAULT_CONFIG_DIR
     self.source_dir = consts.DEFAULT_SOURCE_DIR
     self.output_dir = consts.DEFAULT_OUTPUT_DIR
     self.tmp_dir = consts.DEFAULT_TMP_DIR

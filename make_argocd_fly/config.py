@@ -1,9 +1,12 @@
 import logging
 import yaml
+import glob
+import os
+from deprecated import deprecated
 
 from make_argocd_fly import consts
-from make_argocd_fly.utils import build_path
-from make_argocd_fly.exceptions import InternalError, ConfigFileError
+from make_argocd_fly.utils import build_path, merge_dicts_without_duplicates
+from make_argocd_fly.exceptions import InternalError, ConfigFileError, MergeError
 
 
 log = logging.getLogger(__name__)
@@ -88,6 +91,16 @@ class Config:
 config = Config()
 
 
+def _list_config_files(config_dir: str) -> list[str]:
+  config_files = glob.glob('*.yml', root_dir=config_dir)
+
+  if not config_files:
+    log.error('No config files found in {}'.format(config_dir))
+    raise InternalError
+
+  return config_files
+
+
 def _read_config_file(config_file: str) -> dict:
   config_content = {}
 
@@ -104,13 +117,29 @@ def _read_config_file(config_file: str) -> dict:
   return config_content
 
 
+@deprecated(version='v0.2.14', reason="--config-file is deprecated, use --config-dir instead")
+def read_config_file():
+  pass
+
+
 def populate_config(root_dir: str = consts.DEFAULT_ROOT_DIR,
-                    # TODO: deprecate config_file and pass config directory instead
-                    config_file: str = consts.DEFAULT_CONFIG_FILE,
+                    config_file: str = consts.DEFAULT_CONFIG_FILE,  # DEPRECATED
+                    config_dir: str = consts.DEFAULT_CONFIG_DIR,
                     source_dir: str = consts.DEFAULT_SOURCE_DIR,
                     output_dir: str = consts.DEFAULT_OUTPUT_DIR,
                     tmp_dir: str = consts.DEFAULT_TMP_DIR) -> Config:
-  config.populate_config(config=_read_config_file(build_path(root_dir, config_file)),
+  try:
+    config_files = _list_config_files(build_path(root_dir, config_dir))
+    merged_config = merge_dicts_without_duplicates(*[_read_config_file(os.path.join(build_path(root_dir, config_dir),
+                                                                                    config_file)) for config_file in config_files])
+  except InternalError:
+    read_config_file()
+    merged_config = _read_config_file(build_path(root_dir, config_file))
+  except MergeError:
+    log.error('Error merging config files')
+    raise ConfigFileError
+
+  config.populate_config(config=merged_config,
                          _source_dir=build_path(root_dir, source_dir),
                          _output_dir=build_path(root_dir, output_dir, allow_missing=True),
                          _tmp_dir=build_path(root_dir, tmp_dir, allow_missing=True))

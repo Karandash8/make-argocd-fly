@@ -6,7 +6,7 @@ import shutil
 from pprint import pformat
 
 from make_argocd_fly.resource import ResourceViewer
-from make_argocd_fly.utils import merge_dicts, VarsResolver, get_app_rel_path
+from make_argocd_fly.utils import merge_dicts_with_overrides, VarsResolver, get_app_rel_path
 from make_argocd_fly.config import get_config
 from make_argocd_fly.params import get_params
 from make_argocd_fly.steps import FindAppsStep, RenderYamlStep, RenderJinjaFromViewerStep, RenderJinjaFromMemoryStep, \
@@ -84,26 +84,29 @@ class AppOfAppsApplication(AbstractApplication):
     await self.find_apps_step.run()
 
     for (app_name, env_name) in self.find_apps_step.get_apps():
-      global_vars = merge_dicts(self.config.get_global_vars(),
-                                {
-                                  '__application': {
-                                    'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
-                                    'path': os.path.join(os.path.basename(self.config.output_dir), env_name, app_name)
-                                  },
-                                  'env_name': env_name,
-                                  'app_name': app_name
-                                })
+      global_vars = merge_dicts_with_overrides(
+        self.config.get_global_vars(),
+        {
+          '__application': {
+            'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
+            'path': os.path.join(os.path.basename(self.config.output_dir), env_name, app_name)
+          },
+          'env_name': env_name,
+          'app_name': app_name
+        })
       global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                       global_vars,
                                                       var_identifier=self.params.var_identifier)
-      env_vars_resolved = merge_dicts(global_vars_resolved,
-                                      VarsResolver.resolve_all(self.config.get_env_vars(env_name),
-                                                               merge_dicts(global_vars_resolved, self.config.get_env_vars(self.env_name)),
-                                                               var_identifier=self.params.var_identifier))
-      template_vars = merge_dicts(env_vars_resolved,
-                                  VarsResolver.resolve_all(self.config.get_app_vars(env_name, app_name),
-                                                           merge_dicts(env_vars_resolved, self.config.get_app_vars(env_name, app_name)),
-                                                           var_identifier=self.params.var_identifier))
+      env_vars_resolved = merge_dicts_with_overrides(
+        global_vars_resolved,
+        VarsResolver.resolve_all(self.config.get_env_vars(env_name),
+                                 merge_dicts_with_overrides(global_vars_resolved, self.config.get_env_vars(self.env_name)),
+                                 var_identifier=self.params.var_identifier))
+      template_vars = merge_dicts_with_overrides(
+        env_vars_resolved,
+        VarsResolver.resolve_all(self.config.get_app_vars(env_name, app_name),
+                                 merge_dicts_with_overrides(env_vars_resolved, self.config.get_app_vars(env_name, app_name)),
+                                 var_identifier=self.params.var_identifier))
 
       self.render_jinja_step.configure(self.env_name, self.app_name, self.APPLICATION_RESOUCE_TEMPLATE, template_vars)
       await self.render_jinja_step.run()
@@ -132,22 +135,25 @@ class SimpleApplication(AbstractApplication):
   async def process(self) -> None:
     log.debug('Starting to process application {} in environment {}'.format(self.app_name, self.env_name))
 
-    global_vars = merge_dicts(self.config.get_global_vars(),
-                              {
-                                'env_name': self.env_name,
-                                'app_name': self.app_name
-                              })
+    global_vars = merge_dicts_with_overrides(
+      self.config.get_global_vars(),
+      {
+        'env_name': self.env_name,
+        'app_name': self.app_name
+      })
     global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                     global_vars,
                                                     var_identifier=self.params.var_identifier)
-    env_vars_resolved = merge_dicts(global_vars_resolved,
-                                    VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
-                                                             merge_dicts(global_vars_resolved, self.config.get_env_vars(self.env_name)),
-                                                             var_identifier=self.params.var_identifier))
-    template_vars = merge_dicts(env_vars_resolved,
-                                VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
-                                                         merge_dicts(env_vars_resolved, self.config.get_app_vars(self.env_name, self.app_name)),
-                                                         var_identifier=self.params.var_identifier))
+    env_vars_resolved = merge_dicts_with_overrides(
+      global_vars_resolved,
+      VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
+                               merge_dicts_with_overrides(global_vars_resolved, self.config.get_env_vars(self.env_name)),
+                               var_identifier=self.params.var_identifier))
+    template_vars = merge_dicts_with_overrides(
+      env_vars_resolved,
+      VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
+                               merge_dicts_with_overrides(env_vars_resolved, self.config.get_app_vars(self.env_name, self.app_name)),
+                               var_identifier=self.params.var_identifier))
 
     if self.params.print_vars:
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
@@ -188,22 +194,25 @@ class KustomizeApplication(AbstractApplication):
   async def process(self) -> None:
     log.debug('Starting to process application {} in environment {}'.format(self.app_name, self.env_name))
 
-    global_vars = merge_dicts(self.config.get_global_vars(),
-                              {
-                                'env_name': self.env_name,
-                                'app_name': self.app_name
-                              })
+    global_vars = merge_dicts_with_overrides(
+      self.config.get_global_vars(),
+      {
+        'env_name': self.env_name,
+        'app_name': self.app_name
+      })
     global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                     global_vars,
                                                     var_identifier=self.params.var_identifier)
-    env_vars_resolved = merge_dicts(global_vars_resolved,
-                                    VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
-                                                             merge_dicts(global_vars_resolved, self.config.get_env_vars(self.env_name)),
-                                                             var_identifier=self.params.var_identifier))
-    template_vars = merge_dicts(env_vars_resolved,
-                                VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
-                                                         merge_dicts(env_vars_resolved, self.config.get_app_vars(self.env_name, self.app_name)),
-                                                         var_identifier=self.params.var_identifier))
+    env_vars_resolved = merge_dicts_with_overrides(
+      global_vars_resolved,
+      VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
+                               merge_dicts_with_overrides(global_vars_resolved, self.config.get_env_vars(self.env_name)),
+                               var_identifier=self.params.var_identifier))
+    template_vars = merge_dicts_with_overrides(
+      env_vars_resolved,
+      VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
+                               merge_dicts_with_overrides(env_vars_resolved, self.config.get_app_vars(self.env_name, self.app_name)),
+                               var_identifier=self.params.var_identifier))
 
     if self.params.print_vars:
       log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))

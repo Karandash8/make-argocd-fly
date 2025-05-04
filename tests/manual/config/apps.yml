@@ -1,0 +1,36 @@
+envs:
+  management:
+    apps:
+      bootstrap: {}
+      core_deployer: {app_deployer: bootstrap}
+      service_deployer: {app_deployer: bootstrap}
+      app_1:
+        app_deployer: core_deployer
+      app_2:
+        app_deployer: core_deployer
+      app_3: {app_deployer: service_deployer}
+      app_4: {app_deployer: service_deployer}
+      app_5: {app_deployer: service_deployer}
+      app_6: {app_deployer: service_deployer}
+      subdirectory/app_7: {app_deployer: service_deployer}
+      subdirectory_2/app_8: {app_deployer: service_deployer}
+      app_9: {app_deployer: service_deployer}
+      app_10: {app_deployer: service_deployer}
+      app_11: {app_deployer: service_deployer, non_k8s_files_to_render: ['values.yml.j2']}
+      app_12: {}
+      app_13: {app_deployer: service_deployer}
+      app_14: {app_deployer: service_deployer, exclude_rendering: ['testcases','cases']}
+      app_15: {app_deployer: service_deployer}
+      app_16: {app_deployer: service_deployer}
+      app_17: {app_deployer: service_deployer}
+  external_1:
+    apps:
+      bootstrap: {}
+      unused_deployer: {app_deployer: bootstrap}
+      app_1: {app_deployer: core_deployer, app_deployer_env: management}
+      app_2: {app_deployer: core_deployer, app_deployer_env: management}
+      app_5: {app_deployer: service_deployer, app_deployer_env: management}
+      subdirectory/app_7: {app_deployer: service_deployer, app_deployer_env: management}
+      app_9: {app_deployer: service_deployer, app_deployer_env: management}
+  external_2:
+    apps: {}

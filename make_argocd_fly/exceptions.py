@@ -18,6 +18,11 @@ class ConfigFileError(BaseError):
     super().__init__('Config file error')
 
 
+class MergeError(BaseError):
+  def __init__(self) -> None:
+    super().__init__('Error merging dictionaries')
+
+
 class UndefinedTemplateVariableError(BaseError):
   def __init__(self, variable_name: str) -> None:
     super().__init__('Variable {} is undefined'.format(variable_name))

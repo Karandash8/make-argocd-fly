@@ -12,7 +12,7 @@ from packaging.version import Version
 
 from make_argocd_fly import consts
 from make_argocd_fly.params import get_params
-from make_argocd_fly.exceptions import UnknownJinja2Error, InternalError
+from make_argocd_fly.exceptions import UnknownJinja2Error, InternalError, MergeError
 
 
 log = logging.getLogger(__name__)
@@ -240,7 +240,47 @@ def get_app_rel_path(env_name: str, app_name: str) -> str:
   return os.path.join(env_name, app_name)
 
 
-def merge_dicts(*dicts):
+def merge_lists_without_duplicates(*lists, key_path: list = []):
+  if not lists:
+    return []
+
+  merged = []
+
+  for lst in lists:
+    for item in lst:
+      if item in merged:
+        log.error('Duplicate item \'{}\''.format('->'.join(key_path + ['[{}]'.format(merged.index(item))])))
+        raise MergeError
+      else:
+        merged.append(item)
+
+  return merged
+
+
+def merge_dicts_without_duplicates(*dicts, key_path: list = []):
+  if not dicts:
+    return {}
+
+  merged = {}
+
+  for d in dicts:
+    for key, value in d.items():
+      if isinstance(value, dict) and key in merged and isinstance(merged[key], dict):
+        # If the value is a dictionary and already exists in merged, merge the dictionaries
+        merged[key] = merge_dicts_without_duplicates(merged[key], value, key_path=key_path + [key])
+      elif isinstance(value, list) and key in merged and isinstance(merged[key], list):
+        # If the value is a list and already exists in merged, merge the lists
+        merged[key] = merge_lists_without_duplicates(merged[key], value, key_path=key_path + [key])
+      elif key in merged:
+        log.error('Duplicate key \'{}\''.format('->'.join(key_path + [key])))
+        raise MergeError
+      else:
+        merged[key] = value
+
+  return merged
+
+
+def merge_dicts_with_overrides(*dicts):
   if not dicts:
     return {}
 
@@ -249,14 +289,14 @@ def merge_dicts(*dicts):
   for d in dicts:
     for key, value in d.items():
       if value == {} and key in merged and isinstance(merged[key], dict):
-        # If the value on the right is an empty dictionary, make it an empty dictionary on the left
+        # If the value is an empty dictionary, make it an empty dictionary in merged
           merged[key] = {}
       elif isinstance(value, dict) and key in merged and isinstance(merged[key], dict):
-        merged[key] = merge_dicts(merged[key], value)
+        merged[key] = merge_dicts_with_overrides(merged[key], value)
       elif isinstance(value, dict):
-        merged[key] = merge_dicts({}, value)
+        merged[key] = merge_dicts_with_overrides({}, value)
       elif value is None and key in merged:
-        # If the value on the right is None and key exists on the left, delete the key on the left
+        # If the value is None and key exists in merged, delete the key from merged
         merged.pop(key, None)
       else:
         merged[key] = value
