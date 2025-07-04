@@ -254,7 +254,8 @@ def merge_lists_without_duplicates(*lists, key_path: Optional[List] = None):
   for lst in lists:
     for item in lst:
       if item in merged:
-        log.error(f"Duplicate item \'{'->'.join(key_path + [f'[{merged.index(item)}]'])}\'")
+        item_path = '->'.join(key_path + [f'[{merged.index(item)}]'])
+        log.error(f'Duplicate item \'{item_path}\'')
         raise MergeError
       else:
         merged.append(item)
