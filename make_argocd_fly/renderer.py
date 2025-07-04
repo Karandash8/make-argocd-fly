@@ -69,7 +69,7 @@ class CustomFunctionLoader(FunctionLoader):
     self.render_func = render_func
     self.list_func = list_func
 
-  def get_rendered(self, environment: "Environment", template: str) -> t.Tuple[str, t.Optional[str], t.Optional[t.Callable[[], bool]]]:
+  def get_rendered(self, environment: 'Environment', template: str) -> t.Tuple[str, t.Optional[str], t.Optional[t.Callable[[], bool]]]:
     rv = self.render_func(template)
 
     if rv is None:
@@ -85,12 +85,12 @@ class CustomFunctionLoader(FunctionLoader):
 
 
 class IncludeRawExtension(Extension):
-  tags = {"include_raw"}
+  tags = {'include_raw'}
 
   def parse(self, parser):
-    lineno = parser.stream.expect("name:include_raw").lineno
+    lineno = parser.stream.expect('name:include_raw').lineno
     template = parser.parse_expression()
-    result = self.call_method("_render", [template], lineno=lineno)
+    result = self.call_method('_render', [template], lineno=lineno)
     return nodes.Output([result], lineno=lineno)
 
   def _render(self, filename):
@@ -102,13 +102,13 @@ class IncludeRawExtension(Extension):
 
 # This extension is used to output the name of the file as a yaml list
 class IncludeAllAsYamlNamesListExtension(Extension):
-  tags = {"include_all_as_yaml_names_list"}
+  tags = {'include_all_as_yaml_names_list'}
 
   def parse(self, parser):
-    lineno = parser.stream.expect("name:include_all_as_yaml_names_list").lineno
+    lineno = parser.stream.expect('name:include_all_as_yaml_names_list').lineno
     template = parser.parse_expression()
-    base_path = parser.parse_expression() if parser.stream.skip_if("comma") else None
-    result = self.call_method("_render", [template, base_path], lineno=lineno)
+    base_path = parser.parse_expression() if parser.stream.skip_if('comma') else None
+    result = self.call_method('_render', [template, base_path], lineno=lineno)
     return nodes.Output([result], lineno=lineno)
 
   def _render(self, path: str, base_path: str = None) -> str:
@@ -137,12 +137,12 @@ class IncludeAllAsYamlNamesListExtension(Extension):
 
 
 class IncludeAllAsYamlKVExtension(Extension):
-  tags = {"include_all_as_yaml_kv"}
+  tags = {'include_all_as_yaml_kv'}
 
   def parse(self, parser):
-    lineno = parser.stream.expect("name:include_all_as_yaml_kv").lineno
+    lineno = parser.stream.expect('name:include_all_as_yaml_kv').lineno
     template = parser.parse_expression()
-    result = self.call_method("_render", [template], lineno=lineno)
+    result = self.call_method('_render', [template], lineno=lineno)
     return nodes.Output([result], lineno=lineno)
 
   def _render(self, path: str) -> str:
@@ -164,18 +164,18 @@ class IncludeAllAsYamlKVExtension(Extension):
           log.debug('No content in ' + child_name + ', not adding to yaml')
           continue
 
-        kv_as_yaml_str.append(f'{child_name}: |\n  {re.sub('\n', '\n  ', child_content.strip())}\n')
+        kv_as_yaml_str.append('{}: |\n  {}\n'.format(child_name, re.sub('\n', '\n  ', child_content.strip())))
 
     return Markup(''.join(kv_as_yaml_str))
 
 
 class IncludeAllAsYamlListExtension(Extension):
-  tags = {"include_all_as_yaml_list"}
+  tags = {'include_all_as_yaml_list'}
 
   def parse(self, parser):
-    lineno = parser.stream.expect("name:include_all_as_yaml_list").lineno
+    lineno = parser.stream.expect('name:include_all_as_yaml_list').lineno
     template = parser.parse_expression()
-    result = self.call_method("_render", [template], lineno=lineno)
+    result = self.call_method('_render', [template], lineno=lineno)
     return nodes.Output([result], lineno=lineno)
 
   def _render(self, path: str) -> str:
@@ -193,7 +193,7 @@ class IncludeAllAsYamlListExtension(Extension):
         # if child_content is empty, skip adding it to the yaml
         if child_content == '':
           continue
-      kv_as_yaml_str.append(f'- {re.sub('\n', '\n  ', child_content.strip())}\n')
+      kv_as_yaml_str.append('- {}\n'.format(re.sub('\n', '\n  ', child_content.strip())))
 
     return Markup(''.join(kv_as_yaml_str))
 

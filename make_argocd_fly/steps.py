@@ -262,7 +262,7 @@ class RunKustomizeStep(BaseResourceGenerationStep):
 
     resource_source = 'Kustomize'
     try:
-      for resource_yml in extract_single_resource(stdout.decode("utf-8")):
+      for resource_yml in extract_single_resource(stdout.decode('utf-8')):
         try:
           file_path = self._generate_file_path(resource_yml)
           self.resources.append((file_path, yaml.load(resource_yml, Loader=YamlLoader)))

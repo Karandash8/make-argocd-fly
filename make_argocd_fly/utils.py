@@ -199,7 +199,7 @@ class FilePathGenerator:
     source_file_extension = self._extract_file_extension(self.source_file_rel_path)
 
     if not source_file_name:
-      log.debug("Filename cannot be constructed")
+      log.debug('Filename cannot be constructed')
       raise ValueError
 
     if source_file_extension:
@@ -220,7 +220,7 @@ class FilePathGenerator:
     # resource_namespace = self._extract_namespace(self.resource_yml)
 
     if not resource_kind:
-      log.debug("Filename cannot be constructed")
+      log.debug('Filename cannot be constructed')
       raise ValueError
 
     elements = []
@@ -323,8 +323,8 @@ def init_logging(loglevel: str) -> None:
 
 
 def confirm_dialog() -> None:
-  answer = input("Are you sure you want to continue? [y/n] (default: n) ")
-  if answer.lower() not in ["y", "yes"]:
+  answer = input('Are you sure you want to continue? [y/n] (default: n) ')
+  if answer.lower() not in ['y', 'yes']:
     exit()
 
 

@@ -117,7 +117,7 @@ def _read_config_file(config_file: str) -> dict:
   return config_content
 
 
-@deprecated(version='v0.2.14', reason="--config-file is deprecated, use --config-dir instead")
+@deprecated(version='v0.2.14', reason='--config-file is deprecated, use --config-dir instead')
 def read_config_file():
   pass
 
