@@ -7,6 +7,7 @@ import json
 import ssl
 import yaml
 import urllib.request
+import urllib.error
 from typing import Optional, List
 from importlib.metadata import version, PackageNotFoundError
 from packaging.version import Version
@@ -351,10 +352,16 @@ def get_latest_version() -> Version:
     response = urllib.request.urlopen(pypi_url).read().decode()
     return max(Version(s) for s in json.loads(response)['releases'].keys())
   except ssl.SSLCertVerificationError:
-    log.warning('SSL Certificate verification failed. Could not determine latest version of the package. \
-                Likely you have an issue with your local Python installation.')
+    log.warning('SSL Certificate verification failed. Could not determine latest version of the package. '
+                'Likely you have an issue with your local Python installation.')
     confirm_dialog()
     return None
+  except urllib.error.URLError:
+    log.warning('Could not connect to PyPI to determine latest version of the package. '
+                'Make sure you have internet access and PyPI is reachable.')
+    confirm_dialog()
+    return None
+
 
 
 def latest_version_check():

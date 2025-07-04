@@ -252,7 +252,7 @@ class RunKustomizeStep(BaseResourceGenerationStep):
         stderr=asyncio.subprocess.PIPE)
 
       stdout, stderr = await proc.communicate()
-      if stderr:
+      if proc.returncode != 0:
         log.error(f'Kustomize error: {stderr}')
         log.info(f'Retrying {attempt + 1}/{retries}')
         continue
