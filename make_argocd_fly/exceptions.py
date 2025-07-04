@@ -36,6 +36,13 @@ class TemplateRenderingError(BaseError):
     super().__init__('Error rendering template {}'.format(template_filename))
 
 
+class KustomizeError(BaseError):
+  def __init__(self, app_name: str, env_name: str) -> None:
+    self.app_name = app_name
+    self.env_name = env_name
+    super().__init__('Error running kustomize')
+
+
 class UnknownJinja2Error(BaseError):
   def __init__(self) -> None:
     super().__init__('Unknown error in jinja2 template')

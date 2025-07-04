@@ -13,7 +13,7 @@ from make_argocd_fly.params import populate_params, get_params
 from make_argocd_fly.config import populate_config, get_config
 from make_argocd_fly.utils import init_logging, latest_version_check, get_package_name, get_current_version
 from make_argocd_fly.application import application_factory
-from make_argocd_fly.exceptions import TemplateRenderingError, InternalError, ConfigFileError
+from make_argocd_fly.exceptions import TemplateRenderingError, InternalError, ConfigFileError, KustomizeError
 
 
 logging.basicConfig(level=consts.DEFAULT_LOGLEVEL)
@@ -110,7 +110,7 @@ def main(**kwargs) -> None:
     # TODO: it does not make sense to write yamls on disk and then read them again to run through linters
     run_yamllint()
     run_kube_linter()
-  except TemplateRenderingError as e:
+  except (TemplateRenderingError, KustomizeError) as e:
     log.critical('Error generating application {} in environment {}'.format(e.app_name, e.env_name))
     exit(1)
   except InternalError:

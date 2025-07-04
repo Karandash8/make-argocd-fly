@@ -16,7 +16,7 @@ from make_argocd_fly.config import get_config
 from make_argocd_fly.renderer import YamlRenderer, JinjaRenderer
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.utils import extract_single_resource, FilePathGenerator, get_app_rel_path
-from make_argocd_fly.exceptions import UndefinedTemplateVariableError, TemplateRenderingError, InternalError
+from make_argocd_fly.exceptions import UndefinedTemplateVariableError, TemplateRenderingError, InternalError, KustomizeError
 
 log = logging.getLogger(__name__)
 
@@ -236,7 +236,8 @@ class RunKustomizeStep(BaseResourceGenerationStep):
         self.dir_path = os.path.join(self.viewer.root_element_abs_path, os.path.dirname(location))
         break
     else:
-      log.error('Missing kustomization.yml in the application directory. Skipping application')
+      log.error('Missing kustomization.yml in the application directory. Skipping application {} in environment {}'.format(self.app_name,
+                                                                                                                           self.env_name))
 
   async def run(self) -> None:
     retries = 3
@@ -258,7 +259,7 @@ class RunKustomizeStep(BaseResourceGenerationStep):
         continue
       break
     else:
-      raise Exception('Kustomize execution failed for application {} in environment {}'.format(self.app_name, self.env_name))
+      raise KustomizeError(self.app_name, self.env_name)
 
     resource_source = 'Kustomize'
     try:
