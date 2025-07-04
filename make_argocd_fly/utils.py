@@ -363,7 +363,6 @@ def get_latest_version() -> Version:
     return None
 
 
-
 def latest_version_check():
   if get_params().skip_latest_version_check:
     log.warning('Skipping latest version check')
