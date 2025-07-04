@@ -79,7 +79,7 @@ class BaseResourceGenerationStep(AbstractStep):
     # TODO use @singledispatch here
     if source_file_path and AppParamsNames.NON_K8S_FILES_TO_RENDER in app_params:
       if type(app_params[AppParamsNames.NON_K8S_FILES_TO_RENDER]) is not list:
-        log.error('Application parameter {} must be a list'.format(AppParamsNames.NON_K8S_FILES_TO_RENDER))
+        log.error(f'Application parameter {AppParamsNames.NON_K8S_FILES_TO_RENDER} must be a list')
         raise InternalError
 
       for element in app_params[AppParamsNames.NON_K8S_FILES_TO_RENDER]:
@@ -89,12 +89,12 @@ class BaseResourceGenerationStep(AbstractStep):
     # TODO use @singledispatch here
     if source_file_path and AppParamsNames.EXCLUDE_RENDERING in app_params:
       if type(app_params[AppParamsNames.EXCLUDE_RENDERING]) is not list:
-        log.error('Application parameter {} must be a list'.format(AppParamsNames.EXCLUDE_RENDERING))
+        log.error(f'Application parameter {AppParamsNames.EXCLUDE_RENDERING} must be a list')
         raise InternalError
 
       for element in app_params[AppParamsNames.EXCLUDE_RENDERING]:
         if source_file_path.startswith(element):
-          log.debug('Exclude rendering for file {}'.format(source_file_path))
+          log.debug(f'Exclude rendering for file {source_file_path}')
           raise ValueError
 
     return os.path.join(get_app_rel_path(self.env_name, self.app_name), generator.generate_from_k8s_resource())
@@ -132,8 +132,8 @@ class RenderYamlStep(BaseResourceGenerationStep):
             pass
       except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
         log.error('Error building YAML')
-        log.error('Error rendering template {}'.format(resource_source))
-        log.debug('YAML content:\n{}'.format(resource_yml))
+        log.error(f'Error rendering template {resource_source}')
+        log.debug(f'YAML content:\n{resource_yml}')
         raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
 
 
@@ -169,11 +169,11 @@ class RenderJinjaFromViewerStep(BaseResourceGenerationStep):
             pass
       except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
         log.error('Error building YAML')
-        log.error('Error rendering template {}'.format(resource_source))
-        log.debug('YAML content:\n{}'.format(resource_yml))
+        log.error(f'Error rendering template {resource_source}')
+        log.debug(f'YAML content:\n{resource_yml}')
         raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
       except UndefinedTemplateVariableError:
-        log.error('Error rendering template {}'.format(resource_source))
+        log.error(f'Error rendering template {resource_source}')
         raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
 
 
@@ -207,11 +207,11 @@ class RenderJinjaFromMemoryStep(BaseResourceGenerationStep):
           pass
     except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
         log.error('Error building YAML')
-        log.error('Error rendering template {}'.format(resource_source))
-        log.debug('YAML content:\n{}'.format(resource_yml))
+        log.error(f'Error rendering template {resource_source}')
+        log.debug(f'YAML content:\n{resource_yml}')
         raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
     except UndefinedTemplateVariableError:
-      log.error('Error rendering template {}'.format(resource_source))
+      log.error(f'Error rendering template {resource_source}')
       raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
 
 
@@ -236,8 +236,7 @@ class RunKustomizeStep(BaseResourceGenerationStep):
         self.dir_path = os.path.join(self.viewer.root_element_abs_path, os.path.dirname(location))
         break
     else:
-      log.error('Missing kustomization.yml in the application directory. Skipping application {} in environment {}'.format(self.app_name,
-                                                                                                                           self.env_name))
+      log.error(f'Missing kustomization.yml in the application directory. Skipping application {self.app_name} in environment {self.env_name}')
 
   async def run(self) -> None:
     retries = 3
@@ -248,14 +247,14 @@ class RunKustomizeStep(BaseResourceGenerationStep):
 
     for attempt in range(retries):
       proc = await asyncio.create_subprocess_shell(
-        'kustomize build --enable-helm {}'.format(self.dir_path),
+        f'kustomize build --enable-helm {self.dir_path}',
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE)
 
       stdout, stderr = await proc.communicate()
       if stderr:
-        log.error('Kustomize error: {}'.format(stderr))
-        log.info('Retrying {}/{}'.format(attempt + 1, retries))
+        log.error(f'Kustomize error: {stderr}')
+        log.info(f'Retrying {attempt + 1}/{retries}')
         continue
       break
     else:
@@ -271,8 +270,8 @@ class RunKustomizeStep(BaseResourceGenerationStep):
           pass
     except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
       log.error('Error building YAML')
-      log.error('Error rendering template {}'.format(resource_source))
-      log.debug('YAML content:\n{}'.format(resource_yml))
+      log.error(f'Error rendering template {resource_source}')
+      log.debug(f'YAML content:\n{resource_yml}')
       raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
 
 

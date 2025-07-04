@@ -65,7 +65,7 @@ def run_yamllint() -> None:
                              universal_newlines=True)
   stdout, stderr = process.communicate()
 
-  log.info('{} {}\n\n{}'.format(yamllint.APP_NAME, yamllint.APP_VERSION, stdout))
+  log.info(f'{yamllint.APP_NAME} {yamllint.APP_VERSION}\n\n{stdout}')
 
 
 def run_kube_linter() -> None:
@@ -111,7 +111,7 @@ def main(**kwargs) -> None:
     run_yamllint()
     run_kube_linter()
   except (TemplateRenderingError, KustomizeError) as e:
-    log.critical('Error generating application {} in environment {}'.format(e.app_name, e.env_name))
+    log.critical(f'Error generating application {e.app_name} in environment {e.env_name}')
     exit(1)
   except InternalError:
     log.critical('Internal error')
@@ -142,7 +142,7 @@ def cli_entry_point() -> None:
   parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
   parser.add_argument('--kube-linter', action='store_true', help='Run kube-linter against output directory (https://github.com/stackrox/kube-linter)')
   parser.add_argument('--loglevel', type=str, default=consts.DEFAULT_LOGLEVEL, help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
-  parser.add_argument('--version', action='version', version='{} {}'.format(get_package_name(), get_current_version()), help='Show version')
+  parser.add_argument('--version', action='version', version=f'{get_package_name()} {get_current_version()}', help='Show version')
   args = parser.parse_args()
 
   init_logging(args.loglevel)

@@ -57,7 +57,7 @@ class ResourceViewer:
 
     path = os.path.join(self.root_element_abs_path, self.element_rel_path)
     if not os.path.exists(path):
-      log.error('Path does not exist {}'.format(path))
+      log.error(f'Path does not exist {path}')
       raise InternalError
 
     if self.is_dir:
@@ -71,9 +71,9 @@ class ResourceViewer:
         with open(path) as f:
           self.content = ''.join(f.readlines())
       except UnicodeDecodeError:
-        log.warning('File is not a text file {}'.format(path))
+        log.warning(f'File is not a text file {path}')
 
-    log.debug('Created element ({})'.format(self))
+    log.debug(f'Created element ({self})')
 
   def _get_child(self, name: str) -> 'ResourceViewer':
     for child in self.children:
@@ -121,7 +121,7 @@ class ResourceViewer:
     return dirs
 
   def __str__(self) -> str:
-    return 'root_path: {}, element_rel_path: {}, is_dir: {}'.format(self.root_element_abs_path, self.element_rel_path, self.is_dir)
+    return f'root_path: {self.root_element_abs_path}, element_rel_path: {self.element_rel_path}, is_dir: {self.is_dir}'
 
 
 class ResourceWriter:
@@ -135,7 +135,7 @@ class ResourceWriter:
       raise InternalError
 
     if file_path in self.resources:
-      log.error('Resource ({}) already exists'.format(file_path))
+      log.error(f'Resource ({file_path}) already exists')
       raise InternalError
 
     self.resources[file_path] = yaml_object

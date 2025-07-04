@@ -30,7 +30,7 @@ def build_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
     abs_path = os.path.join(root_dir, path)
 
   if (not allow_missing) and (not os.path.exists(abs_path)):
-    log.error('Path does not exist: {}'.format(abs_path))
+    log.error(f'Path does not exist: {abs_path}')
     raise InternalError
 
   return abs_path
@@ -84,7 +84,7 @@ class VarsResolver:
 
       return resolved_value
     except KeyError:
-      log.error('Variable {} not found in vars'.format(value[var_start - 1:var_end + 1]))
+      log.error(f'Variable {value[var_start - 1:var_end + 1]} not found in vars')
       raise KeyError
 
   def _iterate(self, to_resolve: dict, source: dict, value=None, initial=True):
@@ -189,7 +189,7 @@ class FilePathGenerator:
     if source_file_rel_path:
       parts = source_file_rel_path.removesuffix('.j2').split('.')
       if len(parts) > 1:
-        return '.{}'.format(parts[-1])
+        return f'.{parts[-1]}'
 
     return None
 
@@ -203,7 +203,7 @@ class FilePathGenerator:
       raise ValueError
 
     if source_file_extension:
-      full_filename = '{}{}'.format(source_file_name, source_file_extension)
+      full_filename = f'{source_file_name}{source_file_extension}'
     else:
       full_filename = source_file_name
 
@@ -253,7 +253,7 @@ def merge_lists_without_duplicates(*lists, key_path: Optional[List] = None):
   for lst in lists:
     for item in lst:
       if item in merged:
-        log.error('Duplicate item \'{}\''.format('->'.join(key_path + ['[{}]'.format(merged.index(item))])))
+        log.error('Duplicate item \'{}\''.format('->'.join(key_path + [f'[{merged.index(item)}]'])))
         raise MergeError
       else:
         merged.append(item)
@@ -347,7 +347,7 @@ def get_current_version() -> Version:
 
 def get_latest_version() -> Version:
   try:
-    pypi_url = 'https://pypi.org/pypi/{}/json'.format(get_module_name())
+    pypi_url = f'https://pypi.org/pypi/{get_module_name()}/json'
     response = urllib.request.urlopen(pypi_url).read().decode()
     return max(Version(s) for s in json.loads(response)['releases'].keys())
   except ssl.SSLCertVerificationError:
@@ -369,12 +369,11 @@ def latest_version_check():
     return
 
   if current_version < latest_version:
-    log.warning('You are running {} ({}) but there is a newer version of the package available ({}).'.format(get_package_name(),
-                                                                                                             current_version,
-                                                                                                             latest_version))
+    log.warning(f'You are running {get_package_name()} ({current_version}) but there is a newer version of the '
+                f'package available ({latest_version})')
     confirm_dialog()
   else:
-    log.info('You are using the latest version of {} ({})'.format(get_package_name(), current_version))
+    log.info(f'You are using the latest version of {get_package_name()} ({current_version})')
 
 
 def extract_undefined_variable(message: str) -> str:

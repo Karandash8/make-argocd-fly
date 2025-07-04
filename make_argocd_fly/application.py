@@ -75,10 +75,10 @@ class AppOfAppsApplication(AbstractApplication):
     self.render_jinja_step = RenderJinjaFromMemoryStep()
     self.write_resources_step = WriteResourcesStep()
 
-    log.debug('Created application {} with {} for environment {}'.format(app_name, __class__.__name__, env_name))
+    log.debug(f'Created application {app_name} with {__class__.__name__} for environment {env_name}')
 
   async def process(self) -> None:
-    log.debug('Starting to process application {} in environment {}'.format(self.app_name, self.env_name))
+    log.debug(f'Starting to process application {self.app_name} in environment {self.env_name}')
 
     self.find_apps_step.configure(self.env_name, self.app_name)
     await self.find_apps_step.run()
@@ -111,7 +111,7 @@ class AppOfAppsApplication(AbstractApplication):
       self.render_jinja_step.configure(self.env_name, self.app_name, self.APPLICATION_RESOUCE_TEMPLATE, template_vars)
       await self.render_jinja_step.run()
 
-    log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
+    log.debug(f'Generated resources for application {self.app_name} in environment {self.env_name}')
 
     # Clean up output directory for the application
     app_output_dir = os.path.join(self.config.output_dir, get_app_rel_path(self.env_name, self.app_name))
@@ -120,7 +120,7 @@ class AppOfAppsApplication(AbstractApplication):
 
     self.write_resources_step.configure(self.config.output_dir, self.render_jinja_step.get_resources())
     await self.write_resources_step.run()
-    log.info('Updated application {} in environment {}'.format(self.app_name, self.env_name))
+    log.info(f'Updated application {self.app_name} in environment {self.env_name}')
 
 
 class SimpleApplication(AbstractApplication):
@@ -130,10 +130,10 @@ class SimpleApplication(AbstractApplication):
     self.render_jinja_step = RenderJinjaFromViewerStep(app_viewer)
     self.write_resources_step = WriteResourcesStep()
 
-    log.debug('Created application {} with {} for environment {}'.format(app_name, __class__.__name__, env_name))
+    log.debug(f'Created application {app_name} with {__class__.__name__} for environment {env_name}')
 
   async def process(self) -> None:
-    log.debug('Starting to process application {} in environment {}'.format(self.app_name, self.env_name))
+    log.debug(f'Starting to process application {self.app_name} in environment {self.env_name}')
 
     global_vars = merge_dicts_with_overrides(
       self.config.get_global_vars(),
@@ -156,7 +156,7 @@ class SimpleApplication(AbstractApplication):
                                var_identifier=self.params.var_identifier))
 
     if self.params.print_vars:
-      log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
+      log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(template_vars)}')
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml)$')
     self.render_yaml_step.configure(self.env_name, self.app_name, yml_children)
@@ -166,7 +166,7 @@ class SimpleApplication(AbstractApplication):
     self.render_jinja_step.configure(self.env_name, self.app_name, j2_children, template_vars)
     await self.render_jinja_step.run()
 
-    log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
+    log.debug(f'Generated resources for application {self.app_name} in environment {self.env_name}')
 
     # Clean up output directory for the application
     app_output_dir = os.path.join(self.config.output_dir, get_app_rel_path(self.env_name, self.app_name))
@@ -176,7 +176,7 @@ class SimpleApplication(AbstractApplication):
     self.write_resources_step.configure(self.config.output_dir, self.render_yaml_step.get_resources() + self.render_jinja_step.get_resources())
     await self.write_resources_step.run()
 
-    log.info('Updated application {} in environment {}'.format(self.app_name, self.env_name))
+    log.info(f'Updated application {self.app_name} in environment {self.env_name}')
 
 
 class KustomizeApplication(AbstractApplication):
@@ -189,10 +189,10 @@ class KustomizeApplication(AbstractApplication):
     self.run_kustomize_step = RunKustomizeStep()
     self.write_resources_step = WriteResourcesStep()
 
-    log.debug('Created application {} with {} for environment {}'.format(app_name, __class__.__name__, env_name))
+    log.debug(f'Created application {app_name} with {__class__.__name__} for environment {env_name}')
 
   async def process(self) -> None:
-    log.debug('Starting to process application {} in environment {}'.format(self.app_name, self.env_name))
+    log.debug(f'Starting to process application {self.app_name} in environment {self.env_name}')
 
     global_vars = merge_dicts_with_overrides(
       self.config.get_global_vars(),
@@ -215,7 +215,7 @@ class KustomizeApplication(AbstractApplication):
                                var_identifier=self.params.var_identifier))
 
     if self.params.print_vars:
-      log.info('Variables for application {} in environment {}:\n{}'.format(self.app_name, self.env_name, pformat(template_vars)))
+      log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(template_vars)}')
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml)$', ['base', self.env_name])
     self.render_yaml_step.configure(self.env_name, self.app_name, yml_children)
@@ -234,7 +234,7 @@ class KustomizeApplication(AbstractApplication):
     self.run_kustomize_step.configure(self.env_name, self.app_name, self.tmp_read_source_step.get_viewer())
     await self.run_kustomize_step.run()
 
-    log.debug('Generated resources for application {} in environment {}'.format(self.app_name, self.env_name))
+    log.debug(f'Generated resources for application {self.app_name} in environment {self.env_name}')
 
     # Clean up output directory for the application
     app_output_dir = os.path.join(self.config.output_dir, get_app_rel_path(self.env_name, self.app_name))
@@ -244,7 +244,7 @@ class KustomizeApplication(AbstractApplication):
     self.write_resources_step.configure(self.config.output_dir, self.run_kustomize_step.get_resources())
     await self.write_resources_step.run()
 
-    log.info('Updated application {} in environment {}'.format(self.app_name, self.env_name))
+    log.info(f'Updated application {self.app_name} in environment {self.env_name}')
 
 
 async def application_factory(env_name: str, app_name: str, source_path: str) -> AbstractApplication:

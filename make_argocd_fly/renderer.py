@@ -131,7 +131,7 @@ class IncludeAllAsYamlNamesListExtension(Extension):
           log.debug('No content in ' + child_name + ', not adding to yaml')
           continue
 
-      yaml_names_as_list.append('- {}{}\n'.format(base_path, child_name))
+      yaml_names_as_list.append(f'- {base_path}{child_name}\n')
 
     return Markup(''.join(yaml_names_as_list))
 
@@ -164,7 +164,7 @@ class IncludeAllAsYamlKVExtension(Extension):
           log.debug('No content in ' + child_name + ', not adding to yaml')
           continue
 
-        kv_as_yaml_str.append('{}: |\n  {}\n'.format(child_name, re.sub('\n', '\n  ', child_content.strip())))
+        kv_as_yaml_str.append(f'{child_name}: |\n  {re.sub('\n', '\n  ', child_content.strip())}\n')
 
     return Markup(''.join(kv_as_yaml_str))
 
@@ -193,7 +193,7 @@ class IncludeAllAsYamlListExtension(Extension):
         # if child_content is empty, skip adding it to the yaml
         if child_content == '':
           continue
-      kv_as_yaml_str.append('- {}\n'.format(re.sub('\n', '\n  ', child_content.strip())))
+      kv_as_yaml_str.append(f'- {re.sub('\n', '\n  ', child_content.strip())}\n')
 
     return Markup(''.join(kv_as_yaml_str))
 
@@ -223,12 +223,12 @@ class JinjaRenderer(AbstractRenderer):
       if file_child.element_rel_path == path:
         return (file_child.content, path, None)
 
-    log.error('Missing template {}'.format(path))
+    log.error(f'Missing template {path}')
     return None
 
   def _get_rendered(self, path: str):
     if not path.endswith('.j2'):
-      log.error('Template {} is not a jinja template'.format(path))
+      log.error(f'Template {path} is not a jinja template')
       return None
 
     files_children = self.viewer.get_files_children(os.path.basename(path))
@@ -236,13 +236,13 @@ class JinjaRenderer(AbstractRenderer):
       if file_child.element_rel_path == path:
         return (self.render(file_child.content), path, None)
 
-    log.error('Missing template {}'.format(path))
+    log.error(f'Missing template {path}')
     return None
 
   def _list_templates(self, path: str) -> t.List[str]:
     element = self.viewer.get_element(path)
     if not element or not element.is_dir:
-      log.error('Provided path {} is not a directory'.format(path))
+      log.error(f'Provided path {path} is not a directory')
       return []
 
     return element.get_files_children('.+')
@@ -262,7 +262,7 @@ class JinjaRenderer(AbstractRenderer):
     except jinja2.exceptions.UndefinedError as e:
       variable_name = extract_undefined_variable(str(e))
 
-      log.error('Variable "{}" is undefined'.format(variable_name))
+      log.error(f'Variable "{variable_name}" is undefined')
       raise UndefinedTemplateVariableError(variable_name) from None
 
     return rendered

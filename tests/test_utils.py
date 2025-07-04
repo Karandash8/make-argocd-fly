@@ -1402,7 +1402,7 @@ def test_build_path_with_nonexistent_path(tmp_path, caplog):
 
   with pytest.raises(InternalError):
     build_path(root_dir, path)
-  assert 'Path does not exist: {}'.format(non_existent_path) in caplog.text
+  assert f'Path does not exist: {non_existent_path}' in caplog.text
 
 def test_build_path_with_nonexistent_path_allow_missing(tmp_path, caplog):
   root_dir = str(tmp_path)
@@ -1417,13 +1417,13 @@ def test_build_path_with_nonexistent_path_allow_missing(tmp_path, caplog):
 
 def test_extract_undefined_variable__jinja2_variable():
   variable_name = 'test_variable'
-  message = '\'{}\' is undefined'.format(variable_name)
+  message = f'\'{variable_name}\' is undefined'
 
   assert extract_undefined_variable(message) == variable_name
 
 def test_extract_undefined_variable__jinja2_attribute():
   variable_name = 'test_attribute'
-  message = 'has no attribute \'{}\''.format(variable_name)
+  message = f'has no attribute \'{variable_name}\''
 
   assert extract_undefined_variable(message) == variable_name
 
