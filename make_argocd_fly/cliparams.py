@@ -6,7 +6,7 @@ from make_argocd_fly import consts
 log = logging.getLogger(__name__)
 
 
-class Params:
+class CLIParams:
   def __init__(self) -> None:
     self.root_dir = consts.DEFAULT_ROOT_DIR
     self.config_file = consts.DEFAULT_CONFIG_FILE  # DEPRECATED
@@ -26,18 +26,18 @@ class Params:
     self.kube_linter = False
     self.loglevel = consts.DEFAULT_LOGLEVEL
 
-  def populate_params(self, **kwargs) -> None:
+  def populate_cli_params(self, **kwargs) -> None:
     self.__dict__.update(kwargs)
 
 
-params = Params()
+cli_params = CLIParams()
 
 
-def populate_params(**kwargs) -> Params:
-  params.populate_params(**kwargs)
+def populate_cli_params(**kwargs) -> CLIParams:
+  cli_params.populate_cli_params(**kwargs)
 
-  return params
+  return cli_params
 
 
-def get_params() -> Params:
-  return params
+def get_cli_params() -> CLIParams:
+  return cli_params

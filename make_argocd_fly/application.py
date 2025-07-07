@@ -8,7 +8,7 @@ from pprint import pformat
 from make_argocd_fly.resource import ResourceViewer
 from make_argocd_fly.utils import merge_dicts_with_overrides, VarsResolver, get_app_rel_path
 from make_argocd_fly.config import get_config
-from make_argocd_fly.params import get_params
+from make_argocd_fly.cliparams import get_cli_params
 from make_argocd_fly.steps import FindAppsStep, RenderYamlStep, RenderJinjaFromViewerStep, RenderJinjaFromMemoryStep, \
   WriteResourcesStep, ReadSourceStep, RunKustomizeStep
 from make_argocd_fly.exceptions import ResourceViewerIsFake
@@ -24,7 +24,7 @@ class AbstractApplication(ABC):
     self.env_name = env_name
     self.app_viewer = app_viewer
     self.config = get_config()
-    self.params = get_params()
+    self.cli_params = get_cli_params()
 
   @abstractmethod
   async def process(self) -> None:
@@ -96,17 +96,17 @@ class AppOfAppsApplication(AbstractApplication):
         })
       global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                       global_vars,
-                                                      var_identifier=self.params.var_identifier)
+                                                      var_identifier=self.cli_params.var_identifier)
       env_vars_resolved = merge_dicts_with_overrides(
         global_vars_resolved,
         VarsResolver.resolve_all(self.config.get_env_vars(env_name),
                                  merge_dicts_with_overrides(global_vars_resolved, self.config.get_env_vars(self.env_name)),
-                                 var_identifier=self.params.var_identifier))
+                                 var_identifier=self.cli_params.var_identifier))
       template_vars = merge_dicts_with_overrides(
         env_vars_resolved,
         VarsResolver.resolve_all(self.config.get_app_vars(env_name, app_name),
                                  merge_dicts_with_overrides(env_vars_resolved, self.config.get_app_vars(env_name, app_name)),
-                                 var_identifier=self.params.var_identifier))
+                                 var_identifier=self.cli_params.var_identifier))
 
       self.render_jinja_step.configure(self.env_name, self.app_name, self.APPLICATION_RESOUCE_TEMPLATE, template_vars)
       await self.render_jinja_step.run()
@@ -143,19 +143,19 @@ class SimpleApplication(AbstractApplication):
       })
     global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                     global_vars,
-                                                    var_identifier=self.params.var_identifier)
+                                                    var_identifier=self.cli_params.var_identifier)
     env_vars_resolved = merge_dicts_with_overrides(
       global_vars_resolved,
       VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
                                merge_dicts_with_overrides(global_vars_resolved, self.config.get_env_vars(self.env_name)),
-                               var_identifier=self.params.var_identifier))
+                               var_identifier=self.cli_params.var_identifier))
     template_vars = merge_dicts_with_overrides(
       env_vars_resolved,
       VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
                                merge_dicts_with_overrides(env_vars_resolved, self.config.get_app_vars(self.env_name, self.app_name)),
-                               var_identifier=self.params.var_identifier))
+                               var_identifier=self.cli_params.var_identifier))
 
-    if self.params.print_vars:
+    if self.cli_params.print_vars:
       log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(template_vars)}')
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml)$')
@@ -202,19 +202,19 @@ class KustomizeApplication(AbstractApplication):
       })
     global_vars_resolved = VarsResolver.resolve_all(global_vars,
                                                     global_vars,
-                                                    var_identifier=self.params.var_identifier)
+                                                    var_identifier=self.cli_params.var_identifier)
     env_vars_resolved = merge_dicts_with_overrides(
       global_vars_resolved,
       VarsResolver.resolve_all(self.config.get_env_vars(self.env_name),
                                merge_dicts_with_overrides(global_vars_resolved, self.config.get_env_vars(self.env_name)),
-                               var_identifier=self.params.var_identifier))
+                               var_identifier=self.cli_params.var_identifier))
     template_vars = merge_dicts_with_overrides(
       env_vars_resolved,
       VarsResolver.resolve_all(self.config.get_app_vars(self.env_name, self.app_name),
                                merge_dicts_with_overrides(env_vars_resolved, self.config.get_app_vars(self.env_name, self.app_name)),
-                               var_identifier=self.params.var_identifier))
+                               var_identifier=self.cli_params.var_identifier))
 
-    if self.params.print_vars:
+    if self.cli_params.print_vars:
       log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(template_vars)}')
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml)$', ['base', self.env_name])

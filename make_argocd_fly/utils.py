@@ -15,7 +15,7 @@ from importlib.metadata import version, PackageNotFoundError
 from packaging.version import Version
 
 from make_argocd_fly import consts
-from make_argocd_fly.params import get_params
+from make_argocd_fly.cliparams import get_cli_params
 from make_argocd_fly.exceptions import UnknownJinja2Error, InternalError, MergeError
 
 
@@ -371,7 +371,7 @@ def get_latest_version() -> Optional[Version]:
 
 
 def latest_version_check():
-  if get_params().skip_latest_version_check:
+  if get_cli_params().skip_latest_version_check:
     log.warning('Skipping latest version check')
     return
 

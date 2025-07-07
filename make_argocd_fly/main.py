@@ -9,7 +9,7 @@ import yamllint
 
 from make_argocd_fly import consts
 from make_argocd_fly.warnings import init_warnings
-from make_argocd_fly.params import populate_params, get_params
+from make_argocd_fly.cliparams import populate_cli_params, get_cli_params
 from make_argocd_fly.config import populate_config, get_config
 from make_argocd_fly.utils import init_logging, latest_version_check, get_package_name, get_current_version
 from make_argocd_fly.application import application_factory
@@ -23,9 +23,9 @@ log = logging.getLogger(__name__)
 
 async def generate() -> None:
   config = get_config()
-  params = get_params()
-  render_apps = params.render_apps
-  render_envs = params.render_envs
+  cli_params = get_cli_params()
+  render_apps = cli_params.render_apps
+  render_envs = cli_params.render_envs
 
   apps_to_render = render_apps.split(',') if render_apps is not None else []
   envs_to_render = render_envs.split(',') if render_envs is not None else []
@@ -55,7 +55,7 @@ async def generate() -> None:
 
 
 def run_yamllint() -> None:
-  if not get_params().yaml_linter:
+  if not get_cli_params().yaml_linter:
     return
 
   log.info('Running yamllint')
@@ -69,7 +69,7 @@ def run_yamllint() -> None:
 
 
 def run_kube_linter() -> None:
-  if not get_params().kube_linter:
+  if not get_cli_params().kube_linter:
     return
 
   log.info('Running kube-linter')
@@ -90,21 +90,21 @@ def remove_dir(dir: str) -> None:
 
 def main(**kwargs) -> None:
   try:
-    params = populate_params(**kwargs)
-    config = populate_config(params.root_dir, params.config_file, params.config_dir, params.source_dir,
-                             params.output_dir, params.tmp_dir)
+    cli_params = populate_cli_params(**kwargs)
+    config = populate_config(cli_params.root_dir, cli_params.config_file, cli_params.config_dir, cli_params.source_dir,
+                             cli_params.output_dir, cli_params.tmp_dir)
 
     latest_version_check()
     remove_dir(config.tmp_dir)
 
-    if params.remove_output_dir:
+    if cli_params.remove_output_dir:
       log.info('Wiping output directory')
       remove_dir(config.output_dir)
 
-    if not params.skip_generate:
+    if not cli_params.skip_generate:
       asyncio.run(generate())
 
-    if not params.preserve_tmp_dir:
+    if not cli_params.preserve_tmp_dir:
       remove_dir(config.tmp_dir)
 
     # TODO: it does not make sense to write yamls on disk and then read them again to run through linters
