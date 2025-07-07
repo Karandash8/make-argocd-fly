@@ -2,10 +2,10 @@ class BaseError(Exception):
   pass
 
 
-class MissingApplicationDirectoryError(BaseError):
-  def __init__(self, directory: str) -> None:
-    self.directory = directory
-    super().__init__(f'Missing application directory {directory}')
+class ResourceViewerIsFake(BaseError):
+  def __init__(self, path: str) -> None:
+    self.path = path
+    super().__init__(f'Path does not exist {path}')
 
 
 class InternalError(BaseError):
@@ -34,6 +34,12 @@ class TemplateRenderingError(BaseError):
     self.app_name = app_name
     self.env_name = env_name
     super().__init__(f'Error rendering template {template_filename}')
+
+
+class MissingFileError(BaseError):
+  def __init__(self, path: str) -> None:
+    self.path = path
+    super().__init__(f'Missing file {path}')
 
 
 class KustomizeError(BaseError):

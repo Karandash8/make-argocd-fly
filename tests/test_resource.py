@@ -1,12 +1,13 @@
+import os
 import pytest
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
-from make_argocd_fly.exceptions import MissingApplicationDirectoryError, InternalError
+from make_argocd_fly.exceptions import ResourceViewerIsFake, InternalError
 
 ##################
 ### ResourceViewer
 ##################
 
-def test_ResourceViewer_constructor_with_default_values(tmp_path):
+def test_ResourceViewer__with_default_values(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
   resource_viewer = ResourceViewer(str(dir_root))
@@ -15,10 +16,10 @@ def test_ResourceViewer_constructor_with_default_values(tmp_path):
   assert resource_viewer.element_rel_path == '.'
   assert resource_viewer.is_dir is True
   assert resource_viewer.name == 'dir_root'
-  assert resource_viewer.content is None
-  assert resource_viewer.children == []
+  assert resource_viewer.content == ''
+  assert resource_viewer.children == None
 
-def test_ResourceViewer_constructor_with_file(tmp_path):
+def test_ResourceViewer__with_file(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
   element_path = 'custom/element.txt'
@@ -29,10 +30,10 @@ def test_ResourceViewer_constructor_with_file(tmp_path):
   assert resource_viewer.element_rel_path == element_path
   assert resource_viewer.is_dir == is_dir
   assert resource_viewer.name == 'element.txt'
-  assert resource_viewer.content is None
-  assert resource_viewer.children == []
+  assert resource_viewer.content == ''
+  assert resource_viewer.children == None
 
-def test_ResourceViewer_constructor_with_dir(tmp_path):
+def test_ResourceViewer__with_dir(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
   element_path = 'custom/element'
@@ -43,10 +44,10 @@ def test_ResourceViewer_constructor_with_dir(tmp_path):
   assert resource_viewer.element_rel_path == element_path
   assert resource_viewer.is_dir == is_dir
   assert resource_viewer.name == 'element'
-  assert resource_viewer.content is None
-  assert resource_viewer.children == []
+  assert resource_viewer.content == ''
+  assert resource_viewer.children == None
 
-def test_ResourceViewer_constructor_with_non_normalized_path(tmp_path):
+def test_ResourceViewer__with_non_normalized_path(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
   element_path = './other_element'
@@ -56,26 +57,14 @@ def test_ResourceViewer_constructor_with_non_normalized_path(tmp_path):
   assert resource_viewer.element_rel_path == 'other_element'
   assert resource_viewer.is_dir is True
   assert resource_viewer.name == 'other_element'
-  assert resource_viewer.content is None
-  assert resource_viewer.children == []
+  assert resource_viewer.content == ''
+  assert resource_viewer.children == None
 
-def test_ResourceViewer_build_with_non_existing_root_path(caplog):
-  resource_viewer = ResourceViewer('/non/existing/path')
+##################
+### ResourceViewer.build()
+##################
 
-  with pytest.raises(MissingApplicationDirectoryError):
-    resource_viewer.build()
-
-def test_ResourceViewer_build_with_non_existing_child_path(tmp_path, caplog):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  element_path = 'other_element'
-  resource_viewer = ResourceViewer(str(dir_root), element_path)
-
-  with pytest.raises(InternalError):
-    resource_viewer.build()
-  assert 'Path does not exist' in caplog.text
-
-def test_ResourceViewer_build_with_directories_and_files(tmp_path):
+def test_ResourceViewer__build__with_directories_and_files(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
   dir_root_0 = dir_root / 'dir_root_0'
@@ -97,6 +86,8 @@ def test_ResourceViewer_build_with_directories_and_files(tmp_path):
   resource_viewer = ResourceViewer(str(dir_root))
   resource_viewer.build()
 
+  assert resource_viewer.children is not None
+
   for child in resource_viewer.children:
     if child.name == 'dir_root_0':
       dir_root_0_idx = resource_viewer.children.index(child)
@@ -115,21 +106,21 @@ def test_ResourceViewer_build_with_directories_and_files(tmp_path):
   assert resource_viewer.name == 'dir_root'
   assert resource_viewer.element_rel_path == '.'
   assert resource_viewer.is_dir is True
-  assert resource_viewer.content is None
+  assert resource_viewer.content == ''
   assert len(resource_viewer.children) == 3
 
   # dir with a dir
   assert resource_viewer.children[dir_root_1_idx].name == "dir_root_1"
   assert resource_viewer.children[dir_root_1_idx].element_rel_path == 'dir_root_1'
   assert resource_viewer.children[dir_root_1_idx].is_dir is True
-  assert resource_viewer.children[dir_root_1_idx].content is None
+  assert resource_viewer.children[dir_root_1_idx].content == ''
   assert len(resource_viewer.children[dir_root_1_idx].children) == 1
 
   # dir with files
   assert resource_viewer.children[dir_root_1_idx].children[0].name == "dir_root_1_0"
   assert resource_viewer.children[dir_root_1_idx].children[0].element_rel_path == 'dir_root_1/dir_root_1_0'
   assert resource_viewer.children[dir_root_1_idx].children[0].is_dir is True
-  assert resource_viewer.children[dir_root_1_idx].children[0].content is None
+  assert resource_viewer.children[dir_root_1_idx].children[0].content == ''
   assert len(resource_viewer.children[dir_root_1_idx].children[0].children) == 2
 
   # empty file
@@ -157,10 +148,49 @@ def test_ResourceViewer_build_with_directories_and_files(tmp_path):
   assert resource_viewer.children[dir_root_0_idx].name == "dir_root_0"
   assert resource_viewer.children[dir_root_0_idx].element_rel_path == 'dir_root_0'
   assert resource_viewer.children[dir_root_0_idx].is_dir is True
-  assert resource_viewer.children[dir_root_0_idx].content is None
+  assert resource_viewer.children[dir_root_0_idx].content == ''
   assert len(resource_viewer.children[dir_root_0_idx].children) == 0
 
-def test_ResourceViewer_get_element_simple(tmp_path):
+##################
+### ResourceViewer._get_child()
+##################
+
+def test_ResourceViewer__get_child__fake(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  resource_viewer = ResourceViewer(os.path.join(dir_root, 'non_existent_element'))
+  resource_viewer.build()
+
+  with pytest.raises(ResourceViewerIsFake):
+    resource_viewer._get_child('file.txt')
+
+def test_ResourceViewer__get_child__simple(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_app = dir_root / 'app'
+  dir_app.mkdir()
+
+  resource_viewer = ResourceViewer(str(dir_root))
+  resource_viewer.build()
+
+  child = resource_viewer._get_child('app')
+  assert child is not None
+  assert child.name == 'app'
+
+##################
+### ResourceViewer.get_element()
+##################
+
+def test_ResourceViewer__get_element__fake_(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  resource_viewer = ResourceViewer(os.path.join(dir_root, 'non_existent_element'))
+  resource_viewer.build()
+
+  with pytest.raises(ResourceViewerIsFake):
+    resource_viewer.get_element('file.txt')
+
+def test_ResourceViewer__get_element__simple(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
   dir_app = dir_root / 'app'
@@ -170,9 +200,10 @@ def test_ResourceViewer_get_element_simple(tmp_path):
   resource_viewer.build()
 
   child = resource_viewer.get_element('app')
+  assert child is not None
   assert child.name == 'app'
 
-def test_ResourceViewer_get_element_non_existent_simple(tmp_path):
+def test_ResourceViewer__get_element__non_existent_simple(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
 
@@ -182,7 +213,7 @@ def test_ResourceViewer_get_element_non_existent_simple(tmp_path):
   child = resource_viewer.get_element('app')
   assert child == None
 
-def test_ResourceViewer_get_element_path(tmp_path):
+def test_ResourceViewer__get_element__path(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
   dir_subdir = dir_root / 'subdir'
@@ -194,10 +225,11 @@ def test_ResourceViewer_get_element_path(tmp_path):
   resource_viewer.build()
 
   child = resource_viewer.get_element('subdir/app')
+  assert child is not None
   assert child.name == 'app'
   assert child.element_rel_path == 'subdir/app'
 
-def test_ResourceViewer_get_element_non_existent_path(tmp_path):
+def test_ResourceViewer__get_element__non_existent_path(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
   dir_subdir = dir_root / 'subdir'
@@ -209,12 +241,37 @@ def test_ResourceViewer_get_element_non_existent_path(tmp_path):
   child = resource_viewer.get_element('subdir/app')
   assert child == None
 
+##################
+### ResourceViewer.get_children()
+##################
+
+def test_ResourceViewer__get_children__fake(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  resource_viewer = ResourceViewer(os.path.join(dir_root, 'non_existent_element'))
+  resource_viewer.build()
+
+  with pytest.raises(ResourceViewerIsFake):
+    resource_viewer.get_children()
+
+def test_ResourceViewer__get_children__simple(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_app = dir_root / 'app'
+  dir_app.mkdir()
+
+  resource_viewer = ResourceViewer(str(dir_root))
+  resource_viewer.build()
+
+  children = resource_viewer.get_children()
+  assert len(children) == 1
+  assert children[0].name == 'app'
 
 ##################
 ### ResourceWriter
 ##################
 
-def test_ResourceWriter_constructor_with_default_values(tmp_path):
+def test_ResourceWriter__with_default_values(tmp_path):
   dir_output = tmp_path / 'dir_output'
   dir_output.mkdir()
   resource_writer = ResourceWriter(str(dir_output))
@@ -222,7 +279,11 @@ def test_ResourceWriter_constructor_with_default_values(tmp_path):
   assert resource_writer.output_dir_abs_path == str(dir_output)
   assert resource_writer.resources == {}
 
-def test_ResourceWriter_store_resource_multiple(tmp_path):
+##################
+### ResourceWriter.store_resource()
+##################
+
+def test_ResourceWriter__store_resource__multiple(tmp_path):
   dir_output = tmp_path / 'dir_output'
   dir_output.mkdir()
   resource_writer = ResourceWriter(str(dir_output))
@@ -240,7 +301,7 @@ def test_ResourceWriter_store_resource_multiple(tmp_path):
   assert '/a/b/e' in resource_writer.resources
   assert resource_writer.resources['/a/b/e'] == 'resource body 3'
 
-def test_ResourceWriter_store_resource_duplicate(tmp_path, caplog):
+def test_ResourceWriter__store_resource__duplicate(tmp_path, caplog):
   dir_output = tmp_path / 'dir_output'
   dir_output.mkdir()
   resource_writer = ResourceWriter(str(dir_output))
@@ -251,7 +312,7 @@ def test_ResourceWriter_store_resource_duplicate(tmp_path, caplog):
       resource_writer.store_resource('/a/b/c', 'resource body 1')
   assert 'Resource (/a/b/c) already exists' in caplog.text
 
-def test_ResourceWriter_store_resource_undefined_dir_rel_path(tmp_path, caplog):
+def test_ResourceWriter__store_resource__undefined_dir_rel_path(tmp_path, caplog):
   dir_output = tmp_path / 'dir_output'
   dir_output.mkdir()
   resource_writer = ResourceWriter(str(dir_output))

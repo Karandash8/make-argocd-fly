@@ -47,9 +47,17 @@ class Config:
     return self._tmp_dir
 
   def get_envs(self) -> dict:
+    if self.config is None:
+      log.error('Config is not populated')
+      raise InternalError
+
     return self.config[consts.KEYWORK_ENVS] if consts.KEYWORK_ENVS in self.config else {}
 
   def get_global_vars(self) -> dict:
+    if self.config is None:
+      log.error('Config is not populated')
+      raise InternalError
+
     return self.config[consts.KEYWORK_VARS] if consts.KEYWORK_VARS in self.config else {}
 
   def get_env_vars(self, env_name: str) -> dict:

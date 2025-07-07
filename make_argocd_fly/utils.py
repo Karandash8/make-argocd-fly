@@ -1,4 +1,5 @@
 import logging
+import logging.config
 import re
 import os
 import copy
@@ -9,6 +10,7 @@ import yaml
 import urllib.request
 import urllib.error
 from typing import Optional, List
+from collections.abc import Iterator
 from importlib.metadata import version, PackageNotFoundError
 from packaging.version import Version
 
@@ -119,7 +121,11 @@ class VarsResolver:
       return resolved_vars
 
 
-def extract_single_resource(multi_resource_yml: str) -> str:
+def extract_single_resource(multi_resource_yml: Optional[str]) -> Iterator[str]:
+  if multi_resource_yml is None:
+    log.error('Multi-resource YAML is empty')
+    raise InternalError
+
   for resource_yml in multi_resource_yml.split('\n---\n'):
     resource_yml = resource_yml.strip()
     resource_yml = re.sub('^---\n', '', resource_yml)
@@ -132,18 +138,18 @@ def extract_single_resource(multi_resource_yml: str) -> str:
 class FilePathGenerator:
   default_file_extension = '.yml'
 
-  def __init__(self, resource_yml: str, source_file_rel_path: str = None) -> None:
+  def __init__(self, resource_yml: str, source_file_rel_path: Optional[str] = None) -> None:
     self.resource_yml = resource_yml
     self.source_file_rel_path = source_file_rel_path
 
-  def _extract_kind(self, resource_yml: str) -> str:
+  def _extract_kind(self, resource_yml: str) -> Optional[str]:
     match = re.search(r'(^kind:|\nkind:)(.+)', resource_yml)
     if match:
       return match.group(2).strip()
 
     return None
 
-  def _extract_name(self, resource_yml: str) -> str:
+  def _extract_name(self, resource_yml: str) -> Optional[str]:
     match = re.search(r'(^metadata:|\nmetadata:).*', resource_yml)
     if match:
       match = re.search(r'(^\s\sname:|\n\s\sname:)(.+)', resource_yml[match.start():])
@@ -152,14 +158,14 @@ class FilePathGenerator:
 
     return None
 
-  def _extract_api_version(self, resource_yml: str) -> str:
+  def _extract_api_version(self, resource_yml: str) -> Optional[str]:
     match = re.search(r'(^apiVersion:|\napiVersion:)(.+)', resource_yml)
     if match:
       return match.group(2).strip()
 
     return None
 
-  def _extract_namespace(self, resource_yml: str) -> str:
+  def _extract_namespace(self, resource_yml: str) -> Optional[str]:
     match = re.search(r'(^metadata:|\nmetadata:).*', resource_yml)
     if match:
       match = re.search(r'(^\s\snamespace:|\n\s\snamespace:)(.+)', resource_yml[match.start():])
@@ -168,7 +174,7 @@ class FilePathGenerator:
 
     return None
 
-  def _extract_file_rel_path(self, source_file_rel_path: str) -> str:
+  def _extract_file_rel_path(self, source_file_rel_path: Optional[str]) -> Optional[str]:
     if source_file_rel_path:
       rel_path = os.path.dirname(source_file_rel_path)
       if rel_path:
@@ -176,7 +182,7 @@ class FilePathGenerator:
 
     return None
 
-  def _extract_source_file_name(self, source_file_rel_path: str) -> str:
+  def _extract_source_file_name(self, source_file_rel_path: Optional[str]) -> Optional[str]:
     if source_file_rel_path and os.path.basename(source_file_rel_path):
       parts = os.path.basename(source_file_rel_path).removesuffix('.j2').split('.')
       if len(parts) == 1:
@@ -186,7 +192,7 @@ class FilePathGenerator:
 
     return None
 
-  def _extract_file_extension(self, source_file_rel_path: str) -> str:
+  def _extract_file_extension(self, source_file_rel_path: Optional[str]) -> Optional[str]:
     if source_file_rel_path:
       parts = source_file_rel_path.removesuffix('.j2').split('.')
       if len(parts) > 1:
@@ -338,7 +344,7 @@ def get_package_name() -> str:
   return get_module_name().replace('_', '-')
 
 
-def get_current_version() -> Version:
+def get_current_version() -> Optional[Version]:
   try:
     return Version(version(get_module_name()))
   except PackageNotFoundError:
@@ -347,7 +353,7 @@ def get_current_version() -> Version:
     return None
 
 
-def get_latest_version() -> Version:
+def get_latest_version() -> Optional[Version]:
   try:
     pypi_url = f'https://pypi.org/pypi/{get_module_name()}/json'
     response = urllib.request.urlopen(pypi_url).read().decode()

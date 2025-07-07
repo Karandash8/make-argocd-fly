@@ -11,13 +11,13 @@ from make_argocd_fly.config import get_config
 from make_argocd_fly.params import get_params
 from make_argocd_fly.steps import FindAppsStep, RenderYamlStep, RenderJinjaFromViewerStep, RenderJinjaFromMemoryStep, \
   WriteResourcesStep, ReadSourceStep, RunKustomizeStep
-from make_argocd_fly.exceptions import MissingApplicationDirectoryError
+from make_argocd_fly.exceptions import ResourceViewerIsFake
 
 log = logging.getLogger(__name__)
 
 
 class AbstractApplication(ABC):
-  def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:
+  def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer) -> None:
     super().__init__()
 
     self.app_name = app_name
@@ -69,7 +69,7 @@ class AppOfAppsApplication(AbstractApplication):
       {%- endif %}
     ''')
 
-  def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:
+  def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer) -> None:
     super().__init__(app_name, env_name, app_viewer)
     self.find_apps_step = FindAppsStep()
     self.render_jinja_step = RenderJinjaFromMemoryStep()
@@ -124,7 +124,7 @@ class AppOfAppsApplication(AbstractApplication):
 
 
 class SimpleApplication(AbstractApplication):
-  def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:
+  def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer) -> None:
     super().__init__(app_name, env_name, app_viewer)
     self.render_yaml_step = RenderYamlStep()
     self.render_jinja_step = RenderJinjaFromViewerStep(app_viewer)
@@ -180,7 +180,7 @@ class SimpleApplication(AbstractApplication):
 
 
 class KustomizeApplication(AbstractApplication):
-  def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer = None) -> None:
+  def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer) -> None:
     super().__init__(app_name, env_name, app_viewer)
     self.render_yaml_step = RenderYamlStep()
     self.render_jinja_step = RenderJinjaFromViewerStep(app_viewer)
@@ -251,15 +251,15 @@ async def application_factory(env_name: str, app_name: str, source_path: str) ->
   read_source_step = ReadSourceStep()
   read_source_step.configure(source_path)
 
-  try:
-    await read_source_step.run()
-    viewer = read_source_step.get_viewer()
+  await read_source_step.run()
+  viewer = read_source_step.get_viewer()
 
+  try:
     kustomize_children = viewer.get_files_children('kustomization.yml')
 
     if kustomize_children:
       return KustomizeApplication(app_name, env_name, viewer)
     else:
       return SimpleApplication(app_name, env_name, viewer)
-  except MissingApplicationDirectoryError:
-    return AppOfAppsApplication(app_name, env_name)
+  except ResourceViewerIsFake:
+    return AppOfAppsApplication(app_name, env_name, viewer)

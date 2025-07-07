@@ -2,6 +2,7 @@ import logging
 import os
 import asyncio
 from abc import ABC, abstractmethod
+from typing import Optional
 import yaml
 import yaml.composer
 import yaml.parser
@@ -13,10 +14,11 @@ except ImportError:
 
 from make_argocd_fly.consts import AppParamsNames
 from make_argocd_fly.config import get_config
-from make_argocd_fly.renderer import YamlRenderer, JinjaRenderer
+from make_argocd_fly.renderer import YamlRenderer, JinjaRenderer, JinjaRendererFromViewer
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
 from make_argocd_fly.utils import extract_single_resource, FilePathGenerator, get_app_rel_path
-from make_argocd_fly.exceptions import UndefinedTemplateVariableError, TemplateRenderingError, InternalError, KustomizeError
+from make_argocd_fly.exceptions import UndefinedTemplateVariableError, TemplateRenderingError, InternalError, KustomizeError, \
+  MissingFileError
 
 log = logging.getLogger(__name__)
 
@@ -68,7 +70,7 @@ class BaseResourceGenerationStep(AbstractStep):
     self.env_name = None
     self.app_name = None
 
-  def _generate_file_path(self, resource_yml: str, source_file_path: str = None) -> str:
+  def _generate_file_path(self, resource_yml: str, source_file_path: Optional[str] = None) -> str:
     if not self.env_name or not self.app_name:
       log.error('Step is not configured')
       raise InternalError
@@ -78,7 +80,7 @@ class BaseResourceGenerationStep(AbstractStep):
 
     # TODO use @singledispatch here
     if source_file_path and AppParamsNames.NON_K8S_FILES_TO_RENDER in app_params:
-      if type(app_params[AppParamsNames.NON_K8S_FILES_TO_RENDER]) is not list:
+      if not isinstance(app_params[AppParamsNames.NON_K8S_FILES_TO_RENDER], list):
         log.error(f'Application parameter {AppParamsNames.NON_K8S_FILES_TO_RENDER} must be a list')
         raise InternalError
 
@@ -88,7 +90,7 @@ class BaseResourceGenerationStep(AbstractStep):
 
     # TODO use @singledispatch here
     if source_file_path and AppParamsNames.EXCLUDE_RENDERING in app_params:
-      if type(app_params[AppParamsNames.EXCLUDE_RENDERING]) is not list:
+      if not isinstance(app_params[AppParamsNames.EXCLUDE_RENDERING], list):
         log.error(f'Application parameter {AppParamsNames.EXCLUDE_RENDERING} must be a list')
         raise InternalError
 
@@ -121,26 +123,25 @@ class RenderYamlStep(BaseResourceGenerationStep):
     for yml_child in self.yml_children:
       resource_source = os.path.join(yml_child.root_element_abs_path, yml_child.element_rel_path)
 
-      try:
-        result = self.renderer.render(yml_child.content)
+      result = self.renderer.render(yml_child.content)
 
-        for resource_yml in extract_single_resource(result):
-          try:
-            file_path = self._generate_file_path(resource_yml, yml_child.element_rel_path)
-            self.resources.append((file_path, yaml.load(resource_yml, Loader=YamlLoader)))
-          except ValueError:
-            pass
-      except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
-        log.error('Error building YAML')
-        log.error(f'Error rendering template {resource_source}')
-        log.debug(f'YAML content:\n{resource_yml}')
-        raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
+      for resource_yml in extract_single_resource(result):
+        try:
+          file_path = self._generate_file_path(resource_yml, yml_child.element_rel_path)
+          self.resources.append((file_path, yaml.load(resource_yml, Loader=YamlLoader)))
+        except ValueError:
+          pass
+        except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
+          log.error('Error building YAML')
+          log.error(f'Error rendering template {resource_source}')
+          log.debug(f'YAML content:\n{resource_yml}')
+          raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
 
 
 class RenderJinjaFromViewerStep(BaseResourceGenerationStep):
   def __init__(self, viewer: ResourceViewer) -> None:
     super().__init__()
-    self.renderer = JinjaRenderer(viewer)
+    self.renderer = JinjaRendererFromViewer(viewer)
 
   def configure(self, env_name: str, app_name: str, j2_children: list[ResourceViewer], vars: dict = {}) -> None:
     self.env_name = env_name
@@ -156,9 +157,9 @@ class RenderJinjaFromViewerStep(BaseResourceGenerationStep):
     for j2_child in self.j2_children:
       resource_source = os.path.join(j2_child.root_element_abs_path, j2_child.element_rel_path)
 
+      self.renderer.set_template_vars(self.vars)
+      self.renderer.set_filename(j2_child.element_rel_path)
       try:
-        self.renderer.set_template_vars(self.vars)
-        self.renderer.set_filename(j2_child.element_rel_path)
         result = self.renderer.render(j2_child.content)
 
         for resource_yml in extract_single_resource(result):
@@ -167,12 +168,12 @@ class RenderJinjaFromViewerStep(BaseResourceGenerationStep):
             self.resources.append((file_path, yaml.load(resource_yml, Loader=YamlLoader)))
           except ValueError:
             pass
-      except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
-        log.error('Error building YAML')
-        log.error(f'Error rendering template {resource_source}')
-        log.debug(f'YAML content:\n{resource_yml}')
-        raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
-      except UndefinedTemplateVariableError:
+          except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
+            log.error('Error building YAML')
+            log.error(f'Error rendering template {resource_source}')
+            log.debug(f'YAML content:\n{resource_yml}')
+            raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
+      except (UndefinedTemplateVariableError, MissingFileError):
         log.error(f'Error rendering template {resource_source}')
         raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
 
@@ -194,9 +195,9 @@ class RenderJinjaFromMemoryStep(BaseResourceGenerationStep):
       raise InternalError
 
     resource_source = 'ArgoCD Application CustomResource'
+
+    self.renderer.set_template_vars(self.vars)
     try:
-      self.renderer.set_template_vars(self.vars)
-      self.renderer.set_filename(resource_source)
       result = self.renderer.render(self.template)
 
       for resource_yml in extract_single_resource(result):
@@ -205,12 +206,12 @@ class RenderJinjaFromMemoryStep(BaseResourceGenerationStep):
           self.resources.append((file_path, yaml.load(resource_yml, Loader=YamlLoader)))
         except ValueError:
           pass
-    except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
-        log.error('Error building YAML')
-        log.error(f'Error rendering template {resource_source}')
-        log.debug(f'YAML content:\n{resource_yml}')
-        raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
-    except UndefinedTemplateVariableError:
+        except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
+            log.error('Error building YAML')
+            log.error(f'Error rendering template {resource_source}')
+            log.debug(f'YAML content:\n{resource_yml}')
+            raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
+    except (UndefinedTemplateVariableError, MissingFileError):
       log.error(f'Error rendering template {resource_source}')
       raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
 
@@ -253,7 +254,7 @@ class RunKustomizeStep(BaseResourceGenerationStep):
 
       stdout, stderr = await proc.communicate()
       if proc.returncode != 0:
-        log.error(f'Kustomize error: {stderr}')
+        log.error(f'Kustomize error: {stderr.decode('utf-8', 'ignore')}')
         log.info(f'Retrying {attempt + 1}/{retries}')
         continue
       break
@@ -261,18 +262,17 @@ class RunKustomizeStep(BaseResourceGenerationStep):
       raise KustomizeError(self.app_name, self.env_name)
 
     resource_source = 'Kustomize'
-    try:
-      for resource_yml in extract_single_resource(stdout.decode('utf-8')):
-        try:
-          file_path = self._generate_file_path(resource_yml)
-          self.resources.append((file_path, yaml.load(resource_yml, Loader=YamlLoader)))
-        except ValueError:
-          pass
-    except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
-      log.error('Error building YAML')
-      log.error(f'Error rendering template {resource_source}')
-      log.debug(f'YAML content:\n{resource_yml}')
-      raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
+    for resource_yml in extract_single_resource(stdout.decode('utf-8')):
+      try:
+        file_path = self._generate_file_path(resource_yml)
+        self.resources.append((file_path, yaml.load(resource_yml, Loader=YamlLoader)))
+      except ValueError:
+        pass
+      except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
+        log.error('Error building YAML')
+        log.error(f'Error rendering template {resource_source}')
+        log.debug(f'YAML content:\n{resource_yml}')
+        raise TemplateRenderingError(resource_source, self.app_name, self.env_name) from None
 
 
 class WriteResourcesStep(AbstractStep):
