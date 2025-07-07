@@ -254,7 +254,7 @@ class RunKustomizeStep(BaseResourceGenerationStep):
 
       stdout, stderr = await proc.communicate()
       if proc.returncode != 0:
-        log.error(f'Kustomize error: {stderr.decode('utf-8', 'ignore')}')
+        log.error(f'Kustomize error: {stderr.decode("utf-8", "ignore")}')
         log.info(f'Retrying {attempt + 1}/{retries}')
         continue
       break
