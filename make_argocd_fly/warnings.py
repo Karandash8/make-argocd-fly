@@ -5,7 +5,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-warnings.simplefilter("default")
+warnings.simplefilter('default')
 
 collected_warnings = []
 

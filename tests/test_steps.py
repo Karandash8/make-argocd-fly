@@ -360,7 +360,7 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_str(ren
 
   with pytest.raises(InternalError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
-  assert 'Application parameter {} must be a list'.format(AppParamsNames.NON_K8S_FILES_TO_RENDER) in caplog.text
+  assert f'Application parameter {AppParamsNames.NON_K8S_FILES_TO_RENDER} must be a list' in caplog.text
   mock_config.get_app_params.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__exclude_rendering(render_yaml_step, mocker, caplog):
@@ -385,7 +385,7 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering(render_yaml_step
 
   with pytest.raises(ValueError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
-  assert 'Exclude rendering for file {}'.format(source_file_path) in caplog.text
+  assert f'Exclude rendering for file {source_file_path}' in caplog.text
   mock_config.get_app_params.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir(render_yaml_step, mocker, caplog):
@@ -410,7 +410,7 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir(render_ya
 
   with pytest.raises(ValueError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
-  assert 'Exclude rendering for file {}'.format(source_file_path) in caplog.text
+  assert f'Exclude rendering for file {source_file_path}' in caplog.text
   mock_config.get_app_params.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir_2(render_yaml_step, mocker, caplog):
@@ -435,7 +435,7 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir_2(render_
 
   with pytest.raises(ValueError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
-  assert 'Exclude rendering for file {}'.format(source_file_path) in caplog.text
+  assert f'Exclude rendering for file {source_file_path}' in caplog.text
   mock_config.get_app_params.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__exclude_rendering_as_str(render_yaml_step, mocker, caplog):
@@ -460,5 +460,5 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering_as_str(render_ya
 
   with pytest.raises(InternalError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
-  assert 'Application parameter {} must be a list'.format(AppParamsNames.EXCLUDE_RENDERING) in caplog.text
+  assert f'Application parameter {AppParamsNames.EXCLUDE_RENDERING} must be a list' in caplog.text
   mock_config.get_app_params.assert_called_once_with(env_name, app_name)

@@ -2,8 +2,8 @@ import pytest
 import jinja2
 import textwrap
 from make_argocd_fly.resource import ResourceViewer
-from make_argocd_fly.renderer import JinjaRenderer
-from make_argocd_fly.exceptions import UndefinedTemplateVariableError
+from make_argocd_fly.renderer import JinjaRenderer, JinjaRendererFromViewer
+from make_argocd_fly.exceptions import UndefinedTemplateVariableError, MissingFileError
 
 ###############
 ### _get_source
@@ -18,7 +18,7 @@ def test_JinjaRenderer_get_source_simple(tmp_path):
 
   resource_viewer = ResourceViewer(str(dir_root))
   resource_viewer.build()
-  renderer = JinjaRenderer(resource_viewer)
+  renderer = JinjaRendererFromViewer(resource_viewer)
 
   assert renderer._get_source('template.txt.j2') == (TEMPLATE, 'template.txt.j2', None)
 
@@ -28,10 +28,11 @@ def test_JinjaRenderer_get_source_does_not_exist(tmp_path, caplog):
 
   resource_viewer = ResourceViewer(str(dir_root))
   resource_viewer.build()
-  renderer = JinjaRenderer(resource_viewer)
+  renderer = JinjaRendererFromViewer(resource_viewer)
 
-  assert renderer._get_source('template.txt.j2') == None
-  assert 'Missing template template.txt.j2' in caplog.text
+  with pytest.raises(MissingFileError):
+    renderer._get_source('template.txt.j2')
+  assert 'Missing file template.txt.j2' in caplog.text
 
 def test_JinjaRenderer_get_source_same_filename(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -49,7 +50,7 @@ def test_JinjaRenderer_get_source_same_filename(tmp_path):
 
   resource_viewer = ResourceViewer(str(dir_root))
   resource_viewer.build()
-  renderer = JinjaRenderer(resource_viewer)
+  renderer = JinjaRendererFromViewer(resource_viewer)
 
   assert renderer._get_source('dir_1/template.txt.j2') == (TEMPLATE_1, 'dir_1/template.txt.j2', None)
 
@@ -66,7 +67,7 @@ def test_JinjaRenderer_get_rendered_simple(tmp_path):
 
   resource_viewer = ResourceViewer(str(dir_root))
   resource_viewer.build()
-  renderer = JinjaRenderer(resource_viewer)
+  renderer = JinjaRendererFromViewer(resource_viewer)
   renderer.set_template_vars({'var': 'content'})
 
   assert renderer._get_rendered('template.txt.j2') == ('Template content', 'template.txt.j2', None)
@@ -77,21 +78,11 @@ def test_JinjaRenderer_get_rendered_does_not_exist(tmp_path, caplog):
 
   resource_viewer = ResourceViewer(str(dir_root))
   resource_viewer.build()
-  renderer = JinjaRenderer(resource_viewer)
+  renderer = JinjaRendererFromViewer(resource_viewer)
 
-  assert renderer._get_rendered('template.txt.j2') == None
-  assert 'Missing template template.txt.j2' in caplog.text
-
-def test_JinjaRenderer_get_rendered_not_a_jinja_template(tmp_path, caplog):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-
-  resource_viewer = ResourceViewer(str(dir_root))
-  resource_viewer.build()
-  renderer = JinjaRenderer(resource_viewer)
-
-  assert renderer._get_rendered('template.txt') == None
-  assert 'Template template.txt is not a jinja template' in caplog.text
+  with pytest.raises(MissingFileError):
+    renderer._get_source('template.txt.j2')
+  assert 'Missing file template.txt.j2' in caplog.text
 
 ###########
 ### Loaders
@@ -155,7 +146,7 @@ def test_JinjaRenderer_function_loader_render_with_include_raw(tmp_path):
 
   resource_viewer = ResourceViewer(str(dir_0))
   resource_viewer.build()
-  renderer = JinjaRenderer(resource_viewer)
+  renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
   Template content line 1
@@ -179,7 +170,7 @@ def test_JinjaRenderer_function_loader_render_with_include(tmp_path):
 
   resource_viewer = ResourceViewer(str(dir_0))
   resource_viewer.build()
-  renderer = JinjaRenderer(resource_viewer)
+  renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
   Template content line 1
@@ -207,7 +198,7 @@ def test_JinjaRenderer_function_loader_render_with_include_inception(tmp_path):
 
   resource_viewer = ResourceViewer(str(dir_0))
   resource_viewer.build()
-  renderer = JinjaRenderer(resource_viewer)
+  renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
   Template content line 1
@@ -260,7 +251,7 @@ def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_kv(tmp_pa
 
   resource_viewer = ResourceViewer(str(dir_0))
   resource_viewer.build()
-  renderer = JinjaRenderer(resource_viewer)
+  renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
     {% include_all_as_yaml_kv 'files' %}
@@ -305,7 +296,7 @@ def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_list(tmp_
 
   resource_viewer = ResourceViewer(str(dir_0))
   resource_viewer.build()
-  renderer = JinjaRenderer(resource_viewer)
+  renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
     {% include_all_as_yaml_list 'files' %}
@@ -321,7 +312,7 @@ def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_list(tmp_
   '''
 
   assert textwrap.dedent(output) == renderer.render(textwrap.dedent(TEMPLATE))
-  
+
 def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_names_list(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
@@ -340,7 +331,7 @@ def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_names_lis
 
   resource_viewer = ResourceViewer(str(dir_0))
   resource_viewer.build()
-  renderer = JinjaRenderer(resource_viewer)
+  renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
     {% include_all_as_yaml_names_list 'files', '/etc/' %}

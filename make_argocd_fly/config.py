@@ -47,15 +47,23 @@ class Config:
     return self._tmp_dir
 
   def get_envs(self) -> dict:
+    if self.config is None:
+      log.error('Config is not populated')
+      raise InternalError
+
     return self.config[consts.KEYWORK_ENVS] if consts.KEYWORK_ENVS in self.config else {}
 
   def get_global_vars(self) -> dict:
+    if self.config is None:
+      log.error('Config is not populated')
+      raise InternalError
+
     return self.config[consts.KEYWORK_VARS] if consts.KEYWORK_VARS in self.config else {}
 
   def get_env_vars(self, env_name: str) -> dict:
     envs = self.get_envs()
     if env_name not in envs:
-      log.error('Environment {} is not defined'.format(env_name))
+      log.error(f'Environment {env_name} is not defined')
       raise ConfigFileError
 
     return envs[env_name][consts.KEYWORK_VARS] if consts.KEYWORK_VARS in envs[env_name] else {}
@@ -63,11 +71,11 @@ class Config:
   def get_app_vars(self, env_name: str, app_name: str) -> dict:
     envs = self.get_envs()
     if env_name not in envs:
-      log.error('Environment {} is not defined'.format(env_name))
+      log.error(f'Environment {env_name} is not defined')
       raise ConfigFileError
 
     if consts.KEYWORK_APPS not in envs[env_name] or app_name not in envs[env_name][consts.KEYWORK_APPS]:
-      log.error('Application {} is not defined in environment {}'.format(app_name, env_name))
+      log.error(f'Application {app_name} is not defined in environment {env_name}')
       raise ConfigFileError
 
     if consts.KEYWORK_VARS in envs[env_name][consts.KEYWORK_APPS][app_name]:
@@ -78,11 +86,11 @@ class Config:
   def get_app_params(self, env_name: str, app_name: str) -> dict:
     envs = self.get_envs()
     if env_name not in envs:
-      log.error('Environment {} is not defined'.format(env_name))
+      log.error(f'Environment {env_name} is not defined')
       raise ConfigFileError
 
     if consts.KEYWORK_APPS not in envs[env_name] or app_name not in envs[env_name][consts.KEYWORK_APPS]:
-      log.error('Application {} is not defined in environment {}'.format(app_name, env_name))
+      log.error(f'Application {app_name} is not defined in environment {env_name}')
       raise ConfigFileError
 
     return {key: value for key, value in envs[env_name][consts.KEYWORK_APPS][app_name].items() if key != consts.KEYWORK_VARS}
@@ -95,7 +103,7 @@ def _list_config_files(config_dir: str) -> list[str]:
   config_files = glob.glob('*.yml', root_dir=config_dir)
 
   if not config_files:
-    log.error('No config files found in {}'.format(config_dir))
+    log.error(f'No config files found in {config_dir}')
     raise InternalError
 
   return config_files
@@ -108,16 +116,16 @@ def _read_config_file(config_file: str) -> dict:
     with open(config_file) as f:
       config_content = yaml.safe_load(f.read())
   except FileNotFoundError:
-    log.error('Config file {} not found'.format(config_file))
+    log.error(f'Config file {config_file} not found')
     raise InternalError
   except yaml.YAMLError:
-    log.error('Invalid YAML config file {}'.format(config_file))
+    log.error(f'Invalid YAML config file {config_file}')
     raise ConfigFileError
 
   return config_content
 
 
-@deprecated(version='v0.2.14', reason="--config-file is deprecated, use --config-dir instead")
+@deprecated(version='v0.2.14', reason='--config-file is deprecated, use --config-dir instead')
 def read_config_file():
   pass
 
@@ -144,9 +152,9 @@ def populate_config(root_dir: str = consts.DEFAULT_ROOT_DIR,
                          _output_dir=build_path(root_dir, output_dir, allow_missing=True),
                          _tmp_dir=build_path(root_dir, tmp_dir, allow_missing=True))
 
-  log.debug('Source directory: {}'.format(config.source_dir))
-  log.debug('Output directory: {}'.format(config.output_dir))
-  log.debug('Temporary directory: {}'.format(config.tmp_dir))
+  log.debug(f'Source directory: {config.source_dir}')
+  log.debug(f'Output directory: {config.output_dir}')
+  log.debug(f'Temporary directory: {config.tmp_dir}')
 
   return config
 

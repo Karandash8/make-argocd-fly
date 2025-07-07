@@ -1,4 +1,5 @@
 import logging
+import logging.config
 import re
 import os
 import copy
@@ -7,7 +8,9 @@ import json
 import ssl
 import yaml
 import urllib.request
+import urllib.error
 from typing import Optional, List
+from collections.abc import Iterator
 from importlib.metadata import version, PackageNotFoundError
 from packaging.version import Version
 
@@ -30,7 +33,7 @@ def build_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
     abs_path = os.path.join(root_dir, path)
 
   if (not allow_missing) and (not os.path.exists(abs_path)):
-    log.error('Path does not exist: {}'.format(abs_path))
+    log.error(f'Path does not exist: {abs_path}')
     raise InternalError
 
   return abs_path
@@ -84,7 +87,7 @@ class VarsResolver:
 
       return resolved_value
     except KeyError:
-      log.error('Variable {} not found in vars'.format(value[var_start - 1:var_end + 1]))
+      log.error(f'Variable {value[var_start - 1:var_end + 1]} not found in vars')
       raise KeyError
 
   def _iterate(self, to_resolve: dict, source: dict, value=None, initial=True):
@@ -118,7 +121,11 @@ class VarsResolver:
       return resolved_vars
 
 
-def extract_single_resource(multi_resource_yml: str) -> str:
+def extract_single_resource(multi_resource_yml: Optional[str]) -> Iterator[str]:
+  if multi_resource_yml is None:
+    log.error('Multi-resource YAML is empty')
+    raise InternalError
+
   for resource_yml in multi_resource_yml.split('\n---\n'):
     resource_yml = resource_yml.strip()
     resource_yml = re.sub('^---\n', '', resource_yml)
@@ -131,18 +138,18 @@ def extract_single_resource(multi_resource_yml: str) -> str:
 class FilePathGenerator:
   default_file_extension = '.yml'
 
-  def __init__(self, resource_yml: str, source_file_rel_path: str = None) -> None:
+  def __init__(self, resource_yml: str, source_file_rel_path: Optional[str] = None) -> None:
     self.resource_yml = resource_yml
     self.source_file_rel_path = source_file_rel_path
 
-  def _extract_kind(self, resource_yml: str) -> str:
+  def _extract_kind(self, resource_yml: str) -> Optional[str]:
     match = re.search(r'(^kind:|\nkind:)(.+)', resource_yml)
     if match:
       return match.group(2).strip()
 
     return None
 
-  def _extract_name(self, resource_yml: str) -> str:
+  def _extract_name(self, resource_yml: str) -> Optional[str]:
     match = re.search(r'(^metadata:|\nmetadata:).*', resource_yml)
     if match:
       match = re.search(r'(^\s\sname:|\n\s\sname:)(.+)', resource_yml[match.start():])
@@ -151,14 +158,14 @@ class FilePathGenerator:
 
     return None
 
-  def _extract_api_version(self, resource_yml: str) -> str:
+  def _extract_api_version(self, resource_yml: str) -> Optional[str]:
     match = re.search(r'(^apiVersion:|\napiVersion:)(.+)', resource_yml)
     if match:
       return match.group(2).strip()
 
     return None
 
-  def _extract_namespace(self, resource_yml: str) -> str:
+  def _extract_namespace(self, resource_yml: str) -> Optional[str]:
     match = re.search(r'(^metadata:|\nmetadata:).*', resource_yml)
     if match:
       match = re.search(r'(^\s\snamespace:|\n\s\snamespace:)(.+)', resource_yml[match.start():])
@@ -167,7 +174,7 @@ class FilePathGenerator:
 
     return None
 
-  def _extract_file_rel_path(self, source_file_rel_path: str) -> str:
+  def _extract_file_rel_path(self, source_file_rel_path: Optional[str]) -> Optional[str]:
     if source_file_rel_path:
       rel_path = os.path.dirname(source_file_rel_path)
       if rel_path:
@@ -175,7 +182,7 @@ class FilePathGenerator:
 
     return None
 
-  def _extract_source_file_name(self, source_file_rel_path: str) -> str:
+  def _extract_source_file_name(self, source_file_rel_path: Optional[str]) -> Optional[str]:
     if source_file_rel_path and os.path.basename(source_file_rel_path):
       parts = os.path.basename(source_file_rel_path).removesuffix('.j2').split('.')
       if len(parts) == 1:
@@ -185,11 +192,11 @@ class FilePathGenerator:
 
     return None
 
-  def _extract_file_extension(self, source_file_rel_path: str) -> str:
+  def _extract_file_extension(self, source_file_rel_path: Optional[str]) -> Optional[str]:
     if source_file_rel_path:
       parts = source_file_rel_path.removesuffix('.j2').split('.')
       if len(parts) > 1:
-        return '.{}'.format(parts[-1])
+        return f'.{parts[-1]}'
 
     return None
 
@@ -199,11 +206,11 @@ class FilePathGenerator:
     source_file_extension = self._extract_file_extension(self.source_file_rel_path)
 
     if not source_file_name:
-      log.debug("Filename cannot be constructed")
+      log.debug('Filename cannot be constructed')
       raise ValueError
 
     if source_file_extension:
-      full_filename = '{}{}'.format(source_file_name, source_file_extension)
+      full_filename = f'{source_file_name}{source_file_extension}'
     else:
       full_filename = source_file_name
 
@@ -220,7 +227,7 @@ class FilePathGenerator:
     # resource_namespace = self._extract_namespace(self.resource_yml)
 
     if not resource_kind:
-      log.debug("Filename cannot be constructed")
+      log.debug('Filename cannot be constructed')
       raise ValueError
 
     elements = []
@@ -253,7 +260,8 @@ def merge_lists_without_duplicates(*lists, key_path: Optional[List] = None):
   for lst in lists:
     for item in lst:
       if item in merged:
-        log.error('Duplicate item \'{}\''.format('->'.join(key_path + ['[{}]'.format(merged.index(item))])))
+        item_path = '->'.join(key_path + [f'[{merged.index(item)}]'])
+        log.error(f'Duplicate item \'{item_path}\'')
         raise MergeError
       else:
         merged.append(item)
@@ -323,8 +331,8 @@ def init_logging(loglevel: str) -> None:
 
 
 def confirm_dialog() -> None:
-  answer = input("Are you sure you want to continue? [y/n] (default: n) ")
-  if answer.lower() not in ["y", "yes"]:
+  answer = input('Are you sure you want to continue? [y/n] (default: n) ')
+  if answer.lower() not in ['y', 'yes']:
     exit()
 
 
@@ -336,7 +344,7 @@ def get_package_name() -> str:
   return get_module_name().replace('_', '-')
 
 
-def get_current_version() -> Version:
+def get_current_version() -> Optional[Version]:
   try:
     return Version(version(get_module_name()))
   except PackageNotFoundError:
@@ -345,14 +353,19 @@ def get_current_version() -> Version:
     return None
 
 
-def get_latest_version() -> Version:
+def get_latest_version() -> Optional[Version]:
   try:
-    pypi_url = 'https://pypi.org/pypi/{}/json'.format(get_module_name())
+    pypi_url = f'https://pypi.org/pypi/{get_module_name()}/json'
     response = urllib.request.urlopen(pypi_url).read().decode()
     return max(Version(s) for s in json.loads(response)['releases'].keys())
   except ssl.SSLCertVerificationError:
-    log.warning('SSL Certificate verification failed. Could not determine latest version of the package. \
-                Likely you have an issue with your local Python installation.')
+    log.warning('SSL Certificate verification failed. Could not determine latest version of the package. '
+                'Likely you have an issue with your local Python installation.')
+    confirm_dialog()
+    return None
+  except urllib.error.URLError:
+    log.warning('Could not connect to PyPI to determine latest version of the package. '
+                'Make sure you have internet access and PyPI is reachable.')
     confirm_dialog()
     return None
 
@@ -369,12 +382,11 @@ def latest_version_check():
     return
 
   if current_version < latest_version:
-    log.warning('You are running {} ({}) but there is a newer version of the package available ({}).'.format(get_package_name(),
-                                                                                                             current_version,
-                                                                                                             latest_version))
+    log.warning(f'You are running {get_package_name()} ({current_version}) but there is a newer version of the '
+                f'package available ({latest_version})')
     confirm_dialog()
   else:
-    log.info('You are using the latest version of {} ({})'.format(get_package_name(), current_version))
+    log.info(f'You are using the latest version of {get_package_name()} ({current_version})')
 
 
 def extract_undefined_variable(message: str) -> str:

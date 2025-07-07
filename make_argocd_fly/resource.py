@@ -5,9 +5,10 @@ import asyncio
 import yaml
 import yaml.composer
 import yaml.parser
+from typing import Optional
 from yaml import SafeDumper
 
-from make_argocd_fly.exceptions import MissingApplicationDirectoryError, InternalError
+from make_argocd_fly.exceptions import ResourceViewerIsFake, InternalError
 
 log = logging.getLogger(__name__)
 
@@ -48,41 +49,46 @@ class ResourceViewer:
     else:
       self.name = os.path.basename(self.element_rel_path)
 
-    self.content = None
-    self.children = []
+    self.content = ''
+    self.children = None
 
   def build(self) -> None:
-    if not os.path.exists(self.root_element_abs_path):
-      raise MissingApplicationDirectoryError(self.root_element_abs_path)
-
     path = os.path.join(self.root_element_abs_path, self.element_rel_path)
-    if not os.path.exists(path):
-      log.error('Path does not exist {}'.format(path))
-      raise InternalError
+    if os.path.exists(path):
+      if self.children is None:
+        self.children = []
 
-    if self.is_dir:
-      for child_name in os.listdir(path):
-        child_rel_path = os.path.join(self.element_rel_path, child_name)
-        child = ResourceViewer(self.root_element_abs_path, child_rel_path, os.path.isdir(os.path.join(self.root_element_abs_path, child_rel_path)))
-        child.build()
-        self.children.append(child)
+      if self.is_dir:
+        for child_name in os.listdir(path):
+          child_rel_path = os.path.join(self.element_rel_path, child_name)
+          child = ResourceViewer(self.root_element_abs_path, child_rel_path, os.path.isdir(os.path.join(self.root_element_abs_path, child_rel_path)))
+          child.build()
+          self.children.append(child)
+      else:
+        try:
+          with open(path) as f:
+            self.content = ''.join(f.readlines())
+        except UnicodeDecodeError:
+          log.warning(f'File is not a text file {path}')
+
+      log.debug(f'Created element ({self})')
     else:
-      try:
-        with open(path) as f:
-          self.content = ''.join(f.readlines())
-      except UnicodeDecodeError:
-        log.warning('File is not a text file {}'.format(path))
+      log.debug(f'Created fake element ({self})')
 
-    log.debug('Created element ({})'.format(self))
+  def _get_child(self, name: str) -> Optional['ResourceViewer']:
+    if self.children is None:
+      raise ResourceViewerIsFake(os.path.join(self.root_element_abs_path, self.element_rel_path))
 
-  def _get_child(self, name: str) -> 'ResourceViewer':
     for child in self.children:
       if child.name == name:
         return child
 
     return None
 
-  def get_element(self, path: str) -> 'ResourceViewer':
+  def get_element(self, path: str) -> Optional['ResourceViewer']:
+    if self.children is None:
+      raise ResourceViewerIsFake(os.path.join(self.root_element_abs_path, self.element_rel_path))
+
     path_split = (os.path.normpath(path)).split('/')
     if len(path_split) > 1:
       child = self._get_child(path_split[0])
@@ -94,10 +100,16 @@ class ResourceViewer:
     return None
 
   def get_children(self) -> list:
+    if self.children is None:
+      raise ResourceViewerIsFake(os.path.join(self.root_element_abs_path, self.element_rel_path))
+
     return self.children
 
   # if `search_subdirs` is a list of subdirs, then only those subdirs will be searched
-  def get_files_children(self, name_pattern: str, search_subdirs: list = None) -> list:
+  def get_files_children(self, name_pattern: str, search_subdirs: list | None = None) -> list:
+    if self.children is None:
+      raise ResourceViewerIsFake(os.path.join(self.root_element_abs_path, self.element_rel_path))
+
     files = []
     for child in self.children:
       if not child.is_dir and re.search(name_pattern, child.name):
@@ -111,6 +123,9 @@ class ResourceViewer:
     return files
 
   def get_dirs_children(self, depth: int = 1) -> list:
+    if self.children is None:
+      raise ResourceViewerIsFake(os.path.join(self.root_element_abs_path, self.element_rel_path))
+
     dirs = []
     for child in self.children:
       if child.is_dir:
@@ -121,7 +136,7 @@ class ResourceViewer:
     return dirs
 
   def __str__(self) -> str:
-    return 'root_path: {}, element_rel_path: {}, is_dir: {}'.format(self.root_element_abs_path, self.element_rel_path, self.is_dir)
+    return f'root_path: {self.root_element_abs_path}, element_rel_path: {self.element_rel_path}, is_dir: {self.is_dir}'
 
 
 class ResourceWriter:
@@ -135,7 +150,7 @@ class ResourceWriter:
       raise InternalError
 
     if file_path in self.resources:
-      log.error('Resource ({}) already exists'.format(file_path))
+      log.error(f'Resource ({file_path}) already exists')
       raise InternalError
 
     self.resources[file_path] = yaml_object

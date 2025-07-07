@@ -13,7 +13,7 @@ from make_argocd_fly.params import populate_params, get_params
 from make_argocd_fly.config import populate_config, get_config
 from make_argocd_fly.utils import init_logging, latest_version_check, get_package_name, get_current_version
 from make_argocd_fly.application import application_factory
-from make_argocd_fly.exceptions import TemplateRenderingError, InternalError, ConfigFileError
+from make_argocd_fly.exceptions import TemplateRenderingError, InternalError, ConfigFileError, KustomizeError
 
 
 logging.basicConfig(level=consts.DEFAULT_LOGLEVEL)
@@ -65,7 +65,7 @@ def run_yamllint() -> None:
                              universal_newlines=True)
   stdout, stderr = process.communicate()
 
-  log.info('{} {}\n\n{}'.format(yamllint.APP_NAME, yamllint.APP_VERSION, stdout))
+  log.info(f'{yamllint.APP_NAME} {yamllint.APP_VERSION}\n\n{stdout}')
 
 
 def run_kube_linter() -> None:
@@ -110,8 +110,8 @@ def main(**kwargs) -> None:
     # TODO: it does not make sense to write yamls on disk and then read them again to run through linters
     run_yamllint()
     run_kube_linter()
-  except TemplateRenderingError as e:
-    log.critical('Error generating application {} in environment {}'.format(e.app_name, e.env_name))
+  except (TemplateRenderingError, KustomizeError) as e:
+    log.critical(f'Error generating application {e.app_name} in environment {e.env_name}')
     exit(1)
   except InternalError:
     log.critical('Internal error')
@@ -142,7 +142,7 @@ def cli_entry_point() -> None:
   parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
   parser.add_argument('--kube-linter', action='store_true', help='Run kube-linter against output directory (https://github.com/stackrox/kube-linter)')
   parser.add_argument('--loglevel', type=str, default=consts.DEFAULT_LOGLEVEL, help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
-  parser.add_argument('--version', action='version', version='{} {}'.format(get_package_name(), get_current_version()), help='Show version')
+  parser.add_argument('--version', action='version', version=f'{get_package_name()} {get_current_version()}', help='Show version')
   args = parser.parse_args()
 
   init_logging(args.loglevel)
