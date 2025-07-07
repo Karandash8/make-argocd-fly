@@ -48,7 +48,7 @@ class CustomFunctionLoader(FunctionLoader):
         self,
         load_func: Callable[[str], Union[str, Tuple[str, str | None, Callable[[], bool] | None]]],
         render_func: Callable[[str], Union[str, Tuple[str, str | None, Callable[[], bool] | None]]],
-        list_func: Callable[[str], List[str]],
+        list_func: Callable[[str], List[ResourceViewer]],
   ) -> None:
     super().__init__(load_func)
     self.render_func = render_func
@@ -65,7 +65,7 @@ class CustomFunctionLoader(FunctionLoader):
 
     return rv
 
-  def list_templates(self, path: str) -> List[str]:
+  def list_templates(self, path: str) -> List[ResourceViewer]:
     return self.list_func(path)
 
 
@@ -176,6 +176,10 @@ class IncludeAllAsYamlListExtension(Extension):
     return nodes.Output([result], lineno=lineno)
 
   def _render(self, path: str) -> str:
+    if not self.environment.loader:
+      log.error("Jinja2 environment loader is not set")
+      raise InternalError
+
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
 
@@ -229,7 +233,7 @@ class JinjaRendererFromViewer(AbstractRenderer):
     log.error(f'Missing file {path}')
     raise MissingFileError(path)
 
-  def _list_templates(self, path: str) -> List[str]:
+  def _list_templates(self, path: str) -> List[ResourceViewer]:
     element = self.viewer.get_element(path)
     if not element or not element.is_dir:
       log.error(f'Provided path {path} is not a directory')
