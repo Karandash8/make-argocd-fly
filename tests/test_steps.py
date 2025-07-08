@@ -214,7 +214,9 @@ def test_RenderYamlStep___generate_file_path__from_yaml_simple(render_yaml_step,
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
-  mock_config.get_app_params_depricated.return_value = {}
+  mock_config.get_app_params_depricated.return_value = {
+    'non_k8s_files_to_render': []
+  }
   mocker.patch('make_argocd_fly.steps.get_config', mock_get_config)
   env_name = "my_env"
   app_name = "my_app"

@@ -1,7 +1,7 @@
 import logging
 
 from make_argocd_fly.exceptions import ConfigFileError
-from make_argocd_fly.consts import AVAILABLE_APP_PARAMS
+from make_argocd_fly.consts import ParamNames
 
 log = logging.getLogger(__name__)
 
@@ -15,9 +15,8 @@ class Params:
 
   def populate_params(self, **kwargs) -> None:
     for param in kwargs:
-      if param not in AVAILABLE_APP_PARAMS:
+      if param not in ParamNames.get_names():
         log.error(f'Unknown parameter "{param}" in Params')
         raise ConfigFileError()
 
     self.__dict__.update(kwargs)
-

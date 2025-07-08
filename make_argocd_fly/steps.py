@@ -12,7 +12,7 @@ try:
 except ImportError:
   from yaml import SafeLoader
 
-from make_argocd_fly.consts import AppParamsNames
+from make_argocd_fly.consts import AppParamsNames, ParamNames
 from make_argocd_fly.config import get_config
 from make_argocd_fly.renderer import YamlRenderer, JinjaRenderer, JinjaRendererFromViewer
 from make_argocd_fly.resource import ResourceViewer, ResourceWriter
@@ -53,12 +53,21 @@ class FindAppsStep(AbstractStep):
       if 'apps' in env_data:
         for app_name in env_data['apps'].keys():
           app_params = self.config.get_app_params_depricated(env_name, app_name)
+          if not app_params:
+            app_params = self.config.get_params(env_name, app_name)
 
-          if AppParamsNames.APP_DEPLOYER in app_params:
-            if (self.parent_app_name == app_params[AppParamsNames.APP_DEPLOYER] and
-                ((AppParamsNames.APP_DEPLOYER_ENV not in app_params and env_name == self.parent_app_env_name) or
-                (AppParamsNames.APP_DEPLOYER_ENV in app_params and self.parent_app_env_name == app_params[AppParamsNames.APP_DEPLOYER_ENV]))):
-              self.apps.append((app_name, env_name))
+            if app_params.parent_app:
+              if (self.parent_app_name == app_params.parent_app and
+                  ((app_params.parent_app_env is None and env_name == self.parent_app_env_name) or
+                   (app_params.parent_app_env is not None and self.parent_app_env_name == app_params.parent_app_env))):
+                self.apps.append((app_name, env_name))
+          else:
+            # DEPRECATED
+            if AppParamsNames.APP_DEPLOYER in app_params:
+              if (self.parent_app_name == app_params[AppParamsNames.APP_DEPLOYER] and
+                  ((AppParamsNames.APP_DEPLOYER_ENV not in app_params and env_name == self.parent_app_env_name) or
+                  (AppParamsNames.APP_DEPLOYER_ENV in app_params and self.parent_app_env_name == app_params[AppParamsNames.APP_DEPLOYER_ENV]))):
+                self.apps.append((app_name, env_name))
 
   def get_apps(self) -> list:
     return self.apps
@@ -70,34 +79,60 @@ class BaseResourceGenerationStep(AbstractStep):
     self.env_name = None
     self.app_name = None
 
+  # flake8: noqa: C901
   def _generate_file_path(self, resource_yml: str, source_file_path: Optional[str] = None) -> str:
     if not self.env_name or not self.app_name:
       log.error('Step is not configured')
       raise InternalError
 
-    app_params = get_config().get_app_params_depricated(self.env_name, self.app_name)
     generator = FilePathGenerator(resource_yml, source_file_path)
+    app_params = get_config().get_app_params_depricated(self.env_name, self.app_name)
+    if not app_params:
+      app_params = get_config().get_params(self.env_name, self.app_name)
 
-    # TODO use @singledispatch here
-    if source_file_path and AppParamsNames.NON_K8S_FILES_TO_RENDER in app_params:
-      if not isinstance(app_params[AppParamsNames.NON_K8S_FILES_TO_RENDER], list):
-        log.error(f'Application parameter {AppParamsNames.NON_K8S_FILES_TO_RENDER} must be a list')
-        raise InternalError
+      # TODO use @singledispatch here
+      if source_file_path and app_params.non_k8s_files_to_render:
+        if not isinstance(app_params.non_k8s_files_to_render, list):
+          log.error(f'Application parameter {ParamNames.NON_K8S_FILES_TO_RENDER} must be a list')
+          raise InternalError
 
-      for element in app_params[AppParamsNames.NON_K8S_FILES_TO_RENDER]:
-        if source_file_path.startswith(element):
-          return os.path.join(get_app_rel_path(self.env_name, self.app_name), generator.generate_from_source_file())
+        for element in app_params.non_k8s_files_to_render:
+          if source_file_path.startswith(element):
+            return os.path.join(get_app_rel_path(self.env_name, self.app_name), generator.generate_from_source_file())
 
-    # TODO use @singledispatch here
-    if source_file_path and AppParamsNames.EXCLUDE_RENDERING in app_params:
-      if not isinstance(app_params[AppParamsNames.EXCLUDE_RENDERING], list):
-        log.error(f'Application parameter {AppParamsNames.EXCLUDE_RENDERING} must be a list')
-        raise InternalError
+      # TODO use @singledispatch here
+      if source_file_path and app_params.exclude_rendering:
+        if not isinstance(app_params.exclude_rendering, list):
+          log.error(f'Application parameter {ParamNames.EXCLUDE_RENDERING} must be a list')
+          raise InternalError
 
-      for element in app_params[AppParamsNames.EXCLUDE_RENDERING]:
-        if source_file_path.startswith(element):
-          log.debug(f'Exclude rendering for file {source_file_path}')
-          raise ValueError
+        for element in app_params.exclude_rendering:
+          if source_file_path.startswith(element):
+            log.debug(f'Exclude rendering for file {source_file_path}')
+            raise ValueError
+    else:
+      # DEPRECATED
+
+      # TODO use @singledispatch here
+      if source_file_path and AppParamsNames.NON_K8S_FILES_TO_RENDER in app_params:
+        if not isinstance(app_params[AppParamsNames.NON_K8S_FILES_TO_RENDER], list):
+          log.error(f'Application parameter {AppParamsNames.NON_K8S_FILES_TO_RENDER} must be a list')
+          raise InternalError
+
+        for element in app_params[AppParamsNames.NON_K8S_FILES_TO_RENDER]:
+          if source_file_path.startswith(element):
+            return os.path.join(get_app_rel_path(self.env_name, self.app_name), generator.generate_from_source_file())
+
+      # TODO use @singledispatch here
+      if source_file_path and AppParamsNames.EXCLUDE_RENDERING in app_params:
+        if not isinstance(app_params[AppParamsNames.EXCLUDE_RENDERING], list):
+          log.error(f'Application parameter {AppParamsNames.EXCLUDE_RENDERING} must be a list')
+          raise InternalError
+
+        for element in app_params[AppParamsNames.EXCLUDE_RENDERING]:
+          if source_file_path.startswith(element):
+            log.debug(f'Exclude rendering for file {source_file_path}')
+            raise ValueError
 
     return os.path.join(get_app_rel_path(self.env_name, self.app_name), generator.generate_from_k8s_resource())
 
