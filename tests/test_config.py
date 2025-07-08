@@ -1,7 +1,10 @@
 import pytest
 import textwrap
-from make_argocd_fly.config import populate_config, Config, _read_config_file, _list_config_files
+from unittest.mock import MagicMock
+
+from make_argocd_fly.config import populate_config, get_config, Config, _read_config_file, _list_config_files
 from make_argocd_fly.exceptions import ConfigFileError, InternalError
+from make_argocd_fly.utils import check_lists_equal
 
 
 ##################
@@ -526,17 +529,17 @@ def test_Config__get_app_vars__undefined_vars(tmp_path):
   assert config.get_app_vars('test_env', 'test_app') == {}
 
 ##################
-### Config.get_global_params
+### Config._get_global_params
 ##################
 
-def test_Config__get_global_params__config_not_populated(tmp_path, caplog):
+def test_Config___get_global_params__config_not_populated(tmp_path, caplog):
   config = Config()
 
   with pytest.raises(InternalError):
-    config.get_global_params()
+    config._get_global_params()
   assert 'Config is not populated' in caplog.text
 
-def test_Config__get_global_params__valid_config(tmp_path):
+def test_Config___get_global_params__valid_config(tmp_path):
   CONFIG = '''\
     params:
       test_params: var
@@ -555,9 +558,9 @@ def test_Config__get_global_params__valid_config(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config.get_global_params() == {'test_params': 'var', 'test_params2': 'var'}
+  assert config._get_global_params() == {'test_params': 'var', 'test_params2': 'var'}
 
-def test_Config__get_global_params__not_valid_config(tmp_path):
+def test_Config___get_global_params__not_valid_config(tmp_path):
   CONFIG = '''\
     not_params:
       test_params: var
@@ -576,7 +579,326 @@ def test_Config__get_global_params__not_valid_config(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config.get_global_params() == {}
+  assert config._get_global_params() == {}
+
+##################
+### Config._get_env_params
+##################
+
+def test_Config___get_env_params__valid_config(tmp_path):
+  CONFIG = '''\
+    envs:
+      test_env:
+        params:
+          test_param: param
+          test_param2: param
+      test_env2:
+        params:
+          test_param3: param
+          test_param4: param
+    '''
+
+  root_dir = tmp_path
+  source_dir = 'source'
+  config_dir = root_dir / 'config'
+  config_dir.mkdir()
+
+  config_file = config_dir / 'config.yml'
+  config_file.write_text(textwrap.dedent(CONFIG))
+  source_dir_path = tmp_path / source_dir
+  source_dir_path.mkdir()
+
+  config = populate_config(root_dir=root_dir)
+
+  assert config._get_env_params('test_env') == {'test_param': 'param', 'test_param2': 'param'}
+  assert config._get_env_params('test_env2') == {'test_param3': 'param', 'test_param4': 'param'}
+
+def test_Config___get_env_params__undefined_params(tmp_path):
+  CONFIG = '''\
+    envs:
+      test_env: {}
+    '''
+
+  root_dir = tmp_path
+  source_dir = 'source'
+  config_dir = root_dir / 'config'
+  config_dir.mkdir()
+
+  config_file = config_dir / 'config.yml'
+  config_file.write_text(textwrap.dedent(CONFIG))
+  source_dir_path = tmp_path / source_dir
+  source_dir_path.mkdir()
+
+  config = populate_config(root_dir=root_dir)
+
+  assert config._get_env_params('test_env') == {}
+
+def test_Config___get_env_params__missing_env(tmp_path):
+  CONFIG = '''\
+    envs:
+      test_env: {}
+    '''
+
+  root_dir = tmp_path
+  source_dir = 'source'
+  config_dir = root_dir / 'config'
+  config_dir.mkdir()
+
+  config_file = config_dir / 'config.yml'
+  config_file.write_text(textwrap.dedent(CONFIG))
+  source_dir_path = tmp_path / source_dir
+  source_dir_path.mkdir()
+
+  config = populate_config(root_dir=root_dir)
+
+  with pytest.raises(ConfigFileError):
+    config._get_env_params('test_env2')
+
+##################
+### Config._get_app_params
+##################
+
+def test_Config___get_app_params__valid_config(tmp_path):
+  CONFIG = '''\
+    envs:
+      test_env:
+        apps:
+          test_app:
+            params:
+              test_param: param
+              test_param2: param
+    '''
+
+  root_dir = tmp_path
+  source_dir = 'source'
+  config_dir = root_dir / 'config'
+  config_dir.mkdir()
+
+  config_file = config_dir / 'config.yml'
+  config_file.write_text(textwrap.dedent(CONFIG))
+  source_dir_path = tmp_path / source_dir
+  source_dir_path.mkdir()
+
+  config = populate_config(root_dir=root_dir)
+
+  assert config._get_app_params('test_env', 'test_app') == {'test_param': 'param', 'test_param2': 'param'}
+
+def test_Config___get_app_params__missing_env(tmp_path):
+  CONFIG = '''\
+    envs:
+      test_env: {}
+    '''
+
+  root_dir = tmp_path
+  source_dir = 'source'
+  config_dir = root_dir / 'config'
+  config_dir.mkdir()
+
+  config_file = config_dir / 'config.yml'
+  config_file.write_text(textwrap.dedent(CONFIG))
+  source_dir_path = tmp_path / source_dir
+  source_dir_path.mkdir()
+
+  config = populate_config(root_dir=root_dir)
+
+  with pytest.raises(ConfigFileError):
+    config._get_app_params('test_env2', 'test_app')
+
+def test_Config___get_app_params__undefined_apps(tmp_path):
+  CONFIG = '''\
+    envs:
+      test_env: {}
+    '''
+
+  root_dir = tmp_path
+  source_dir = 'source'
+  config_dir = root_dir / 'config'
+  config_dir.mkdir()
+
+  config_file = config_dir / 'config.yml'
+  config_file.write_text(textwrap.dedent(CONFIG))
+  source_dir_path = tmp_path / source_dir
+  source_dir_path.mkdir()
+
+  config = populate_config(root_dir=root_dir)
+
+  with pytest.raises(ConfigFileError):
+    config._get_app_params('test_env', 'test_app')
+
+def test_Config___get_app_params__missing_app(tmp_path):
+  CONFIG = '''\
+    envs:
+      test_env:
+        apps:
+          test_app: {}
+    '''
+
+  root_dir = tmp_path
+  source_dir = 'source'
+  config_dir = root_dir / 'config'
+  config_dir.mkdir()
+
+  config_file = config_dir / 'config.yml'
+  config_file.write_text(textwrap.dedent(CONFIG))
+  source_dir_path = tmp_path / source_dir
+  source_dir_path.mkdir()
+
+  config = populate_config(root_dir=root_dir)
+
+  with pytest.raises(ConfigFileError):
+    config._get_app_params('test_env', 'test_app2')
+
+def test_Config___get_app_params__undefined_params(tmp_path):
+  CONFIG = '''\
+    envs:
+      test_env:
+        apps:
+          test_app: {}
+    '''
+
+  root_dir = tmp_path
+  source_dir = 'source'
+  config_dir = root_dir / 'config'
+  config_dir.mkdir()
+
+  config_file = config_dir / 'config.yml'
+  config_file.write_text(textwrap.dedent(CONFIG))
+  source_dir_path = tmp_path / source_dir
+  source_dir_path.mkdir()
+
+  config = populate_config(root_dir=root_dir)
+
+  assert config._get_app_params('test_env', 'test_app') == {}
+
+##################
+### Config.get_params
+##################
+
+def test_Config__get_params__empty_up_to_global(mocker):
+  global_params_return_value = {}
+  env_params_return_value = {}
+  app_params_return_value = {}
+
+  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+
+    params = get_config().get_params()
+    assert params.parent_app is None
+    assert params.parent_app_env is None
+    assert check_lists_equal(params.non_k8s_files_to_render, [])
+    assert check_lists_equal(params.exclude_rendering, [])
+
+def test_Config__get_params__empty_up_to_env(mocker):
+  global_params_return_value = {}
+  env_params_return_value = {}
+  app_params_return_value = {}
+
+  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+
+    params = get_config().get_params(env_name='test_env')
+    assert params.parent_app is None
+    assert params.parent_app_env is None
+    assert check_lists_equal(params.non_k8s_files_to_render, [])
+    assert check_lists_equal(params.exclude_rendering, [])
+
+def test_Config__get_params__empty_up_to_app(mocker):
+  global_params_return_value = {}
+  env_params_return_value = {}
+  app_params_return_value = {}
+
+  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+
+    params = get_config().get_params(env_name='test_env', app_name='test_app')
+    assert params.parent_app is None
+    assert params.parent_app_env is None
+    assert check_lists_equal(params.non_k8s_files_to_render, [])
+    assert check_lists_equal(params.exclude_rendering, [])
+
+def test_Config__get_params__global_only(mocker):
+  global_params_return_value = {'parent_app': 'parent_app_value',
+                                'parent_app_env': 'parent_app_env_value',
+                                'non_k8s_files_to_render': ['file1', 'file2'],
+                                'exclude_rendering': ['exclude1', 'exclude2']}
+  env_params_return_value = {}
+  app_params_return_value = {}
+
+  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+
+    params = get_config().get_params(env_name='test_env', app_name='test_app')
+    assert params.parent_app == 'parent_app_value'
+    assert params.parent_app_env == 'parent_app_env_value'
+    assert check_lists_equal(params.non_k8s_files_to_render, ['file1', 'file2'])
+    assert check_lists_equal(params.exclude_rendering, ['exclude1', 'exclude2'])
+
+def test_Config__get_params__env_override(mocker):
+  global_params_return_value = {'parent_app': 'parent_app_value',
+                                'parent_app_env': 'parent_app_env_value',
+                                'non_k8s_files_to_render': ['file1', 'file2'],
+                                'exclude_rendering': ['exclude1', 'exclude2']}
+  env_params_return_value = {'parent_app': 'env_parent_app_value',
+                             'parent_app_env': 'env_parent_app_env_value',
+                             'non_k8s_files_to_render': ['env_file1', 'env_file2'],
+                             'exclude_rendering': ['env_exclude1', 'env_exclude2']}
+  app_params_return_value = {}
+
+  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+
+    params = get_config().get_params(env_name='test_env', app_name='test_app')
+    assert params.parent_app == 'env_parent_app_value'
+    assert params.parent_app_env == 'env_parent_app_env_value'
+    assert check_lists_equal(params.non_k8s_files_to_render, ['env_file1', 'env_file2'])
+    assert check_lists_equal(params.exclude_rendering, ['env_exclude1', 'env_exclude2'])
+
+def test_Config__get_params__app_override(mocker):
+  global_params_return_value = {'parent_app': 'parent_app_value',
+                                'parent_app_env': 'parent_app_env_value',
+                                'non_k8s_files_to_render': ['file1', 'file2'],
+                                'exclude_rendering': ['exclude1', 'exclude2']}
+  env_params_return_value = {'parent_app': 'env_parent_app_value',
+                             'parent_app_env': 'env_parent_app_env_value',
+                             'non_k8s_files_to_render': ['env_file1', 'env_file2'],
+                             'exclude_rendering': ['env_exclude1', 'env_exclude2']}
+  app_params_return_value = {'parent_app': 'app_parent_app_value',
+                             'parent_app_env': 'app_parent_app_env_value',
+                             'non_k8s_files_to_render': ['app_file1', 'app_file2'],
+                             'exclude_rendering': ['app_exclude1', 'app_exclude2']}
+
+  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+
+    params = get_config().get_params(env_name='test_env', app_name='test_app')
+    assert params.parent_app == 'app_parent_app_value'
+    assert params.parent_app_env == 'app_parent_app_env_value'
+    assert check_lists_equal(params.non_k8s_files_to_render, ['app_file1', 'app_file2'])
+    assert check_lists_equal(params.exclude_rendering, ['app_exclude1', 'app_exclude2'])
+
+def test_Config__get_params__random(mocker):
+  global_params_return_value = {'parent_app': 'parent_app_value',
+                                'non_k8s_files_to_render': ['file1', 'file2'],
+                                'exclude_rendering': ['exclude1', 'exclude2']}
+  env_params_return_value = {'non_k8s_files_to_render': ['env_file1', 'env_file2'],
+                             'exclude_rendering': ['env_exclude1', 'env_exclude2']}
+  app_params_return_value = {'exclude_rendering': ['app_exclude1', 'app_exclude2']}
+
+  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+
+    params = get_config().get_params(env_name='test_env', app_name='test_app')
+    assert params.parent_app == 'parent_app_value'
+    assert params.parent_app_env is None
+    assert check_lists_equal(params.non_k8s_files_to_render, ['env_file1', 'env_file2'])
+    assert check_lists_equal(params.exclude_rendering, ['app_exclude1', 'app_exclude2'])
 
 ##################
 ### Config.get_app_params_depricated

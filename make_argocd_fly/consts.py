@@ -15,6 +15,13 @@ KEYWORK_APPS = 'apps'
 KEYWORK_VARS = 'vars'
 KEYWORK_PARAMS = 'params'
 
+AVAILABLE_APP_PARAMS = [
+  'parent_app',
+  'parent_app_env',
+  'non_k8s_files_to_render',
+  'exclude_rendering',
+]
+
 
 class AppParamsNames:
   APP_DEPLOYER = 'app_deployer'

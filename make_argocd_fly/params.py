@@ -1,0 +1,23 @@
+import logging
+
+from make_argocd_fly.exceptions import ConfigFileError
+from make_argocd_fly.consts import AVAILABLE_APP_PARAMS
+
+log = logging.getLogger(__name__)
+
+
+class Params:
+  def __init__(self) -> None:
+    self.parent_app = None
+    self.parent_app_env = None
+    self.non_k8s_files_to_render = []
+    self.exclude_rendering = []
+
+  def populate_params(self, **kwargs) -> None:
+    for param in kwargs:
+      if param not in AVAILABLE_APP_PARAMS:
+        log.error(f'Unknown parameter "{param}" in Params')
+        raise ConfigFileError()
+
+    self.__dict__.update(kwargs)
+
