@@ -83,7 +83,14 @@ class Config:
     else:
       return {}
 
-  def get_app_params(self, env_name: str, app_name: str) -> dict:
+  def get_global_params(self) -> dict:
+    if self.config is None:
+      log.error('Config is not populated')
+      raise InternalError
+
+    return self.config[consts.KEYWORK_PARAMS] if consts.KEYWORK_PARAMS in self.config else {}
+
+  def get_app_params_depricated(self, env_name: str, app_name: str) -> dict:
     envs = self.get_envs()
     if env_name not in envs:
       log.error(f'Environment {env_name} is not defined')
@@ -93,8 +100,15 @@ class Config:
       log.error(f'Application {app_name} is not defined in environment {env_name}')
       raise ConfigFileError
 
-    return {key: value for key, value in envs[env_name][consts.KEYWORK_APPS][app_name].items() if key != consts.KEYWORK_VARS}
+    app_params = {key: value for key, value in envs[env_name][consts.KEYWORK_APPS][app_name].items() if key != consts.KEYWORK_VARS}
+    if app_params:
+      return self.return_app_params_depricated(app_params)
+    else:
+      return {}
 
+  @deprecated(version='v0.2.15', reason='Application parameters under application definition are deprecated, use scoped `params` keywork instead')
+  def return_app_params_depricated(self, params: dict) -> dict:
+    return params
 
 config = Config()
 

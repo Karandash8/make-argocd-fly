@@ -52,7 +52,7 @@ class FindAppsStep(AbstractStep):
     for env_name, env_data in self.config.get_envs().items():
       if 'apps' in env_data:
         for app_name in env_data['apps'].keys():
-          app_params = self.config.get_app_params(env_name, app_name)
+          app_params = self.config.get_app_params_depricated(env_name, app_name)
 
           if AppParamsNames.APP_DEPLOYER in app_params:
             if (self.parent_app_name == app_params[AppParamsNames.APP_DEPLOYER] and
@@ -75,7 +75,7 @@ class BaseResourceGenerationStep(AbstractStep):
       log.error('Step is not configured')
       raise InternalError
 
-    app_params = get_config().get_app_params(self.env_name, self.app_name)
+    app_params = get_config().get_app_params_depricated(self.env_name, self.app_name)
     generator = FilePathGenerator(resource_yml, source_file_path)
 
     # TODO use @singledispatch here
