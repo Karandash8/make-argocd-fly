@@ -137,12 +137,12 @@ class Config:
     app_params = {key: value for key, value in envs[env_name][consts.KEYWORK_APPS][app_name].items() if
                   (key != consts.KEYWORK_VARS) and (key != consts.KEYWORK_PARAMS)}
     if app_params:
-      return self.return_app_params_depricated(app_params)
+      return self.return_app_params_deprecated(app_params)
     else:
       return {}
 
   @deprecated(version='v0.2.15', reason='Application parameters under application definition are deprecated, use scoped `params` keyword instead')
-  def return_app_params_depricated(self, params: dict) -> dict:
+  def return_app_params_deprecated(self, params: dict) -> dict:
     return params
 
 
