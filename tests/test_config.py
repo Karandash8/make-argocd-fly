@@ -901,10 +901,10 @@ def test_Config__get_params__random(mocker):
     assert check_lists_equal(params.exclude_rendering, ['app_exclude1', 'app_exclude2'])
 
 ##################
-### Config.get_app_params_depricated
+### Config.get_app_params_deprecated
 ##################
 
-def test_Config__get_app_params_depricated__valid_config(tmp_path):
+def test_Config__get_app_params_deprecated__valid_config(tmp_path):
   CONFIG = '''\
     envs:
       test_env:
@@ -927,9 +927,9 @@ def test_Config__get_app_params_depricated__valid_config(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config.get_app_params_depricated('test_env', 'test_app') == {'param': 'param', 'param2': 'param'}
+  assert config.get_app_params_deprecated('test_env', 'test_app') == {'param': 'param', 'param2': 'param'}
 
-def test_Config__get_app_params_depricated__missing_env(tmp_path):
+def test_Config__get_app_params_deprecated__missing_env(tmp_path):
   CONFIG = '''\
     envs:
       test_env: {}
@@ -948,9 +948,9 @@ def test_Config__get_app_params_depricated__missing_env(tmp_path):
   config = populate_config(root_dir=root_dir)
 
   with pytest.raises(ConfigFileError):
-    config.get_app_params_depricated('test_env2', 'test_app')
+    config.get_app_params_deprecated('test_env2', 'test_app')
 
-def test_Config__get_app_params_depricated__undefined_apps(tmp_path):
+def test_Config__get_app_params_deprecated__undefined_apps(tmp_path):
   CONFIG = '''\
     envs:
       test_env: {}
@@ -969,9 +969,9 @@ def test_Config__get_app_params_depricated__undefined_apps(tmp_path):
   config = populate_config(root_dir=root_dir)
 
   with pytest.raises(ConfigFileError):
-    config.get_app_params_depricated('test_env', 'test_app')
+    config.get_app_params_deprecated('test_env', 'test_app')
 
-def test_Config__get_app_params_depricated__missing_app(tmp_path):
+def test_Config__get_app_params_deprecated__missing_app(tmp_path):
   CONFIG = '''\
     envs:
       test_env:
@@ -992,5 +992,5 @@ def test_Config__get_app_params_depricated__missing_app(tmp_path):
   config = populate_config(root_dir=root_dir)
 
   with pytest.raises(ConfigFileError):
-    config.get_app_params_depricated('test_env', 'test_app2')
+    config.get_app_params_deprecated('test_env', 'test_app2')
 

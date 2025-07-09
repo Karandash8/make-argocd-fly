@@ -52,7 +52,7 @@ class FindAppsStep(AbstractStep):
     for env_name, env_data in self.config.get_envs().items():
       if 'apps' in env_data:
         for app_name in env_data['apps'].keys():
-          app_params = self.config.get_app_params_depricated(env_name, app_name)
+          app_params = self.config.get_app_params_deprecated(env_name, app_name)
           if not app_params:
             app_params = self.config.get_params(env_name, app_name)
 
@@ -86,7 +86,7 @@ class BaseResourceGenerationStep(AbstractStep):
       raise InternalError
 
     generator = FilePathGenerator(resource_yml, source_file_path)
-    app_params = get_config().get_app_params_depricated(self.env_name, self.app_name)
+    app_params = get_config().get_app_params_deprecated(self.env_name, self.app_name)
     if not app_params:
       app_params = get_config().get_params(self.env_name, self.app_name)
 

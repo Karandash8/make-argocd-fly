@@ -124,7 +124,7 @@ class Config:
 
     return params
 
-  def get_app_params_depricated(self, env_name: str, app_name: str) -> dict:
+  def get_app_params_deprecated(self, env_name: str, app_name: str) -> dict:
     envs = self.get_envs()
     if env_name not in envs:
       log.error(f'Environment {env_name} is not defined')
