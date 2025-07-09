@@ -1,0 +1,15 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: thanos-sidecar-2
+  namespace: kube-default
+data: |-
+  {
+    "test": "jsoninclude",
+    "test_2": "{{ variable }}"
+  }
+data_2: 'hello: world'
+data_3: |-
+  hello: kube-default
+  var_2: value_1

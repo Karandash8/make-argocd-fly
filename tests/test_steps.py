@@ -58,11 +58,14 @@ async def test_FindAppsStep__run__single_app_same_env(tmp_path):
     '''
 
   root_dir = tmp_path
-  config_file = tmp_path / 'config.yml'
+  config_dir = root_dir / 'config'
+  config_dir.mkdir()
+
+  config_file = config_dir / 'config.yml'
   config_file.write_text(textwrap.dedent(CONFIG))
   source_dir = tmp_path / 'source'
   source_dir.mkdir()
-  populate_config(root_dir, config_file, source_dir)
+  populate_config(root_dir=root_dir, config_dir=config_dir, source_dir=source_dir)
 
   parent_app_env_name = "test_env"
   parent_app_name = "bootstrap"
@@ -98,11 +101,14 @@ async def test_FindAppsStep__run__multiple_apps_same_env(tmp_path):
   '''
 
   root_dir = tmp_path
-  config_file = tmp_path / 'config.yml'
+  config_dir = root_dir / 'config'
+  config_dir.mkdir()
+
+  config_file = config_dir / 'config.yml'
   config_file.write_text(textwrap.dedent(CONFIG))
   source_dir = tmp_path / 'source'
   source_dir.mkdir()
-  populate_config(root_dir, config_file, source_dir)
+  populate_config(root_dir=root_dir, config_dir=config_dir, source_dir=source_dir)
 
   parent_app_name = "bootstrap"
   parent_app_env_name = "test_env"
@@ -141,11 +147,14 @@ async def test_FindAppsStep__run__multiple_apps_different_envs(tmp_path):
   '''
 
   root_dir = tmp_path
-  config_file = tmp_path / 'config.yml'
+  config_dir = root_dir / 'config'
+  config_dir.mkdir()
+
+  config_file = config_dir / 'config.yml'
   config_file.write_text(textwrap.dedent(CONFIG))
   source_dir = tmp_path / 'source'
   source_dir.mkdir()
-  populate_config(root_dir, config_file, source_dir)
+  populate_config(root_dir=root_dir, config_dir=config_dir, source_dir=source_dir)
 
   parent_app_name = "bootstrap"
   parent_app_env_name = "test_env"
@@ -205,7 +214,9 @@ def test_RenderYamlStep___generate_file_path__from_yaml_simple(render_yaml_step,
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
-  mock_config.get_app_params.return_value = {}
+  mock_config.get_app_params_deprecated.return_value = {
+    'non_k8s_files_to_render': []
+  }
   mocker.patch('make_argocd_fly.steps.get_config', mock_get_config)
   env_name = "my_env"
   app_name = "my_app"
@@ -223,13 +234,13 @@ def test_RenderYamlStep___generate_file_path__from_yaml_simple(render_yaml_step,
   render_yaml_step.configure(env_name, app_name, yml_children)
 
   assert render_yaml_step._generate_file_path(resource_yml, source_file_path) == 'my_env/my_app/path/deployment_grafana.yml'
-  mock_config.get_app_params.assert_called_once_with(env_name, app_name)
+  mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render(render_yaml_step, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
-  mock_config.get_app_params.return_value = {
+  mock_config.get_app_params_deprecated.return_value = {
     'non_k8s_files_to_render': ['path/file.yml']
   }
   mocker.patch('make_argocd_fly.steps.get_config', mock_get_config)
@@ -245,13 +256,13 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render(render_yam
   render_yaml_step.configure(env_name, app_name, yml_children)
 
   assert render_yaml_step._generate_file_path(resource_yml, source_file_path) == 'my_env/my_app/path/file.yml'
-  mock_config.get_app_params.assert_called_once_with(env_name, app_name)
+  mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_j2(render_yaml_step, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
-  mock_config.get_app_params.return_value = {
+  mock_config.get_app_params_deprecated.return_value = {
     'non_k8s_files_to_render': ['path/file.yml.j2']
   }
   mocker.patch('make_argocd_fly.steps.get_config', mock_get_config)
@@ -267,14 +278,14 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_j2(rend
   render_yaml_step.configure(env_name, app_name, yml_children)
 
   assert render_yaml_step._generate_file_path(resource_yml, source_file_path) == 'my_env/my_app/path/file.yml'
-  mock_config.get_app_params.assert_called_once_with(env_name, app_name)
+  mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_not_in_the_list(render_yaml_step, mocker, caplog):
   caplog.set_level(logging.DEBUG)
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
-  mock_config.get_app_params.return_value = {
+  mock_config.get_app_params_deprecated.return_value = {
     'non_k8s_files_to_render': ['path/file_1.yml']
   }
   mocker.patch('make_argocd_fly.steps.get_config', mock_get_config)
@@ -293,13 +304,13 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_not_in_the
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
   assert 'Filename cannot be constructed'
 
-  mock_config.get_app_params.assert_called_once_with(env_name, app_name)
+  mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_dir(render_yaml_step, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
-  mock_config.get_app_params.return_value = {
+  mock_config.get_app_params_deprecated.return_value = {
     'non_k8s_files_to_render': ['path/']
   }
   mocker.patch('make_argocd_fly.steps.get_config', mock_get_config)
@@ -315,13 +326,13 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_dir(ren
   render_yaml_step.configure(env_name, app_name, yml_children)
 
   assert render_yaml_step._generate_file_path(resource_yml, source_file_path) == 'my_env/my_app/path/file.yml'
-  mock_config.get_app_params.assert_called_once_with(env_name, app_name)
+  mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_dir_2(render_yaml_step, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
-  mock_config.get_app_params.return_value = {
+  mock_config.get_app_params_deprecated.return_value = {
     'non_k8s_files_to_render': ['path']
   }
   mocker.patch('make_argocd_fly.steps.get_config', mock_get_config)
@@ -337,13 +348,13 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_dir_2(r
   render_yaml_step.configure(env_name, app_name, yml_children)
 
   assert render_yaml_step._generate_file_path(resource_yml, source_file_path) == 'my_env/my_app/path/file.yml'
-  mock_config.get_app_params.assert_called_once_with(env_name, app_name)
+  mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_str(render_yaml_step, mocker, caplog):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
-  mock_config.get_app_params.return_value = {
+  mock_config.get_app_params_deprecated.return_value = {
     'non_k8s_files_to_render': 'path/file.yml'
   }
   mocker.patch('make_argocd_fly.steps.get_config', mock_get_config)
@@ -361,14 +372,14 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_str(ren
   with pytest.raises(InternalError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
   assert f'Application parameter {AppParamsNames.NON_K8S_FILES_TO_RENDER} must be a list' in caplog.text
-  mock_config.get_app_params.assert_called_once_with(env_name, app_name)
+  mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__exclude_rendering(render_yaml_step, mocker, caplog):
   caplog.set_level(logging.DEBUG)
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
-  mock_config.get_app_params.return_value = {
+  mock_config.get_app_params_deprecated.return_value = {
     'exclude_rendering': ['path/file.yml']
   }
   mocker.patch('make_argocd_fly.steps.get_config', mock_get_config)
@@ -386,14 +397,14 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering(render_yaml_step
   with pytest.raises(ValueError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
   assert f'Exclude rendering for file {source_file_path}' in caplog.text
-  mock_config.get_app_params.assert_called_once_with(env_name, app_name)
+  mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir(render_yaml_step, mocker, caplog):
   caplog.set_level(logging.DEBUG)
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
-  mock_config.get_app_params.return_value = {
+  mock_config.get_app_params_deprecated.return_value = {
     'exclude_rendering': ['path/']
   }
   mocker.patch('make_argocd_fly.steps.get_config', mock_get_config)
@@ -411,14 +422,14 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir(render_ya
   with pytest.raises(ValueError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
   assert f'Exclude rendering for file {source_file_path}' in caplog.text
-  mock_config.get_app_params.assert_called_once_with(env_name, app_name)
+  mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir_2(render_yaml_step, mocker, caplog):
   caplog.set_level(logging.DEBUG)
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
-  mock_config.get_app_params.return_value = {
+  mock_config.get_app_params_deprecated.return_value = {
     'exclude_rendering': ['path']
   }
   mocker.patch('make_argocd_fly.steps.get_config', mock_get_config)
@@ -436,14 +447,14 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir_2(render_
   with pytest.raises(ValueError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
   assert f'Exclude rendering for file {source_file_path}' in caplog.text
-  mock_config.get_app_params.assert_called_once_with(env_name, app_name)
+  mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
 def test_RenderYamlStep___generate_file_path__exclude_rendering_as_str(render_yaml_step, mocker, caplog):
   caplog.set_level(logging.DEBUG)
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
-  mock_config.get_app_params.return_value = {
+  mock_config.get_app_params_deprecated.return_value = {
     'exclude_rendering': 'path/'
   }
   mocker.patch('make_argocd_fly.steps.get_config', mock_get_config)
@@ -461,4 +472,4 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering_as_str(render_ya
   with pytest.raises(InternalError):
     render_yaml_step._generate_file_path(resource_yml, source_file_path)
   assert f'Application parameter {AppParamsNames.EXCLUDE_RENDERING} must be a list' in caplog.text
-  mock_config.get_app_params.assert_called_once_with(env_name, app_name)
+  mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)

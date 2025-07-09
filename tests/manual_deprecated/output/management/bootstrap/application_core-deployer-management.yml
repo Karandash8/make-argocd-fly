@@ -1,0 +1,20 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: core-deployer-management
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: url
+    targetRevision: revision
+    path: output/management/core_deployer
+  destination:
+    server: management-api-server
+    namespace: kube-default
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true

@@ -1,0 +1,9 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: grafana
+  namespace: kube-default
+  labels:
+    version: 1.1.1
+    var_4: value_3

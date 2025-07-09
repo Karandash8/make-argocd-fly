@@ -5,7 +5,8 @@ import os
 from deprecated import deprecated
 
 from make_argocd_fly import consts
-from make_argocd_fly.utils import build_path, merge_dicts_without_duplicates
+from make_argocd_fly.params import Params
+from make_argocd_fly.utils import build_path, merge_dicts_without_duplicates, merge_dicts_with_overrides
 from make_argocd_fly.exceptions import InternalError, ConfigFileError, MergeError
 
 
@@ -83,7 +84,22 @@ class Config:
     else:
       return {}
 
-  def get_app_params(self, env_name: str, app_name: str) -> dict:
+  def _get_global_params(self) -> dict[str, str]:
+    if self.config is None:
+      log.error('Config is not populated')
+      raise InternalError
+
+    return self.config[consts.KEYWORK_PARAMS] if consts.KEYWORK_PARAMS in self.config else {}
+
+  def _get_env_params(self, env_name: str) -> dict[str, str]:
+    envs = self.get_envs()
+    if env_name not in envs:
+      log.error(f'Environment {env_name} is not defined')
+      raise ConfigFileError
+
+    return envs[env_name][consts.KEYWORK_PARAMS] if consts.KEYWORK_PARAMS in envs[env_name] else {}
+
+  def _get_app_params(self, env_name: str, app_name: str) -> dict[str, str]:
     envs = self.get_envs()
     if env_name not in envs:
       log.error(f'Environment {env_name} is not defined')
@@ -93,7 +109,41 @@ class Config:
       log.error(f'Application {app_name} is not defined in environment {env_name}')
       raise ConfigFileError
 
-    return {key: value for key, value in envs[env_name][consts.KEYWORK_APPS][app_name].items() if key != consts.KEYWORK_VARS}
+    if consts.KEYWORK_PARAMS in envs[env_name][consts.KEYWORK_APPS][app_name]:
+      return envs[env_name][consts.KEYWORK_APPS][app_name][consts.KEYWORK_PARAMS]
+    else:
+      return {}
+
+  def get_params(self, env_name: str | None = None, app_name: str | None = None) -> Params:
+    global_params = self._get_global_params()
+    env_params = self._get_env_params(env_name) if env_name else {}
+    app_params = self._get_app_params(env_name, app_name) if env_name and app_name else {}
+
+    params = Params()
+    params.populate_params(**merge_dicts_with_overrides(global_params, env_params, app_params))
+
+    return params
+
+  def get_app_params_deprecated(self, env_name: str, app_name: str) -> dict:
+    envs = self.get_envs()
+    if env_name not in envs:
+      log.error(f'Environment {env_name} is not defined')
+      raise ConfigFileError
+
+    if consts.KEYWORK_APPS not in envs[env_name] or app_name not in envs[env_name][consts.KEYWORK_APPS]:
+      log.error(f'Application {app_name} is not defined in environment {env_name}')
+      raise ConfigFileError
+
+    app_params = {key: value for key, value in envs[env_name][consts.KEYWORK_APPS][app_name].items() if
+                  (key != consts.KEYWORK_VARS) and (key != consts.KEYWORK_PARAMS)}
+    if app_params:
+      return self.return_app_params_deprecated(app_params)
+    else:
+      return {}
+
+  @deprecated(version='v0.2.15', reason='Application parameters under application definition are deprecated, use scoped `params` keyword instead')
+  def return_app_params_deprecated(self, params: dict) -> dict:
+    return params
 
 
 config = Config()

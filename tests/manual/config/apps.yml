@@ -2,35 +2,39 @@ envs:
   management:
     apps:
       bootstrap: {}
-      core_deployer: {app_deployer: bootstrap}
-      service_deployer: {app_deployer: bootstrap}
+      core_deployer: {params: {parent_app: bootstrap}}
+      service_deployer: {params: {parent_app: bootstrap}}
       app_1:
-        app_deployer: core_deployer
+        params:
+          parent_app: core_deployer
       app_2:
-        app_deployer: core_deployer
-      app_3: {app_deployer: service_deployer}
-      app_4: {app_deployer: service_deployer}
-      app_5: {app_deployer: service_deployer}
-      app_6: {app_deployer: service_deployer}
-      subdirectory/app_7: {app_deployer: service_deployer}
-      subdirectory_2/app_8: {app_deployer: service_deployer}
-      app_9: {app_deployer: service_deployer}
-      app_10: {app_deployer: service_deployer}
-      app_11: {app_deployer: service_deployer, non_k8s_files_to_render: ['values.yml.j2']}
+        params:
+          parent_app: core_deployer
+      app_3: {params: {parent_app: service_deployer}}
+      app_4: {params: {parent_app: service_deployer}}
+      app_5: {params: {parent_app: service_deployer}}
+      app_6: {params: {parent_app: service_deployer}}
+      subdirectory/app_7: {params: {parent_app: service_deployer}}
+      subdirectory_2/app_8: {params: {parent_app: service_deployer}}
+      app_9: {params: {parent_app: service_deployer}}
+      app_10: {params: {parent_app: service_deployer}}
+      app_11: {params: {parent_app: service_deployer, non_k8s_files_to_render: ['values.yml.j2']}}
       app_12: {}
-      app_13: {app_deployer: service_deployer}
-      app_14: {app_deployer: service_deployer, exclude_rendering: ['testcases','cases']}
-      app_15: {app_deployer: service_deployer}
-      app_16: {app_deployer: service_deployer}
-      app_17: {app_deployer: service_deployer}
+      app_13: {params: {parent_app: service_deployer}}
+      app_14: {params: {parent_app: service_deployer, exclude_rendering: ['testcases','cases']}}
+      app_15: {params: {parent_app: service_deployer}}
+      app_16: {params: {parent_app: service_deployer}}
+      app_17: {params: {parent_app: service_deployer}}
   external_1:
     apps:
       bootstrap: {}
-      unused_deployer: {app_deployer: bootstrap}
-      app_1: {app_deployer: core_deployer, app_deployer_env: management}
-      app_2: {app_deployer: core_deployer, app_deployer_env: management}
-      app_5: {app_deployer: service_deployer, app_deployer_env: management}
-      subdirectory/app_7: {app_deployer: service_deployer, app_deployer_env: management}
-      app_9: {app_deployer: service_deployer, app_deployer_env: management}
+      unused_deployer: {params: {parent_app: bootstrap, parent_app_env: null}}
+      app_1: {params: {parent_app: core_deployer}}
+      app_2: {params: {parent_app: core_deployer}}
+      app_5: {params: {parent_app: service_deployer}}
+      subdirectory/app_7: {params: {parent_app: service_deployer}}
+      app_9: {params: {parent_app: service_deployer}}
+    params:
+      parent_app_env: management
   external_2:
     apps: {}

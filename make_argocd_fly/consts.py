@@ -16,6 +16,18 @@ KEYWORK_VARS = 'vars'
 KEYWORK_PARAMS = 'params'
 
 
+class ParamNames:
+  PARENT_APP = 'parent_app'
+  PARENT_APP_ENV = 'parent_app_env'
+  NON_K8S_FILES_TO_RENDER = 'non_k8s_files_to_render'
+  EXCLUDE_RENDERING = 'exclude_rendering'
+
+  @classmethod
+  def get_names(cls) -> list[str]:
+    return [getattr(cls, attr) for attr in dir(cls) if not attr.startswith('__') and not callable(getattr(cls, attr))]
+
+
+# DEPRECATED
 class AppParamsNames:
   APP_DEPLOYER = 'app_deployer'
   APP_DEPLOYER_ENV = 'app_deployer_env'

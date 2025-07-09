@@ -101,8 +101,9 @@ envs:
     apps:
       <bootstrap_application>: {}  ## application that needs be deployed externally that will deploy other applications
       <application_name>:
-        app_deployer: <bootstrap_application>  ## application that will deploy this application
-        app_deployer_env: <environment_name>  ## (OPTIONAL) for multi-environments with single ArgoCD deployment
+        params:
+          parent_app: <bootstrap_application>  ## (OPTIONAL) application that will deploy this application
+          parent_app_env: <environment_name>  ## (OPTIONAL) environment name for the parent application, default: null
 vars:
   argocd:
     namespace: <argocd_namespace>  ## (OPTIONAL) namespace for ArgoCD `Application` resource, default: argocd
@@ -271,7 +272,8 @@ envs:
   <environment_name>:
     apps:
       <application_name>:
-        non_k8s_files_to_render: [<filename>]  ## (OPTIONAL) list of files to render that are not Kubernetes resources (e.g., values.yml)
+        params:
+          non_k8s_files_to_render: ['values.yml']  ## (OPTIONAL) list of files to render that are not Kubernetes resources (e.g., values.yml)
 ```
 ### Exclude certain directories
 If there are certain files in the source application directory that you do not want to render, you can use the `exclude_rendering` parameter in your configuration to exclude them from the rendering process:
@@ -280,7 +282,8 @@ envs:
   <environment_name>:
     apps:
       <application_name>:
-        exclude_rendering: [<directory>]  ## (OPTIONAL) list of directories to exclude from rendering (e.g., unit test files for opa)
+        params:
+          exclude_rendering: ['<directory>']  ## (OPTIONAL) list of directories to exclude from rendering (e.g., unit test files for opa)
 ```
 
 ## Caveats

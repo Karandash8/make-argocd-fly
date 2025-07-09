@@ -1,23 +1,47 @@
 import pytest
-from make_argocd_fly.params import populate_params
+from make_argocd_fly.exceptions import ConfigFileError
+from make_argocd_fly.params import Params
 
+##################
+### Params.populate_params
+##################
 
-def test_populate_params():
-    params = populate_params(
-        root_dir='custom_root_dir',
-        config_file='custom_config_file.yml',
-        source_dir='custom_source_dir',
-        output_dir='custom_output_dir',
-        tmp_dir='custom_tmp_dir',
-        var_identifier='custom_var_identifier',
-        loglevel='custom_loglevel',
+def test_Params__populate_params__empty() -> None:
+  params = Params()
+  params.populate_params()
+  assert params.parent_app is None
+  assert params.parent_app_env is None
+  assert params.non_k8s_files_to_render == []
+  assert params.exclude_rendering == []
 
-    )
+def test_Params__populate_params__all() -> None:
+  params = Params()
+  params.populate_params(
+    parent_app='test_app',
+    parent_app_env='test_env',
+    non_k8s_files_to_render=['file1', 'file2'],
+    exclude_rendering=['file3', 'file4']
+  )
+  assert params.parent_app == 'test_app'
+  assert params.parent_app_env == 'test_env'
+  assert params.non_k8s_files_to_render == ['file1', 'file2']
+  assert params.exclude_rendering == ['file3', 'file4']
 
-    assert params.root_dir == 'custom_root_dir'
-    assert params.config_file == 'custom_config_file.yml'
-    assert params.source_dir == 'custom_source_dir'
-    assert params.output_dir == 'custom_output_dir'
-    assert params.tmp_dir == 'custom_tmp_dir'
-    assert params.var_identifier == 'custom_var_identifier'
-    assert params.loglevel == 'custom_loglevel'
+def test_Params__populate_params__partial() -> None:
+  params = Params()
+  params.populate_params(
+    parent_app='test_app',
+    non_k8s_files_to_render=['file1']
+  )
+  assert params.parent_app == 'test_app'
+  assert params.parent_app_env is None
+  assert params.non_k8s_files_to_render == ['file1']
+  assert params.exclude_rendering == []
+
+def test_Params__populate_params__unknown_param(caplog) -> None:
+  params = Params()
+
+  with pytest.raises(ConfigFileError):
+    params.populate_params(unknown_param='value')
+  assert 'Unknown parameter "unknown_param" in Params' in caplog.text
+

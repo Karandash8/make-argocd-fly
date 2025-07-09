@@ -1,0 +1,4 @@
+{
+  "test": "jsoninclude",
+  "test_2": "{{ variable }}"
+}

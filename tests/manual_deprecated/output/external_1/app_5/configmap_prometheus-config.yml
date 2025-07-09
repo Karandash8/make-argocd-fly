@@ -1,0 +1,17 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: |-
+    {
+      "test": "json"
+    }
+  ip: 127.0.0.1
+  number: '01239'
+  number_oct: 83
+  number_string: '01239'
+  number_string_2: '123'
+  number_oct_string: '0123'
+  boolean_string: 'yes'

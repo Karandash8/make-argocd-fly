@@ -1,0 +1,10 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana_veeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeery_long_label
+    # this is a comment and it is going to be discarded
+    lbl: 11.11
