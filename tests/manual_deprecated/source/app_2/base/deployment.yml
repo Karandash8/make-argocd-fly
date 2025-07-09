@@ -1,0 +1,12 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: prometheus
+  namespace: monitoring
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: prometheus-2
+  namespace: monitoring

@@ -1,0 +1,18 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - Deployment_prometheus.yml
+  - Deployment_prometheus-2.yml
+  - Service_prometheus.yml
+
+patches:
+  - patch: |-
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: prometheus
+        namespace: monitoring
+      spec:
+        param: base

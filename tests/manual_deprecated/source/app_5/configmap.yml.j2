@@ -1,0 +1,18 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: |-
+{%- filter indent(width=4) %}
+{% include 'files/file.json.j2' %}
+{% endfilter %}
+
+  ip: {{ 'localhost' | dig }}
+  number: {{ number }}
+  number_oct: {{ number_oct }}
+  number_string: "{{ number_string }}"
+  number_string_2: "{{ number_string_2 }}"
+  number_oct_string: "{{ number_oct_string }}"
+  boolean_string: "yes"

@@ -1,0 +1,11 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: prometheus-config
+data:
+  key:
+    another_key:
+{%- filter indent(width=6) %}
+{% include_all_as_yaml_list 'files/' %}
+{% endfilter %}

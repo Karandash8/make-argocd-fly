@@ -1,0 +1,28 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: thanos-sidecar
+  namespace: {{ namespace }}
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: thanos-sidecar-2
+  namespace: {{ namespace }}
+data: |-
+{%- filter indent(width=2) %}
+{% include_raw 'files/file.json' %}
+{% endfilter %}
+
+data_2: |-
+{%- filter indent(width=2) %}
+{% include_raw 'files/file_2.yml' %}
+{% endfilter %}
+
+data_3: |-
+{%- filter indent(width=2) %}
+{% include 'files/file_3.yml.j2' %}
+var_2: {{ var_2 }}
+{% endfilter %}

@@ -1,0 +1,30 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-2-management
+  namespace: argocd
+  finalizers: []
+spec:
+  project: management
+  source:
+    repoURL: url
+    targetRevision: revision
+    path: output/management/app_2
+  destination:
+    server: management-api-server
+    namespace: kube-default
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true
+  ignoreDifferences:
+    - group: apps
+      jsonPointers:
+        - /spec/replicas
+      kind: Deployment
+      name: guestbook
+      namespace: default
+    - group: storage.k8s.io
+      jqPathExpressions:
+        - .spec.seLinuxMount
+      kind: CSIDriver

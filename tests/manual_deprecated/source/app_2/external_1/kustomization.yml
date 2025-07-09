@@ -1,0 +1,22 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../base
+
+labels:
+  - pairs:
+      app: external_1
+    includeSelectors: true
+    includeTemplates: true
+
+patches:
+  - patch: |-
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: prometheus
+        namespace: monitoring
+      spec:
+        param: external

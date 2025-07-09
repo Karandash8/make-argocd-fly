@@ -1,0 +1,17 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: external_1
+  name: prometheus
+  namespace: monitoring
+spec:
+  param: external
+  selector:
+    matchLabels:
+      app: external_1
+  template:
+    metadata:
+      labels:
+        app: external_1
