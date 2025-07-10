@@ -4,7 +4,7 @@ import textwrap
 
 from make_argocd_fly.utils import extract_single_resource, merge_dicts_with_overrides, merge_dicts_without_duplicates, VarsResolver, \
   FilePathGenerator, get_module_name, get_package_name, build_path, extract_undefined_variable
-from make_argocd_fly.exceptions import InternalError, UnknownJinja2Error, MergeError
+from make_argocd_fly.exceptions import InternalError, UnknownJinja2Error, MergeError, ConfigFileError
 
 ###################
 ### FilePathGenerator
@@ -1286,9 +1286,27 @@ def test_vars_resolver_var_with_multiple_resolvable_vars():
 def test_vars_resolver_value_with_unresolvable_var(caplog):
   resolver = VarsResolver()
   vars = {'var1': '${var2}'}
-  with pytest.raises(KeyError):
+  with pytest.raises(ConfigFileError):
     resolver.resolve(vars, vars)
   assert 'Variable ${var2} not found in vars' in caplog.text
+
+def test_vars_resolver__allow_unresolved_vars_simple(caplog):
+  resolver = VarsResolver()
+  vars = {'var1': '${var2}'}
+  result = resolver.resolve(vars, vars, True)
+  assert result == {'var1': '${var2}'}
+
+def test_vars_resolver__allow_unresolved_vars_in_string(caplog):
+  resolver = VarsResolver()
+  vars = {'var1': 'before${var2}after'}
+  result = resolver.resolve(vars, vars, True)
+  assert result == {'var1': 'before${var2}after'}
+
+def test_vars_resolver__allow_unresolved_vars_multiple_vars(caplog):
+  resolver = VarsResolver()
+  vars = {'var1': '${var3}bef${var3}ore${var2}aft${var5}er${var5}', 'var3':'value3', 'var5': 'value5'}
+  result = resolver.resolve(vars, vars, True)
+  assert result == {'var1': 'value3befvalue3ore${var2}aftvalue5ervalue5', 'var3':'value3', 'var5': 'value5'}
 
 def test_vars_resolver_var_with_resolvable_var_dict():
   resolver = VarsResolver()

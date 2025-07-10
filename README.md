@@ -173,11 +173,6 @@ Variables can be referenced in the configuration file using the following syntax
 Variables can also be embedded within strings:
 - ```prefix-${var_name}-suffix```
 
-The following rules apply for variable resolution:
-- Variables referenced in the global scope are resolved using global variables.
-- Variables referenced in the per-environment scope are resolved using global and per-environment variables.
-- Variables referenced in the per-application scope are resolved using global, per-environment, and per-application variables.
-
 ### Jinja2 templates
 All standard Jinja2 features are supported.
 

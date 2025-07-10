@@ -54,7 +54,7 @@ class Config:
 
     return self.config[consts.KEYWORK_ENVS] if consts.KEYWORK_ENVS in self.config else {}
 
-  def get_global_vars(self) -> dict:
+  def _get_global_vars(self) -> dict:
     if self.config is None:
       log.error('Config is not populated')
       raise InternalError

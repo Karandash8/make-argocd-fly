@@ -287,17 +287,17 @@ def test_Config__get_envs__not_valid_config(tmp_path):
   assert config.get_envs() == {}
 
 ##################
-### Config.get_global_vars
+### Config._get_global_vars
 ##################
 
-def test_Config__get_global_vars__config_not_populated(tmp_path, caplog):
+def test_Config___get_global_vars__config_not_populated(tmp_path, caplog):
   config = Config()
 
   with pytest.raises(InternalError):
-    config.get_global_vars()
+    config._get_global_vars()
   assert 'Config is not populated' in caplog.text
 
-def test_Config__get_global_vars__valid_config(tmp_path):
+def test_Config___get_global_vars__valid_config(tmp_path):
   CONFIG = '''\
     vars:
       test_var: var
@@ -316,9 +316,9 @@ def test_Config__get_global_vars__valid_config(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config.get_global_vars() == {'test_var': 'var', 'test_var2': 'var'}
+  assert config._get_global_vars() == {'test_var': 'var', 'test_var2': 'var'}
 
-def test_Config__get_global_vars__not_valid_config(tmp_path):
+def test_Config___get_global_vars__not_valid_config(tmp_path):
   CONFIG = '''\
     not_vars:
       test_var: var
@@ -337,7 +337,7 @@ def test_Config__get_global_vars__not_valid_config(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config.get_global_vars() == {}
+  assert config._get_global_vars() == {}
 
 ##################
 ### Config.get_env_vars

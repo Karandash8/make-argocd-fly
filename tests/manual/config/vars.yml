@@ -48,6 +48,7 @@ envs:
         env_specific_var: test_env_specific
       var_1: value_1
       var_2: ${var_1}
+      env_var: management_var
   external_1:
     apps:
       unused_deployer: {vars: {argocd: {project: default, destination: {namespace: kube-system}}}}
@@ -60,6 +61,7 @@ envs:
       argocd:
         destination:
           server: ${env_name}-api-server
+      env_var: external_1_var
 
 vars:
   argocd:
@@ -82,6 +84,7 @@ vars:
       project: default
       destination:
         namespace: ${namespace}
+  global_var: ${env_var}-global_var
   namespace: kube-default
   version: 0.1.0
   double_reference_version: ${reference_version}
