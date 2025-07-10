@@ -357,7 +357,6 @@ def get_current_version() -> Optional[Version]:
     return Version(version(get_module_name()))
   except PackageNotFoundError:
     log.warning('Could not determine installed version of the package. Something is wrong or you are running from source.')
-    confirm_dialog()
     return None
 
 
