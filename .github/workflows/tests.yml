@@ -92,9 +92,9 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
-      - name: Lint with flake8
+      - name: Run end-to-end tests
         run: |
-          python main.py --root-dir examples/app_types
+          python main.py --root-dir examples/app_types --skip-latest-version-check
           if [[ -n $(git status --porcelain examples/app_types/output) ]]; then
             echo "Unstaged files found in examples/app_types/output. Failing the job."
             exit 1
