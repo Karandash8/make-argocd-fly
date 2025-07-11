@@ -70,3 +70,90 @@ jobs:
       - name: "Run tox for ${{ matrix.python-version }}"
         run: |
           python -m tox
+
+  examples-e2e:
+    name: Run end-to-end tests for examples
+    runs-on: make-argocd-fly
+
+    steps:
+      - uses: actions/checkout@v4
+      - if: ${{ runner.arch == 'arm64' }}
+        name: Set up Python
+        uses: deadsnakes/action@v3.1.0
+        with:
+          python-version: "3.11"
+      - if: ${{ runner.arch == 'amd64' }}
+        name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
+      - name: Run end-to-end tests
+        run: |
+          python main.py --root-dir tests/examples/app_types --skip-latest-version-check
+          if [[ -n $(git status --porcelain tests/examples/app_types/output) ]]; then
+            echo "Unstaged files found in tests/examples/app_types/output. Failing the job."
+            exit 1
+          fi
+
+  e2e:
+    name: Run end-to-end tests
+    runs-on: make-argocd-fly
+
+    steps:
+      - uses: actions/checkout@v4
+      - if: ${{ runner.arch == 'arm64' }}
+        name: Set up Python
+        uses: deadsnakes/action@v3.1.0
+        with:
+          python-version: "3.11"
+      - if: ${{ runner.arch == 'amd64' }}
+        name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
+      - name: Run end-to-end tests
+        run: |
+          python main.py --root-dir tests/e2e --skip-latest-version-check
+          if [[ -n $(git status --porcelain tests/e2e/output) ]]; then
+            echo "Unstaged files found in tests/e2e/output. Failing the job."
+            exit 1
+          fi
+
+  e2e-deprecated:
+    name: Run end-to-end tests for deprecated
+    runs-on: make-argocd-fly
+
+    steps:
+      - uses: actions/checkout@v4
+      - if: ${{ runner.arch == 'arm64' }}
+        name: Set up Python
+        uses: deadsnakes/action@v3.1.0
+        with:
+          python-version: "3.11"
+      - if: ${{ runner.arch == 'amd64' }}
+        name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
+      - name: Run end-to-end tests
+        run: |
+          python main.py --root-dir tests/e2e_deprecated --skip-latest-version-check
+          if [[ -n $(git status --porcelain tests/e2e_deprecated/output) ]]; then
+            echo "Unstaged files found in tests/e2e_deprecated/output. Failing the job."
+            exit 1
+          fi

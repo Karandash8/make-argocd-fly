@@ -1,0 +1,8 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app: {{ global_var }}

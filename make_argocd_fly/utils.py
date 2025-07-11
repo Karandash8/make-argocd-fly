@@ -16,7 +16,7 @@ from packaging.version import Version
 
 from make_argocd_fly import consts
 from make_argocd_fly.cliparams import get_cli_params
-from make_argocd_fly.exceptions import UnknownJinja2Error, InternalError, MergeError
+from make_argocd_fly.exceptions import UnknownJinja2Error, InternalError, MergeError, ConfigFileError
 
 
 log = logging.getLogger(__name__)
@@ -59,64 +59,72 @@ class VarsResolver:
 
     return (var_start + 1, var_end)
 
-  def _resolve_value(self, value: str, source: dict) -> str:
+  def _resolve_value(self, value: str, source: dict, allow_unresolved: bool = False) -> str:
     resolved_value = ''
-    try:
-      start = 0
-      (var_start, var_end) = self._find_var_position(value, start)
 
-      if (var_start, var_end) == (-1, -1):
-        return value
+    start = 0
+    (var_start, var_end) = self._find_var_position(value, start)
 
-      while (var_start, var_end) != (-1, -1):
-        if (var_start - 1) > start:
-          resolved_value += value[start:var_start - 1]
+    if (var_start, var_end) == (-1, -1):
+      return value
 
-        resolved_value += value[var_start:var_end + 1].format(**source)
-        self.resolution_counter += 1
-        start = var_end + 1
-
-        (var_start, var_end) = self._find_var_position(value, start)
-
-      resolved_value += value[start:]
+    while (var_start, var_end) != (-1, -1):
+      if (var_start - 1) > start:
+        resolved_value += value[start:var_start - 1]
 
       try:
-        resolved_value = ast.literal_eval(resolved_value)
-      except (SyntaxError, ValueError):
-        pass
+        resolved_value += value[var_start:var_end + 1].format(**source)
+        self.resolution_counter += 1
+      except KeyError:
+        if not allow_unresolved:
+          log.error(f'Variable {value[var_start - 1:var_end + 1]} not found in vars')
+          raise ConfigFileError
+        else:
+          resolved_value += self.var_identifier
+          resolved_value += value[var_start:var_end + 1]
 
-      return resolved_value
-    except KeyError:
-      log.error(f'Variable {value[var_start - 1:var_end + 1]} not found in vars')
-      raise KeyError
+      start = var_end + 1
+      (var_start, var_end) = self._find_var_position(value, start)
 
-  def _iterate(self, to_resolve: dict, source: dict, value=None, initial=True):
+    resolved_value += value[start:]
+
+    try:
+      resolved_value = ast.literal_eval(resolved_value)
+    except (SyntaxError, ValueError):
+      pass
+
+    return resolved_value
+
+  def _iterate(self, to_resolve: dict, source: dict, value=None, initial=True, allow_unresolved: bool = False):
     value = value or to_resolve if initial else value
     if isinstance(value, dict):
       for k, v in value.items():
-        value[k] = self._iterate(to_resolve, source, v, False)
+        value[k] = self._iterate(to_resolve, source, v, False, allow_unresolved=allow_unresolved)
     elif isinstance(value, list):
       for idx, i in enumerate(value):
-        value[idx] = self._iterate(to_resolve, source, i, False)
+        value[idx] = self._iterate(to_resolve, source, i, False, allow_unresolved=allow_unresolved)
     elif isinstance(value, str):
-      value = self._resolve_value(value, source)
+      value = self._resolve_value(value, source, allow_unresolved=allow_unresolved)
     return value
 
   def get_resolutions(self) -> int:
     return self.resolution_counter
 
-  def resolve(self, to_resolve: dict, source: dict) -> dict:
+  def resolve(self, to_resolve: dict, source: dict, allow_unresolved: bool = False) -> dict:
     self.resolution_counter = 0
 
-    return self._iterate(copy.deepcopy(to_resolve), source)
+    return self._iterate(copy.deepcopy(to_resolve), source, allow_unresolved=allow_unresolved)
 
   @staticmethod
-  def resolve_all(to_resolve: dict, source: dict, var_identifier: str = consts.DEFAULT_VAR_IDENTIFIER) -> dict:
+  def resolve_all(to_resolve: dict,
+                  source: dict,
+                  var_identifier: str = consts.DEFAULT_VAR_IDENTIFIER,
+                  allow_unresolved: bool = False) -> dict:
       resolver = VarsResolver(var_identifier)
 
-      resolved_vars = resolver.resolve(to_resolve, source)
+      resolved_vars = resolver.resolve(to_resolve, source, allow_unresolved)
       while resolver.get_resolutions() > 0:
-        resolved_vars = resolver.resolve(resolved_vars, source)
+        resolved_vars = resolver.resolve(resolved_vars, source, allow_unresolved)
 
       return resolved_vars
 
@@ -349,7 +357,6 @@ def get_current_version() -> Optional[Version]:
     return Version(version(get_module_name()))
   except PackageNotFoundError:
     log.warning('Could not determine installed version of the package. Something is wrong or you are running from source.')
-    confirm_dialog()
     return None
 
 

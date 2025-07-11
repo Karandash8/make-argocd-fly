@@ -36,7 +36,7 @@ async def generate() -> None:
     if envs_to_render and env_name not in envs_to_render:
       continue
 
-    for app_name in env_data['apps'].keys():
+    for app_name in env_data[consts.KEYWORK_APPS].keys():
       if apps_to_render and app_name not in apps_to_render:
         continue
 
