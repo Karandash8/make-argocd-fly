@@ -94,6 +94,7 @@ jobs:
           if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
       - name: Run end-to-end tests
         run: |
+          ls -l /usr/local/bin/
           python main.py --root-dir tests/examples/app_types --skip-latest-version-check
           if [[ -n $(git status --porcelain examples/app_types/output) ]]; then
             echo "Unstaged files found in examples/app_types/output. Failing the job."
