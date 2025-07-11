@@ -94,9 +94,66 @@ jobs:
           if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
       - name: Run end-to-end tests
         run: |
-          ls -l /usr/local/bin/
           python main.py --root-dir tests/examples/app_types --skip-latest-version-check
-          if [[ -n $(git status --porcelain examples/app_types/output) ]]; then
-            echo "Unstaged files found in examples/app_types/output. Failing the job."
+          if [[ -n $(git status --porcelain tests/examples/app_types/output) ]]; then
+            echo "Unstaged files found in tests/examples/app_types/output. Failing the job."
+            exit 1
+          fi
+
+  manual-e2e:
+    name: Run end-to-end tests for manual
+    runs-on: make-argocd-fly
+
+    steps:
+      - uses: actions/checkout@v4
+      - if: ${{ runner.arch == 'arm64' }}
+        name: Set up Python
+        uses: deadsnakes/action@v3.1.0
+        with:
+          python-version: "3.11"
+      - if: ${{ runner.arch == 'amd64' }}
+        name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
+      - name: Run end-to-end tests
+        run: |
+          python main.py --root-dir tests/manual --skip-latest-version-check
+          if [[ -n $(git status --porcelain tests/manual/output) ]]; then
+            echo "Unstaged files found in tests/manual/output. Failing the job."
+            exit 1
+          fi
+
+  manual-deprecated-e2e:
+    name: Run end-to-end tests for manual_deprecated
+    runs-on: make-argocd-fly
+
+    steps:
+      - uses: actions/checkout@v4
+      - if: ${{ runner.arch == 'arm64' }}
+        name: Set up Python
+        uses: deadsnakes/action@v3.1.0
+        with:
+          python-version: "3.11"
+      - if: ${{ runner.arch == 'amd64' }}
+        name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
+      - name: Run end-to-end tests
+        run: |
+          python main.py --root-dir tests/manual_deprecated --skip-latest-version-check
+          if [[ -n $(git status --porcelain tests/manual_deprecated/output) ]]; then
+            echo "Unstaged files found in tests/manual_deprecated/output. Failing the job."
             exit 1
           fi
