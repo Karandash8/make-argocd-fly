@@ -130,7 +130,7 @@ jobs:
           fi
 
   manual-deprecated-e2e:
-    name: Run end-to-end tests for manual_deprecated
+    name: Run end-to-end tests for manual deprecated
     runs-on: make-argocd-fly
 
     steps:
@@ -152,7 +152,7 @@ jobs:
           if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
       - name: Run end-to-end tests
         run: |
-          python main.py --root-dir tests/manual_deprecated --skip-latest-version-check
+          python main.py --root-dir tests/manual_deprecated --skip-latest-version-check --loglevel DEBUG
           if [[ -n $(git status --porcelain tests/manual_deprecated/output) ]]; then
             echo "Unstaged files found in tests/manual_deprecated/output. Failing the job."
             exit 1
