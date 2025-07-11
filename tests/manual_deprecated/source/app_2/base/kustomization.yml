@@ -3,9 +3,9 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - Deployment_prometheus.yml
-  - Deployment_prometheus-2.yml
-  - Service_prometheus.yml
+  - deployment_prometheus.yml
+  - deployment_prometheus-2.yml
+  - service_prometheus.yml
 
 patches:
   - patch: |-

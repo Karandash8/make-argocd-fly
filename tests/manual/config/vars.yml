@@ -89,7 +89,7 @@ vars:
   version: 0.1.0
   double_reference_version: ${reference_version}
   reference_version: ${app[version]}
-  resource: Deployment_thanos.yml
+  resource: deployment_thanos.yml
   number: 01239  # numbers cannot start with 0, it will be quoted
   number_oct: 0123
   number_string: "01239"
