@@ -100,8 +100,8 @@ jobs:
             exit 1
           fi
 
-  manual-e2e:
-    name: Run end-to-end tests for manual
+  e2e:
+    name: Run end-to-end tests
     runs-on: make-argocd-fly
 
     steps:
@@ -123,14 +123,14 @@ jobs:
           if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
       - name: Run end-to-end tests
         run: |
-          python main.py --root-dir tests/manual --skip-latest-version-check
-          if [[ -n $(git status --porcelain tests/manual/output) ]]; then
-            echo "Unstaged files found in tests/manual/output. Failing the job."
+          python main.py --root-dir tests/e2e --skip-latest-version-check
+          if [[ -n $(git status --porcelain tests/e2e/output) ]]; then
+            echo "Unstaged files found in tests/e2e/output. Failing the job."
             exit 1
           fi
 
-  manual-deprecated-e2e:
-    name: Run end-to-end tests for manual deprecated
+  e2e-deprecated:
+    name: Run end-to-end tests for deprecated
     runs-on: make-argocd-fly
 
     steps:
@@ -152,8 +152,8 @@ jobs:
           if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
       - name: Run end-to-end tests
         run: |
-          python main.py --root-dir tests/manual_deprecated --skip-latest-version-check
-          if [[ -n $(git status --porcelain tests/manual_deprecated/output) ]]; then
-            echo "Unstaged files found in tests/manual_deprecated/output. Failing the job."
+          python main.py --root-dir tests/e2e_deprecated --skip-latest-version-check
+          if [[ -n $(git status --porcelain tests/e2e_deprecated/output) ]]; then
+            echo "Unstaged files found in tests/e2e_deprecated/output. Failing the job."
             exit 1
           fi

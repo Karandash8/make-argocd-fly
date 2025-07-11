@@ -186,7 +186,7 @@ For example:
   ```
 
   Example:
-  ```tests/manual/source/app_5```
+  ```tests/e2e/source/app_5```
 
 In addition, the following features are available:
 - To include file content in the current Jinja2 template, use the following block:
@@ -198,7 +198,7 @@ In addition, the following features are available:
   ```
 
   Example:
-  ```tests/manual/source/app_4```
+  ```tests/e2e/source/app_4```
 
 - To render files from a subdirectory as YAML key-value pairs (where file name would be the key and file content would be the value),
 use the following block:
@@ -210,7 +210,7 @@ use the following block:
   ```
 
   Example:
-  ```tests/manual/source/app_15```
+  ```tests/e2e/source/app_15```
 
 - To render files from a subdirectory as YAML list (where file content would be the value),
 use the following block:
@@ -222,7 +222,7 @@ use the following block:
   ```
 
   Example:
-  ```tests/manual/source/app_16```
+  ```tests/e2e/source/app_16```
 
 - To render file names in a subdirectory as YAML list,
 use the following block:
@@ -236,7 +236,7 @@ use the following block:
   Note that it takes two parameters, first is directory that will be listed and second is a prefix, path to file maybe, you can add to combine with the filename.
 
   Example:
-  ```tests/manual/source/app_17```
+  ```tests/e2e/source/app_17```
 
 - To perform a DNS lookup, use the following filter:
 
@@ -255,11 +255,11 @@ resources:
 ```
 
 Example:
-```tests/manual/source/app_1```
+```tests/e2e/source/app_1```
 
 When using Kustomize overlays, the base directory should be named `base`, and overlay directories should be named after the corresponding environment names.
 Example:
-```tests/manual/source/app_2```
+```tests/e2e/source/app_2```
 
 If using a Helm `values.yml` file, it must be named `values.yml` and placed within the application directory. Additionally, the file must be explicitly specified for rendering in the configuration file:
 ```
