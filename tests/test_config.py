@@ -287,21 +287,21 @@ def test_Config__get_envs__not_valid_config(tmp_path):
   assert config.get_envs() == {}
 
 ##################
-### Config._get_global_vars
+### Config._get_global_scope
 ##################
 
-def test_Config___get_global_vars__config_not_populated(tmp_path, caplog):
+def test_Config___get_global_scope__config_not_populated(tmp_path, caplog):
   config = Config()
 
   with pytest.raises(InternalError):
-    config._get_global_vars()
+    config._get_global_scope('scope')
   assert 'Config is not populated' in caplog.text
 
-def test_Config___get_global_vars__valid_config(tmp_path):
+def test_Config___get_global_scope__valid_config(tmp_path):
   CONFIG = '''\
-    vars:
-      test_var: var
-      test_var2: var
+    'scope':
+      test: var
+      test2: var
     '''
 
   root_dir = tmp_path
@@ -316,13 +316,13 @@ def test_Config___get_global_vars__valid_config(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config._get_global_vars() == {'test_var': 'var', 'test_var2': 'var'}
+  assert config._get_global_scope('scope') == {'test': 'var', 'test2': 'var'}
 
-def test_Config___get_global_vars__not_valid_config(tmp_path):
+def test_Config___get_global_scope__not_valid_config(tmp_path):
   CONFIG = '''\
-    not_vars:
-      test_var: var
-      test_var2: var
+    not_scope:
+      test: var
+      test2: var
     '''
 
   root_dir = tmp_path
@@ -337,23 +337,23 @@ def test_Config___get_global_vars__not_valid_config(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config._get_global_vars() == {}
+  assert config._get_global_scope('scope') == {}
 
 ##################
-### Config.get_env_vars
+### Config._get_env_scope
 ##################
 
-def test_Config__get_env_vars__valid_config(tmp_path):
+def test_Config___get_env_scope__valid_config(tmp_path):
   CONFIG = '''\
     envs:
       test_env:
-        vars:
-          test_var: var
-          test_var2: var
+        scope:
+          test: var
+          test2: var
       test_env2:
-        vars:
-          test_var3: var
-          test_var4: var
+        scope:
+          test3: var
+          test4: var
     '''
 
   root_dir = tmp_path
@@ -368,10 +368,10 @@ def test_Config__get_env_vars__valid_config(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config.get_env_vars('test_env') == {'test_var': 'var', 'test_var2': 'var'}
-  assert config.get_env_vars('test_env2') == {'test_var3': 'var', 'test_var4': 'var'}
+  assert config._get_env_scope('scope', 'test_env') == {'test': 'var', 'test2': 'var'}
+  assert config._get_env_scope('scope', 'test_env2') == {'test3': 'var', 'test4': 'var'}
 
-def test_Config__get_env_vars__undefined_vars(tmp_path):
+def test_Config___get_env_scope__undefined_scope(tmp_path):
   CONFIG = '''\
     envs:
       test_env: {}
@@ -389,9 +389,9 @@ def test_Config__get_env_vars__undefined_vars(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config.get_env_vars('test_env') == {}
+  assert config._get_env_scope('scope', 'test_env') == {}
 
-def test_Config__get_env_vars__missing_env(tmp_path):
+def test_Config___get_env_scope__missing_env(tmp_path):
   CONFIG = '''\
     envs:
       test_env: {}
@@ -410,21 +410,21 @@ def test_Config__get_env_vars__missing_env(tmp_path):
   config = populate_config(root_dir=root_dir)
 
   with pytest.raises(ConfigFileError):
-    config.get_env_vars('test_env2')
+    config._get_env_scope('scope', 'test_env2')
 
 ##################
-### Config.get_app_vars
+### Config._get_app_scope
 ##################
 
-def test_Config__get_app_vars__valid_config(tmp_path):
+def test_Config___get_app_scope__valid_config(tmp_path):
   CONFIG = '''\
     envs:
       test_env:
         apps:
           test_app:
-            vars:
-              test_var: var
-              test_var2: var
+            scope:
+              test: var
+              test2: var
     '''
 
   root_dir = tmp_path
@@ -439,9 +439,9 @@ def test_Config__get_app_vars__valid_config(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config.get_app_vars('test_env', 'test_app') == {'test_var': 'var', 'test_var2': 'var'}
+  assert config._get_app_scope('scope', 'test_env', 'test_app') == {'test': 'var', 'test2': 'var'}
 
-def test_Config__get_app_vars__missing_env(tmp_path):
+def test_Config___get_app_scope__missing_env(tmp_path):
   CONFIG = '''\
     envs:
       test_env: {}
@@ -460,9 +460,9 @@ def test_Config__get_app_vars__missing_env(tmp_path):
   config = populate_config(root_dir=root_dir)
 
   with pytest.raises(ConfigFileError):
-    config.get_app_vars('test_env2', 'test_app')
+    config._get_app_scope('scope', 'test_env2', 'test_app')
 
-def test_Config__get_app_vars__undefined_apps(tmp_path):
+def test_Config___get_app_scope__undefined_apps(tmp_path):
   CONFIG = '''\
     envs:
       test_env: {}
@@ -481,9 +481,9 @@ def test_Config__get_app_vars__undefined_apps(tmp_path):
   config = populate_config(root_dir=root_dir)
 
   with pytest.raises(ConfigFileError):
-    config.get_app_vars('test_env', 'test_app')
+    config._get_app_scope('scope', 'test_env', 'test_app')
 
-def test_Config__get_app_vars__missing_app(tmp_path):
+def test_Config___get_app_scope__missing_app(tmp_path):
   CONFIG = '''\
     envs:
       test_env:
@@ -504,9 +504,9 @@ def test_Config__get_app_vars__missing_app(tmp_path):
   config = populate_config(root_dir=root_dir)
 
   with pytest.raises(ConfigFileError):
-    config.get_app_vars('test_env', 'test_app2')
+    config._get_app_scope('scope', 'test_env', 'test_app2')
 
-def test_Config__get_app_vars__undefined_vars(tmp_path):
+def test_Config___get_app_scope__undefined_vars(tmp_path):
   CONFIG = '''\
     envs:
       test_env:
@@ -526,249 +526,185 @@ def test_Config__get_app_vars__undefined_vars(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config.get_app_vars('test_env', 'test_app') == {}
+  assert config._get_app_scope('scope', 'test_env', 'test_app') == {}
 
 ##################
-### Config._get_global_params
+### Config.get_vars
 ##################
 
-def test_Config___get_global_params__config_not_populated(tmp_path, caplog):
-  config = Config()
+def test_Config__get_vars__empty_up_to_global(mocker):
+  global_vars_return_value = {}
+  env_vars_return_value = {}
+  app_vars_return_value = {}
 
-  with pytest.raises(InternalError):
-    config._get_global_params()
-  assert 'Config is not populated' in caplog.text
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
 
-def test_Config___get_global_params__valid_config(tmp_path):
-  CONFIG = '''\
-    params:
-      test_params: var
-      test_params2: var
-    '''
+    expected_vars = {}
+    vars = get_config().get_vars()
+    assert vars == expected_vars
 
-  root_dir = tmp_path
-  source_dir = 'source'
-  config_dir = root_dir / 'config'
-  config_dir.mkdir()
+def test_Config__get_vars__empty_up_to_env(mocker):
+  global_vars_return_value = {}
+  env_vars_return_value = {}
+  app_vars_return_value = {}
 
-  config_file = config_dir / 'config.yml'
-  config_file.write_text(textwrap.dedent(CONFIG))
-  source_dir_path = tmp_path / source_dir
-  source_dir_path.mkdir()
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
 
-  config = populate_config(root_dir=root_dir)
+    expected_vars = {}
+    vars = get_config().get_vars(env_name='test_env')
+    assert vars == expected_vars
 
-  assert config._get_global_params() == {'test_params': 'var', 'test_params2': 'var'}
+def test_Config__get_vars__empty_up_to_app(mocker):
+  global_vars_return_value = {}
+  env_vars_return_value = {}
+  app_vars_return_value = {}
 
-def test_Config___get_global_params__not_valid_config(tmp_path):
-  CONFIG = '''\
-    not_params:
-      test_params: var
-      test_params2: var
-    '''
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
 
-  root_dir = tmp_path
-  source_dir = 'source'
-  config_dir = root_dir / 'config'
-  config_dir.mkdir()
+    expected_vars = {}
+    vars = get_config().get_vars(env_name='test_env', app_name='test_app')
+    assert vars == expected_vars
 
-  config_file = config_dir / 'config.yml'
-  config_file.write_text(textwrap.dedent(CONFIG))
-  source_dir_path = tmp_path / source_dir
-  source_dir_path.mkdir()
+def test_Config__get_vars__extra_vars(mocker):
+  extra_vars = {
+    'var1': 'value_extra1',
+    'var2': 'value_extra2'
+  }
+  global_vars_return_value = {}
+  env_vars_return_value = {}
+  app_vars_return_value = {}
 
-  config = populate_config(root_dir=root_dir)
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
 
-  assert config._get_global_params() == {}
+    expected_vars = {
+      'var1': 'value_extra1',
+      'var2': 'value_extra2'
+    }
+    vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+    assert vars == expected_vars
 
-##################
-### Config._get_env_params
-##################
+def test_Config__get_vars__global_only(mocker):
+  extra_vars = {}
+  global_vars_return_value = {
+    'var1': 'value_global1',
+    'var2': 'value_global2'
+  }
+  env_vars_return_value = {}
+  app_vars_return_value = {}
 
-def test_Config___get_env_params__valid_config(tmp_path):
-  CONFIG = '''\
-    envs:
-      test_env:
-        params:
-          test_param: param
-          test_param2: param
-      test_env2:
-        params:
-          test_param3: param
-          test_param4: param
-    '''
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
 
-  root_dir = tmp_path
-  source_dir = 'source'
-  config_dir = root_dir / 'config'
-  config_dir.mkdir()
+    expected_vars = {
+      'var1': 'value_global1',
+      'var2': 'value_global2'
+    }
+    vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+    assert vars == expected_vars
 
-  config_file = config_dir / 'config.yml'
-  config_file.write_text(textwrap.dedent(CONFIG))
-  source_dir_path = tmp_path / source_dir
-  source_dir_path.mkdir()
+def test_Config__get_vars__extra_with_global_override(mocker):
+  extra_vars = {
+    'var1': 'value_extra1'
+  }
+  global_vars_return_value = {
+    'var1': 'value_global1',
+    'var2': 'value_global2'
+  }
+  env_vars_return_value = {}
+  app_vars_return_value = {}
 
-  config = populate_config(root_dir=root_dir)
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
 
-  assert config._get_env_params('test_env') == {'test_param': 'param', 'test_param2': 'param'}
-  assert config._get_env_params('test_env2') == {'test_param3': 'param', 'test_param4': 'param'}
+    expected_vars = {
+      'var1': 'value_global1',
+      'var2': 'value_global2'
+    }
+    vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+    assert vars == expected_vars
 
-def test_Config___get_env_params__undefined_params(tmp_path):
-  CONFIG = '''\
-    envs:
-      test_env: {}
-    '''
+def test_Config__get_vars__global_with_env_override(mocker):
+  extra_vars = {}
+  global_vars_return_value = {
+    'var1': 'value_global1',
+    'var2': 'value_global2'
+  }
+  env_vars_return_value = {
+    'var1': 'value_env1'
+  }
+  app_vars_return_value = {}
 
-  root_dir = tmp_path
-  source_dir = 'source'
-  config_dir = root_dir / 'config'
-  config_dir.mkdir()
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
 
-  config_file = config_dir / 'config.yml'
-  config_file.write_text(textwrap.dedent(CONFIG))
-  source_dir_path = tmp_path / source_dir
-  source_dir_path.mkdir()
+    expected_vars = {
+      'var1': 'value_env1',
+      'var2': 'value_global2'
+    }
+    vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+    assert vars == expected_vars
 
-  config = populate_config(root_dir=root_dir)
+def test_Config__get_vars__env_with_app_override(mocker):
+  extra_vars = {}
+  global_vars_return_value = {
+    'var1': 'value_global1',
+    'var2': 'value_global2'
+  }
+  env_vars_return_value = {
+    'var1': 'value_env1'
+  }
+  app_vars_return_value = {
+    'var1': 'value_app1'
+  }
 
-  assert config._get_env_params('test_env') == {}
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
 
-def test_Config___get_env_params__missing_env(tmp_path):
-  CONFIG = '''\
-    envs:
-      test_env: {}
-    '''
+    expected_vars = {
+      'var1': 'value_app1',
+      'var2': 'value_global2'
+    }
+    vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+    assert vars == expected_vars
 
-  root_dir = tmp_path
-  source_dir = 'source'
-  config_dir = root_dir / 'config'
-  config_dir.mkdir()
+def test_Config__get_vars__everything(mocker):
+  extra_vars = {
+    'var1': 'value_extra1'
+  }
+  global_vars_return_value = {
+    'var2': 'value_global2'
+  }
+  env_vars_return_value = {
+    'var3': 'value_env3'
+  }
+  app_vars_return_value = {
+    'var4': 'value_app4'
+  }
 
-  config_file = config_dir / 'config.yml'
-  config_file.write_text(textwrap.dedent(CONFIG))
-  source_dir_path = tmp_path / source_dir
-  source_dir_path.mkdir()
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
 
-  config = populate_config(root_dir=root_dir)
-
-  with pytest.raises(ConfigFileError):
-    config._get_env_params('test_env2')
-
-##################
-### Config._get_app_params
-##################
-
-def test_Config___get_app_params__valid_config(tmp_path):
-  CONFIG = '''\
-    envs:
-      test_env:
-        apps:
-          test_app:
-            params:
-              test_param: param
-              test_param2: param
-    '''
-
-  root_dir = tmp_path
-  source_dir = 'source'
-  config_dir = root_dir / 'config'
-  config_dir.mkdir()
-
-  config_file = config_dir / 'config.yml'
-  config_file.write_text(textwrap.dedent(CONFIG))
-  source_dir_path = tmp_path / source_dir
-  source_dir_path.mkdir()
-
-  config = populate_config(root_dir=root_dir)
-
-  assert config._get_app_params('test_env', 'test_app') == {'test_param': 'param', 'test_param2': 'param'}
-
-def test_Config___get_app_params__missing_env(tmp_path):
-  CONFIG = '''\
-    envs:
-      test_env: {}
-    '''
-
-  root_dir = tmp_path
-  source_dir = 'source'
-  config_dir = root_dir / 'config'
-  config_dir.mkdir()
-
-  config_file = config_dir / 'config.yml'
-  config_file.write_text(textwrap.dedent(CONFIG))
-  source_dir_path = tmp_path / source_dir
-  source_dir_path.mkdir()
-
-  config = populate_config(root_dir=root_dir)
-
-  with pytest.raises(ConfigFileError):
-    config._get_app_params('test_env2', 'test_app')
-
-def test_Config___get_app_params__undefined_apps(tmp_path):
-  CONFIG = '''\
-    envs:
-      test_env: {}
-    '''
-
-  root_dir = tmp_path
-  source_dir = 'source'
-  config_dir = root_dir / 'config'
-  config_dir.mkdir()
-
-  config_file = config_dir / 'config.yml'
-  config_file.write_text(textwrap.dedent(CONFIG))
-  source_dir_path = tmp_path / source_dir
-  source_dir_path.mkdir()
-
-  config = populate_config(root_dir=root_dir)
-
-  with pytest.raises(ConfigFileError):
-    config._get_app_params('test_env', 'test_app')
-
-def test_Config___get_app_params__missing_app(tmp_path):
-  CONFIG = '''\
-    envs:
-      test_env:
-        apps:
-          test_app: {}
-    '''
-
-  root_dir = tmp_path
-  source_dir = 'source'
-  config_dir = root_dir / 'config'
-  config_dir.mkdir()
-
-  config_file = config_dir / 'config.yml'
-  config_file.write_text(textwrap.dedent(CONFIG))
-  source_dir_path = tmp_path / source_dir
-  source_dir_path.mkdir()
-
-  config = populate_config(root_dir=root_dir)
-
-  with pytest.raises(ConfigFileError):
-    config._get_app_params('test_env', 'test_app2')
-
-def test_Config___get_app_params__undefined_params(tmp_path):
-  CONFIG = '''\
-    envs:
-      test_env:
-        apps:
-          test_app: {}
-    '''
-
-  root_dir = tmp_path
-  source_dir = 'source'
-  config_dir = root_dir / 'config'
-  config_dir.mkdir()
-
-  config_file = config_dir / 'config.yml'
-  config_file.write_text(textwrap.dedent(CONFIG))
-  source_dir_path = tmp_path / source_dir
-  source_dir_path.mkdir()
-
-  config = populate_config(root_dir=root_dir)
-
-  assert config._get_app_params('test_env', 'test_app') == {}
+    expected_vars = {
+      'var1': 'value_extra1',
+      'var2': 'value_global2',
+      'var3': 'value_env3',
+      'var4': 'value_app4'
+    }
+    vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+    assert vars == expected_vars
 
 ##################
 ### Config.get_params
@@ -779,9 +715,9 @@ def test_Config__get_params__empty_up_to_global(mocker):
   env_params_return_value = {}
   app_params_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
 
     params = get_config().get_params()
     assert params.parent_app is None
@@ -794,9 +730,9 @@ def test_Config__get_params__empty_up_to_env(mocker):
   env_params_return_value = {}
   app_params_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
 
     params = get_config().get_params(env_name='test_env')
     assert params.parent_app is None
@@ -809,9 +745,9 @@ def test_Config__get_params__empty_up_to_app(mocker):
   env_params_return_value = {}
   app_params_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
 
     params = get_config().get_params(env_name='test_env', app_name='test_app')
     assert params.parent_app is None
@@ -827,9 +763,9 @@ def test_Config__get_params__global_only(mocker):
   env_params_return_value = {}
   app_params_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
 
     params = get_config().get_params(env_name='test_env', app_name='test_app')
     assert params.parent_app == 'parent_app_value'
@@ -848,9 +784,9 @@ def test_Config__get_params__env_override(mocker):
                              'exclude_rendering': ['env_exclude1', 'env_exclude2']}
   app_params_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
 
     params = get_config().get_params(env_name='test_env', app_name='test_app')
     assert params.parent_app == 'env_parent_app_value'
@@ -872,9 +808,9 @@ def test_Config__get_params__app_override(mocker):
                              'non_k8s_files_to_render': ['app_file1', 'app_file2'],
                              'exclude_rendering': ['app_exclude1', 'app_exclude2']}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
 
     params = get_config().get_params(env_name='test_env', app_name='test_app')
     assert params.parent_app == 'app_parent_app_value'
@@ -890,9 +826,9 @@ def test_Config__get_params__random(mocker):
                              'exclude_rendering': ['env_exclude1', 'env_exclude2']}
   app_params_return_value = {'exclude_rendering': ['app_exclude1', 'app_exclude2']}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_params', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_params', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_params', return_value=app_params_return_value):
+  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
+       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
 
     params = get_config().get_params(env_name='test_env', app_name='test_app')
     assert params.parent_app == 'parent_app_value'
