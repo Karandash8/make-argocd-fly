@@ -6,7 +6,7 @@ import shutil
 from pprint import pformat
 
 from make_argocd_fly.resource import ResourceViewer
-from make_argocd_fly.utils import merge_dicts_with_overrides, VarsResolver, get_app_rel_path
+from make_argocd_fly.utils import get_app_rel_path
 from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparams import get_cli_params
 from make_argocd_fly.steps import FindAppsStep, RenderYamlStep, RenderJinjaFromViewerStep, RenderJinjaFromMemoryStep, \
@@ -92,35 +92,7 @@ class AppOfAppsApplication(AbstractApplication):
         'env_name': env_name,
         'app_name': app_name
       }
-      global_vars = self.config._get_global_vars()
-      env_vars = self.config.get_env_vars(env_name)
-      app_vars = self.config.get_app_vars(env_name, app_name)
-
-      partially_resolved_global_vars = merge_dicts_with_overrides(
-        extra_vars,
-        VarsResolver.resolve_all(global_vars,
-                                 merge_dicts_with_overrides(extra_vars, global_vars),
-                                 var_identifier=self.cli_params.var_identifier,
-                                 allow_unresolved=True)
-      )
-      partially_resolved_env_vars = merge_dicts_with_overrides(
-        partially_resolved_global_vars,
-        VarsResolver.resolve_all(env_vars,
-                                 merge_dicts_with_overrides(partially_resolved_global_vars, env_vars),
-                                 var_identifier=self.cli_params.var_identifier,
-                                 allow_unresolved=True)
-      )
-      partially_resolved_app_vars = merge_dicts_with_overrides(
-        partially_resolved_env_vars,
-        VarsResolver.resolve_all(app_vars,
-                                 merge_dicts_with_overrides(partially_resolved_env_vars, app_vars),
-                                 var_identifier=self.cli_params.var_identifier,
-                                 allow_unresolved=True)
-      )
-      resolved_vars = VarsResolver.resolve_all(partially_resolved_app_vars,
-                                               partially_resolved_app_vars,
-                                               var_identifier=self.cli_params.var_identifier,
-                                               allow_unresolved=False)
+      resolved_vars = self.config.get_vars(env_name=env_name, app_name=app_name, extra_vars=extra_vars)
 
       if self.cli_params.print_vars:
         log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(resolved_vars)}')
@@ -156,35 +128,7 @@ class SimpleApplication(AbstractApplication):
       'env_name': self.env_name,
       'app_name': self.app_name
     }
-    global_vars = self.config._get_global_vars()
-    env_vars = self.config.get_env_vars(self.env_name)
-    app_vars = self.config.get_app_vars(self.env_name, self.app_name)
-
-    partially_resolved_global_vars = merge_dicts_with_overrides(
-      extra_vars,
-      VarsResolver.resolve_all(global_vars,
-                               merge_dicts_with_overrides(extra_vars, global_vars),
-                               var_identifier=self.cli_params.var_identifier,
-                               allow_unresolved=True)
-    )
-    partially_resolved_env_vars = merge_dicts_with_overrides(
-      partially_resolved_global_vars,
-      VarsResolver.resolve_all(env_vars,
-                               merge_dicts_with_overrides(partially_resolved_global_vars, env_vars),
-                               var_identifier=self.cli_params.var_identifier,
-                               allow_unresolved=True)
-    )
-    partially_resolved_app_vars = merge_dicts_with_overrides(
-      partially_resolved_env_vars,
-      VarsResolver.resolve_all(app_vars,
-                               merge_dicts_with_overrides(partially_resolved_env_vars, app_vars),
-                               var_identifier=self.cli_params.var_identifier,
-                               allow_unresolved=False)
-    )
-    resolved_vars = VarsResolver.resolve_all(partially_resolved_app_vars,
-                                             partially_resolved_app_vars,
-                                             var_identifier=self.cli_params.var_identifier,
-                                             allow_unresolved=False)
+    resolved_vars = self.config.get_vars(env_name=self.env_name, app_name=self.app_name, extra_vars=extra_vars)
 
     if self.cli_params.print_vars:
       log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(resolved_vars)}')
@@ -229,35 +173,7 @@ class KustomizeApplication(AbstractApplication):
       'env_name': self.env_name,
       'app_name': self.app_name
     }
-    global_vars = self.config._get_global_vars()
-    env_vars = self.config.get_env_vars(self.env_name)
-    app_vars = self.config.get_app_vars(self.env_name, self.app_name)
-
-    partially_resolved_global_vars = merge_dicts_with_overrides(
-      extra_vars,
-      VarsResolver.resolve_all(global_vars,
-                               merge_dicts_with_overrides(extra_vars, global_vars),
-                               var_identifier=self.cli_params.var_identifier,
-                               allow_unresolved=True)
-    )
-    partially_resolved_env_vars = merge_dicts_with_overrides(
-      partially_resolved_global_vars,
-      VarsResolver.resolve_all(env_vars,
-                               merge_dicts_with_overrides(partially_resolved_global_vars, env_vars),
-                               var_identifier=self.cli_params.var_identifier,
-                               allow_unresolved=True)
-    )
-    partially_resolved_app_vars = merge_dicts_with_overrides(
-      partially_resolved_env_vars,
-      VarsResolver.resolve_all(app_vars,
-                               merge_dicts_with_overrides(partially_resolved_env_vars, app_vars),
-                               var_identifier=self.cli_params.var_identifier,
-                               allow_unresolved=False)
-    )
-    resolved_vars = VarsResolver.resolve_all(partially_resolved_app_vars,
-                                             partially_resolved_app_vars,
-                                             var_identifier=self.cli_params.var_identifier,
-                                             allow_unresolved=False)
+    resolved_vars = self.config.get_vars(env_name=self.env_name, app_name=self.app_name, extra_vars=extra_vars)
 
     if self.cli_params.print_vars:
       log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(resolved_vars)}')

@@ -5,8 +5,9 @@ import os
 from deprecated import deprecated
 
 from make_argocd_fly import consts
+from make_argocd_fly.cliparams import get_cli_params
 from make_argocd_fly.params import Params
-from make_argocd_fly.utils import build_path, merge_dicts_without_duplicates, merge_dicts_with_overrides
+from make_argocd_fly.utils import build_path, merge_dicts_without_duplicates, merge_dicts_with_overrides, VarsResolver
 from make_argocd_fly.exceptions import InternalError, ConfigFileError, MergeError
 
 
@@ -19,6 +20,8 @@ class Config:
     self._source_dir = None
     self._output_dir = None
     self._tmp_dir = None
+
+    self.cli_params = get_cli_params()
 
   def populate_config(self, **kwargs) -> None:
     self.__dict__.update(kwargs)
@@ -54,22 +57,22 @@ class Config:
 
     return self.config[consts.KEYWORK_ENVS] if consts.KEYWORK_ENVS in self.config else {}
 
-  def _get_global_vars(self) -> dict:
+  def _get_global_scope(self, keyword: str) -> dict:
     if self.config is None:
       log.error('Config is not populated')
       raise InternalError
 
-    return self.config[consts.KEYWORK_VARS] if consts.KEYWORK_VARS in self.config else {}
+    return self.config[keyword] if keyword in self.config else {}
 
-  def get_env_vars(self, env_name: str) -> dict:
+  def _get_env_scope(self, keyword: str, env_name: str) -> dict:
     envs = self.get_envs()
     if env_name not in envs:
       log.error(f'Environment {env_name} is not defined')
       raise ConfigFileError
 
-    return envs[env_name][consts.KEYWORK_VARS] if consts.KEYWORK_VARS in envs[env_name] else {}
+    return envs[env_name][keyword] if keyword in envs[env_name] else {}
 
-  def get_app_vars(self, env_name: str, app_name: str) -> dict:
+  def _get_app_scope(self, keyword: str, env_name: str, app_name: str) -> dict:
     envs = self.get_envs()
     if env_name not in envs:
       log.error(f'Environment {env_name} is not defined')
@@ -79,45 +82,56 @@ class Config:
       log.error(f'Application {app_name} is not defined in environment {env_name}')
       raise ConfigFileError
 
-    if consts.KEYWORK_VARS in envs[env_name][consts.KEYWORK_APPS][app_name]:
-      return envs[env_name][consts.KEYWORK_APPS][app_name][consts.KEYWORK_VARS]
+    if keyword in envs[env_name][consts.KEYWORK_APPS][app_name]:
+      return envs[env_name][consts.KEYWORK_APPS][app_name][keyword]
     else:
       return {}
 
-  def _get_global_params(self) -> dict[str, str]:
-    if self.config is None:
-      log.error('Config is not populated')
-      raise InternalError
+  def get_vars(self, env_name: str | None = None, app_name: str | None = None, extra_vars: dict | None = None) -> dict:
+    if extra_vars is None:
+      extra_vars = {}
 
-    return self.config[consts.KEYWORK_PARAMS] if consts.KEYWORK_PARAMS in self.config else {}
+    global_vars = self._get_global_scope(consts.KEYWORK_VARS)
+    env_vars = self._get_env_scope(consts.KEYWORK_VARS, env_name) if env_name else {}
+    app_vars = self._get_app_scope(consts.KEYWORK_VARS, env_name, app_name) if env_name and app_name else {}
 
-  def _get_env_params(self, env_name: str) -> dict[str, str]:
-    envs = self.get_envs()
-    if env_name not in envs:
-      log.error(f'Environment {env_name} is not defined')
-      raise ConfigFileError
+    resolved_vars = merge_dicts_with_overrides(
+      extra_vars,
+      VarsResolver.resolve_all(global_vars,
+                               merge_dicts_with_overrides(extra_vars, global_vars),
+                               var_identifier=self.cli_params.var_identifier,
+                               allow_unresolved=True)
+    )
 
-    return envs[env_name][consts.KEYWORK_PARAMS] if consts.KEYWORK_PARAMS in envs[env_name] else {}
+    if env_name:
+      resolved_vars = merge_dicts_with_overrides(
+        resolved_vars,
+        VarsResolver.resolve_all(env_vars,
+                                 merge_dicts_with_overrides(resolved_vars, env_vars),
+                                 var_identifier=self.cli_params.var_identifier,
+                                 allow_unresolved=True)
+      )
 
-  def _get_app_params(self, env_name: str, app_name: str) -> dict[str, str]:
-    envs = self.get_envs()
-    if env_name not in envs:
-      log.error(f'Environment {env_name} is not defined')
-      raise ConfigFileError
+    if env_name and app_name:
+      resolved_vars = merge_dicts_with_overrides(
+        resolved_vars,
+        VarsResolver.resolve_all(app_vars,
+                                 merge_dicts_with_overrides(resolved_vars, app_vars),
+                                 var_identifier=self.cli_params.var_identifier,
+                                 allow_unresolved=True)
+      )
 
-    if consts.KEYWORK_APPS not in envs[env_name] or app_name not in envs[env_name][consts.KEYWORK_APPS]:
-      log.error(f'Application {app_name} is not defined in environment {env_name}')
-      raise ConfigFileError
+    resolved_vars = VarsResolver.resolve_all(resolved_vars,
+                                             resolved_vars,
+                                             var_identifier=self.cli_params.var_identifier,
+                                             allow_unresolved=False)
 
-    if consts.KEYWORK_PARAMS in envs[env_name][consts.KEYWORK_APPS][app_name]:
-      return envs[env_name][consts.KEYWORK_APPS][app_name][consts.KEYWORK_PARAMS]
-    else:
-      return {}
+    return resolved_vars
 
   def get_params(self, env_name: str | None = None, app_name: str | None = None) -> Params:
-    global_params = self._get_global_params()
-    env_params = self._get_env_params(env_name) if env_name else {}
-    app_params = self._get_app_params(env_name, app_name) if env_name and app_name else {}
+    global_params = self._get_global_scope(consts.KEYWORK_PARAMS)
+    env_params = self._get_env_scope(consts.KEYWORK_PARAMS, env_name) if env_name else {}
+    app_params = self._get_app_scope(consts.KEYWORK_PARAMS, env_name, app_name) if env_name and app_name else {}
 
     params = Params()
     params.populate_params(**merge_dicts_with_overrides(global_params, env_params, app_params))
