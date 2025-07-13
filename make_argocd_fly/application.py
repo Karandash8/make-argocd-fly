@@ -92,12 +92,12 @@ class AppOfAppsApplication(AbstractApplication):
         'env_name': env_name,
         'app_name': app_name
       }
-      vars = self.config.get_vars(env_name=env_name, app_name=app_name, extra_vars=extra_vars)
+      resolved_vars = self.config.get_vars(env_name=env_name, app_name=app_name, extra_vars=extra_vars)
 
       if self.cli_params.print_vars:
-        log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(vars)}')
+        log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(resolved_vars)}')
 
-      self.render_jinja_step.configure(self.env_name, self.app_name, self.APPLICATION_RESOUCE_TEMPLATE, vars)
+      self.render_jinja_step.configure(self.env_name, self.app_name, self.APPLICATION_RESOUCE_TEMPLATE, resolved_vars)
       await self.render_jinja_step.run()
 
     log.debug(f'Generated resources for application {self.app_name} in environment {self.env_name}')
@@ -128,17 +128,17 @@ class SimpleApplication(AbstractApplication):
       'env_name': self.env_name,
       'app_name': self.app_name
     }
-    vars = self.config.get_vars(env_name=self.env_name, app_name=self.app_name, extra_vars=extra_vars)
+    resolved_vars = self.config.get_vars(env_name=self.env_name, app_name=self.app_name, extra_vars=extra_vars)
 
     if self.cli_params.print_vars:
-      log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(vars)}')
+      log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(resolved_vars)}')
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml)$')
     self.render_yaml_step.configure(self.env_name, self.app_name, yml_children)
     await self.render_yaml_step.run()
 
     j2_children = self.app_viewer.get_files_children(r'(\.yml\.j2)$')
-    self.render_jinja_step.configure(self.env_name, self.app_name, j2_children, vars)
+    self.render_jinja_step.configure(self.env_name, self.app_name, j2_children, resolved_vars)
     await self.render_jinja_step.run()
 
     log.debug(f'Generated resources for application {self.app_name} in environment {self.env_name}')
@@ -173,17 +173,17 @@ class KustomizeApplication(AbstractApplication):
       'env_name': self.env_name,
       'app_name': self.app_name
     }
-    vars = self.config.get_vars(env_name=self.env_name, app_name=self.app_name, extra_vars=extra_vars)
+    resolved_vars = self.config.get_vars(env_name=self.env_name, app_name=self.app_name, extra_vars=extra_vars)
 
     if self.cli_params.print_vars:
-      log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(vars)}')
+      log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(resolved_vars)}')
 
     yml_children = self.app_viewer.get_files_children(r'(\.yml)$', ['base', self.env_name])
     self.render_yaml_step.configure(self.env_name, self.app_name, yml_children)
     await self.render_yaml_step.run()
 
     j2_children = self.app_viewer.get_files_children(r'(\.yml\.j2)$', ['base', self.env_name])
-    self.render_jinja_step.configure(self.env_name, self.app_name, j2_children, vars)
+    self.render_jinja_step.configure(self.env_name, self.app_name, j2_children, resolved_vars)
     await self.render_jinja_step.run()
 
     self.tmp_write_resources_step.configure(self.config.tmp_dir, self.render_yaml_step.get_resources() + self.render_jinja_step.get_resources())

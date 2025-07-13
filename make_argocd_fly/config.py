@@ -87,7 +87,10 @@ class Config:
     else:
       return {}
 
-  def get_vars(self, env_name: str | None = None, app_name: str | None = None, extra_vars: dict = {}) -> dict:
+  def get_vars(self, env_name: str | None = None, app_name: str | None = None, extra_vars: dict | None = None) -> dict:
+    if extra_vars is None:
+      extra_vars = {}
+
     global_vars = self._get_global_scope(consts.KEYWORK_VARS)
     env_vars = self._get_env_scope(consts.KEYWORK_VARS, env_name) if env_name else {}
     app_vars = self._get_app_scope(consts.KEYWORK_VARS, env_name, app_name) if env_name and app_name else {}
