@@ -181,7 +181,7 @@ All standard Jinja2 features are supported. For example, to render a Jinja2 temp
 {% endfilter %}
 ```
 
-Extra Jinja2 extentions/filters are available for use:
+Extra Jinja2 extentsons/filters are available for use:
 - `rawinclude` - to include literal file content (without rendering) in the current jinja2 template, use the following block:
   ```
   {%- filter indent(width=4) %}
