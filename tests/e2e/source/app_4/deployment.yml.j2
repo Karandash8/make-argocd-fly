@@ -13,12 +13,12 @@ metadata:
   namespace: {{ namespace }}
 data: |-
 {%- filter indent(width=2) %}
-{% include_raw 'files/file.json' %}
+{% rawinclude 'files/file.json' %}
 {% endfilter %}
 
 data_2: |-
 {%- filter indent(width=2) %}
-{% include_raw 'files/file_2.yml' %}
+{% rawinclude 'files/file_2.yml' %}
 {% endfilter %}
 
 data_3: |-

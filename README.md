@@ -123,10 +123,10 @@ vars:
 ```
 
 ### Magic variables
-The folloving variable names are reserved for internal purposes and must not be used in the configuration file:
+The following variable names are reserved for internal purposes and must not be used in the configuration file:
 - __application
 
-The folloving variable are automatically populated and can be referenced without explicit definition:
+The following variable are automatically populated and can be referenced without explicit definition:
 - env_name
 - app_name
 
@@ -174,72 +174,57 @@ Variables can also be embedded within strings:
 - ```prefix-${var_name}-suffix```
 
 ### Jinja2 templates
-All standard Jinja2 features are supported.
+All standard Jinja2 features are supported. For example, to render a Jinja2 template from a file in the current jinja2 template, use the following block:
+```
+{%- filter indent(width=4) %}
+{% include 'files/file.json.j2' %}
+{% endfilter %}
+```
 
-For example:
-- To render a template in the current jinja2 template, use the following block:
-
+Extra Jinja2 extentsons/filters are available for use:
+- `rawinclude` - to include literal file content (without rendering) in the current jinja2 template, use the following block:
   ```
   {%- filter indent(width=4) %}
-  {% include 'files/file.json.j2' %}
+  {% rawinclude 'files/file.json' %}
   {% endfilter %}
   ```
-
-  Example:
-  ```tests/e2e/source/app_5```
-
-In addition, the following features are available:
-- To include file content in the current Jinja2 template, use the following block:
-
-  ```
-  {%- filter indent(width=4) %}
-  {% include_raw 'files/file.json' %}
-  {% endfilter %}
-  ```
-
-  Example:
-  ```tests/e2e/source/app_4```
-
-- To render files from a subdirectory as YAML key-value pairs (where file name would be the key and file content would be the value),
-use the following block:
-
+- `include_map` - to render templates from a subdirectory as YAML key-value pairs (where file name would be the key and rendered file content would be the value), use the following block:
   ```
   {%- filter indent(width=2) %}
-  {% include_all_as_yaml_kv 'files/' %}
+  {% include_map 'files/' %}
   {% endfilter %}
   ```
 
-  Example:
-  ```tests/e2e/source/app_15```
-
-- To render files from a subdirectory as YAML list (where file content would be the value),
-use the following block:
-
+- `rawinclude_map` - to include literal file content from a subdirectory as YAML key-value pairs (where file name would be the key and file content would be the value), use the following block:
   ```
-  {%- filter indent(width=4) %}
-  {% include_all_as_yaml_list 'files/' %}
+  {%- filter indent(width=2) %}
+  {% rawinclude_map 'files/' %}
   {% endfilter %}
   ```
 
-  Example:
-  ```tests/e2e/source/app_16```
+- `include_list` - to render templates from a subdirectory as YAML list (where list elements would be rendered file content), use the following block:
+  ```
+  {%- filter indent(width=2) %}
+  {% include_list 'files/' %}
+  {% endfilter %}
+  ```
 
-- To render file names in a subdirectory as YAML list,
-use the following block:
+- `rawinclude_list` - to include literal file content from a subdirectory as YAML list (where list elements would be file content), use the following block:
+  ```
+  {%- filter indent(width=2) %}
+  {% rawinclude_list 'files/' %}
+  {% endfilter %}
+  ```
 
+- `file_list` - to render file names in a subdirectory as YAML list (where list elements would be file names), use the following block:
   ```
   {%- filter indent(width=6) %}
-  {% include_all_as_yaml_names_list 'files/', '/etc/' %}
+  {% file_list 'files/' [<prefix>] %}
   {% endfilter %}
   ```
+  Note that there is an optional second parameter, which is a prefix that will be added to each file name in the list. This can be useful for constructing full paths or URLs.
 
-  Note that it takes two parameters, first is directory that will be listed and second is a prefix, path to file maybe, you can add to combine with the filename.
-
-  Example:
-  ```tests/e2e/source/app_17```
-
-- To perform a DNS lookup, use the following filter:
-
+- `dig` - to perform a DNS lookup, use the following filter:
   ```
   {{ 'example.com' | dig }}
   ```
