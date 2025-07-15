@@ -10,3 +10,10 @@ CLI parameter `--config-file` is deprecated and will be removed in the future. A
 - `parent_app_env` - the name of the parent application environment
 - `non_k8s_files_to_render` - a list of non-Kubernetes files to render
 - `exclude_rendering` - a list of directories to exclude from rendering
+
+### Custom Jinja2 extensions deprecations
+Existing Jinja2 extensions were renamed in order to make their function more clear:
+- `include_raw` -> `rawinclude`
+- `include_all_as_yaml_names_list` -> `file_list`
+- `include_all_as_yaml_kv` -> `include_map`
+- `include_all_as_yaml_list` -> `include_list`
