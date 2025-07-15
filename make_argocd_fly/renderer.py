@@ -96,7 +96,7 @@ class FileListExtension(Extension):
     lineno = parser.stream.expect('name:file_list').lineno
     dir_path = parser.parse_expression()
     prepend_path = parser.parse_expression() if parser.stream.skip_if('comma') else nodes.Const(None)
-    result = self.call_method('_render', args = [dir_path, prepend_path], lineno=lineno)
+    result = self.call_method('_render', args=[dir_path, prepend_path], lineno=lineno)
     return nodes.Output([result], lineno=lineno)
 
   def _render(self, dir_path: str, prepend_path: str | None = None) -> str:
