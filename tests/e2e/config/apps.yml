@@ -10,6 +10,42 @@ envs:
       app_2:
         params:
           parent_app: core_deployer
+        vars:
+          argocd_application_cr_template: |
+            apiVersion: argoproj.io/v1alpha1
+            kind: Application
+            metadata:
+              name: {{ __application.application_name }}
+              namespace: {{ argocd.namespace | default('argocd') }}
+            {% if 'sync_wave' in argocd %}
+              annotations:
+                argocd.argoproj.io/sync-wave: "{{ argocd.sync_wave }}"
+            {% endif %}
+            {%- if argocd.finalizers | default([]) %}
+              finalizers:
+              {{ argocd.finalizers | to_nice_yaml | trim }}
+            {%- else %}
+              finalizers: []
+            {%- endif %}
+            spec:
+              project: {{ argocd.project | default('default') }}
+              source:
+                repoURL: {{ argocd.source.repo_url }}
+                targetRevision: {{ argocd.source.target_revision }}
+                path: {{ __application.path }}
+            {% if 'directory' in argocd.source and 'recurse' in argocd.source.directory %}
+                directory:
+                  recurse: {{ argocd.source.directory.recurse }}
+            {% endif %}
+              destination:
+                server: {{ argocd.destination.server }}
+                namespace: {{ argocd.destination.namespace | default('argocd') }}
+              syncPolicy:
+                {{ argocd.sync_policy | default({}) | to_nice_yaml(indent=2) | trim | indent(4) }}
+              {%- if argocd.ignoreDifferences | default([]) %}
+              ignoreDifferences:
+              {{ argocd.ignoreDifferences | default([]) | to_nice_yaml(indent=2) | trim | indent(2) }}
+              {%- endif %}
       app_3: {params: {parent_app: service_deployer}}
       app_4: {params: {parent_app: service_deployer}}
       app_5: {params: {parent_app: service_deployer}}
@@ -28,12 +64,49 @@ envs:
   external_1:
     apps:
       bootstrap: {}
-      unused_deployer: {params: {parent_app: bootstrap, parent_app_env: null}}
+      unused_deployer:
+        params: {parent_app: bootstrap, parent_app_env: null}
+        vars:
+          argocd_application_cr_template: |
+            apiVersion: argoproj.io/v1alpha1
+            kind: Application
+            metadata:
+              name: {{ __application.application_name }}-override
+              namespace: {{ argocd.namespace | default('argocd') }}-override
+            spec:
+              project: {{ argocd.project | default('default') }}-override
+              source:
+                repoURL: {{ argocd.source.repo_url }}-override
+                targetRevision: {{ argocd.source.target_revision }}-override
+                path: {{ __application.path }}-override
+              destination:
+                server: {{ argocd.destination.server }}-override
+                namespace: {{ argocd.destination.namespace | default('argocd') }}-override
       app_1: {params: {parent_app: core_deployer}}
       app_2: {params: {parent_app: core_deployer}}
       app_5: {params: {parent_app: service_deployer}}
       subdirectory/app_7: {params: {parent_app: service_deployer}}
       app_9: {params: {parent_app: service_deployer}}
+      app_18:
+        params: {parent_app: service_deployer}
+        vars:
+          argocd_application_cr_template: |
+            apiVersion: argoproj.io/v1alpha1
+            kind: Application
+            metadata:
+              name: hello-world
+              namespace: {{ argocd.namespace | default('argocd') }}
+            spec:
+              project: {{ argocd.project | default('default') }}
+              source:
+                chart: hello-world
+                repoURL: https://helm.github.io/examples
+                targetRevision: 0.1.0
+                helm:
+                  releaseName: hello-world
+              destination:
+                server: {{ argocd.destination.server }}
+                namespace: {{ argocd.destination.namespace | default('argocd') }}
     params:
       parent_app_env: management
   external_2:
