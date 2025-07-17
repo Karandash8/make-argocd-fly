@@ -15,6 +15,43 @@ KEYWORK_APPS = 'apps'
 KEYWORK_VARS = 'vars'
 KEYWORK_PARAMS = 'params'
 
+ARGOCD_APPLICATION_CR_TEMPLATE = '''\
+  apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  metadata:
+    name: {{ __application.application_name }}
+    namespace: {{ argocd.namespace | default('argocd') }}
+  {% if 'sync_wave' in argocd %}
+    annotations:
+      argocd.argoproj.io/sync-wave: "{{ argocd.sync_wave }}"
+  {% endif %}
+  {%- if argocd.finalizers | default([]) %}
+    finalizers:
+    {{ argocd.finalizers | to_nice_yaml | trim }}
+  {%- else %}
+    finalizers: []
+  {%- endif %}
+  spec:
+    project: {{ argocd.project | default('default') }}
+    source:
+      repoURL: {{ argocd.source.repo_url }}
+      targetRevision: {{ argocd.source.target_revision }}
+      path: {{ __application.path }}
+  {% if 'directory' in argocd.source and 'recurse' in argocd.source.directory %}
+      directory:
+        recurse: {{ argocd.source.directory.recurse }}
+  {% endif %}
+    destination:
+      server: {{ argocd.destination.server }}
+      namespace: {{ argocd.destination.namespace | default('argocd') }}
+    syncPolicy:
+      {{ argocd.sync_policy | default({}) | to_nice_yaml(indent=2) | trim | indent(4) }}
+    {%- if argocd.ignoreDifferences | default([]) %}
+    ignoreDifferences:
+    {{ argocd.ignoreDifferences | default([]) | to_nice_yaml(indent=2) | trim | indent(2) }}
+    {%- endif %}
+  '''
+
 
 class ParamNames:
   PARENT_APP = 'parent_app'

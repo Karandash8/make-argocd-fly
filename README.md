@@ -2,14 +2,14 @@
   [![cov](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Karandash8/26eb92c97bbfac22b938afebac85e7cd/raw/covbadge.json)](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Karandash8/26eb92c97bbfac22b938afebac85e7cd/raw/covbadge.json)
 
 ## Description
-`make-argocd-fly` simplifies generation of Kubernetes manifests in multi-cluster and multi-application environments. It leverages YAML, Jinja2 templates, Kustomize files, and Helm charts through Kustomize, streamlining the process of creating and maintaining Kubernetes resources. Although the generated manifests can be deployed using any external tool, such as kubectl, `make-argocd-fly` provides native integration with ArgoCD, enhancing the overall deployment experience.
+`make-argocd-fly` simplifies generation of Kubernetes manifests in multi-cluster and multi-application environments. It leverages YAML, Jinja2 templates, Kustomize files, and Helm charts, streamlining the process of creating and maintaining Kubernetes resources. Although the generated manifests can be deployed using any external tool, such as kubectl, `make-argocd-fly` provides native integration with ArgoCD, enhancing the overall deployment experience.
 
 With `make-argocd-fly`, you can develop resources in various formats, specify deployment details in a configuration file, generate the final manifests effortlessly, and push them to a repository for ArgoCD to deploy to a Kubernetes cluster. This approach promotes transparency in what is being deployed and where, simplifies both maintenance and development, and assists in debugging issues.
 
 ## Features
 - **ArgoCD App-of-Apps Pattern Support:** Native support for the app-of-apps pattern to organize complex applications, with automatic generation of ArgoCD `Application` resources for streamlined deployment.
 - **Jinja2 and Kustomize Rendering:** Effortlessly render Kubernetes manifests using Jinja2 templates and Kustomize, including support for Helm charts.
-- **Extended Jinja2 Functionality:** Includes additional Jinja2 extensions and filters, such as `include_raw`, to render content from external files.
+- **Extended Jinja2 Functionality:** Includes additional Jinja2 extensions and filters, such as `rawinclude`, to include literal content from external files.
 - **Flexible Variable Management:** Manage global, per-environment, and per-application Jinja2 variables, with support for referencing other variables.
 - **Subdirectory Resource Management:** Organize resources within subdirectories for improved structure and management.
 
@@ -130,6 +130,11 @@ The following variable are automatically populated and can be referenced without
 - env_name
 - app_name
 
+The following variables are automatically populated but can be overridden in the configuration file for customization:
+- argocd_application_cr_template
+
+`argocd_application_cr_template`  is a variable that contains the Jinja2 template for the ArgoCD `Application` resource. It is used to generate the `Application` resource for each application specified in the configuration file. The variable can be overridden in the configuration file to customize the generated `Application` resource (e.g., ```tests/examples/app_types/config/config.yml``` for `06_helm_app`).
+
 ### Variables scopes
 Variables can be defined at three levels: root (global), per-environment, and per-application.
 
@@ -137,9 +142,9 @@ Variables can be defined at three levels: root (global), per-environment, and pe
 - Environment-specific variables apply only to a specific environment but can be used by any application within that environment.
 - Application-specific variables are restricted to the application in which they are defined.
 
-If a variable is defined at multiple levels, the following priority rules apply: global < environment < application.
+If a variable is defined at multiple levels, the following priority rules apply: **global < environment < application**.
 
-
+For example, if a variable is defined at the global level and also at the application level, the application-level value will take precedence when rendering templates for that application.
 ```
 envs:
   <environment_name>:
@@ -153,7 +158,7 @@ vars:
   <variable_name>: <variable_value>
 ```
 
-In order to unset a key of a dictionary variable that is set at a higher level, use the `null` value:
+In order to unset a key of a dictionary variable that is set at a wider level, use the `null` value:
 ```
 envs:
   <environment_name>:
@@ -165,8 +170,8 @@ vars:
     <key>: <value>
 ```
 
-### Variables in `config.yml`
-Variables can be referenced in the configuration file using the following syntax:
+### Variables in config files
+Variables can be referenced in the configuration files using the following syntax:
 - ```${var_name}```
 - ```${var_name[dict_key][...]}```
 
@@ -232,7 +237,7 @@ Extra Jinja2 extentsons/filters are available for use:
 - Ansible filters are supported as well: https://pypi.org/project/jinja2-ansible-filters/
 
 ### Kustomize
-Local files referenced in the `resources` section should be named following this convention: the Kubernetes resource type followed by an underscore (`_`) and the resource name. For example:
+Local files referenced in the `resources` section should be named following the convention: the Kubernetes resource type followed by an underscore (`_`) and the resource name. For example:
 ```
 resources:
   - deployment_nginx.yml
@@ -246,7 +251,7 @@ When using Kustomize overlays, the base directory should be named `base`, and ov
 Example:
 ```tests/e2e/source/app_2```
 
-If using a Helm `values.yml` file, it must be named `values.yml` and placed within the application directory. Additionally, the file must be explicitly specified for rendering in the configuration file:
+If using a Helm `values.yml` file with kustomize, it must be named `values.yml` and placed within the application directory. Additionally, the file must be explicitly specified for rendering in the configuration file:
 ```
 envs:
   <environment_name>:
@@ -256,7 +261,7 @@ envs:
           non_k8s_files_to_render: ['values.yml']  ## (OPTIONAL) list of files to render that are not Kubernetes resources (e.g., values.yml)
 ```
 ### Exclude certain directories
-If there are certain files in the source application directory that you do not want to render, you can use the `exclude_rendering` parameter in your configuration to exclude them from the rendering process:
+If there are certain files in the source application directory that should not be rendered, you can use the `exclude_rendering` parameter in your configuration to exclude them from the rendering process:
 ```
 envs:
   <environment_name>:

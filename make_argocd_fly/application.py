@@ -6,6 +6,7 @@ import shutil
 from pprint import pformat
 
 from make_argocd_fly.resource import ResourceViewer
+from make_argocd_fly import consts
 from make_argocd_fly.utils import get_app_rel_path
 from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparams import get_cli_params
@@ -32,43 +33,6 @@ class AbstractApplication(ABC):
 
 
 class AppOfAppsApplication(AbstractApplication):
-  APPLICATION_RESOUCE_TEMPLATE = textwrap.dedent('''\
-    apiVersion: argoproj.io/v1alpha1
-    kind: Application
-    metadata:
-      name: {{ __application.application_name }}
-      namespace: {{ argocd.namespace | default('argocd') }}
-    {% if 'sync_wave' in argocd %}
-      annotations:
-        argocd.argoproj.io/sync-wave: "{{ argocd.sync_wave }}"
-    {% endif %}
-    {%- if argocd.finalizers | default([]) %}
-      finalizers:
-      {{ argocd.finalizers | to_nice_yaml | trim }}
-    {%- else %}
-      finalizers: []
-    {%- endif %}
-    spec:
-      project: {{ argocd.project | default('default') }}
-      source:
-        repoURL: {{ argocd.source.repo_url }}
-        targetRevision: {{ argocd.source.target_revision }}
-        path: {{ __application.path }}
-    {% if 'directory' in argocd.source and 'recurse' in argocd.source.directory %}
-        directory:
-          recurse: {{ argocd.source.directory.recurse }}
-    {% endif %}
-      destination:
-        server: {{ argocd.destination.server }}
-        namespace: {{ argocd.destination.namespace | default('argocd') }}
-      syncPolicy:
-        {{ argocd.sync_policy | default({}) | to_nice_yaml(indent=2) | trim | indent(4) }}
-      {%- if argocd.ignoreDifferences | default([]) %}
-      ignoreDifferences:
-      {{ argocd.ignoreDifferences | default([]) | to_nice_yaml(indent=2) | trim | indent(2) }}
-      {%- endif %}
-    ''')
-
   def __init__(self, app_name: str, env_name: str, app_viewer: ResourceViewer) -> None:
     super().__init__(app_name, env_name, app_viewer)
     self.find_apps_step = FindAppsStep()
@@ -85,6 +49,7 @@ class AppOfAppsApplication(AbstractApplication):
 
     for (app_name, env_name) in self.find_apps_step.get_apps():
       extra_vars = {
+        'argocd_application_cr_template': consts.ARGOCD_APPLICATION_CR_TEMPLATE,
         '__application': {
           'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
           'path': os.path.join(os.path.basename(self.config.output_dir), env_name, app_name)
@@ -97,7 +62,7 @@ class AppOfAppsApplication(AbstractApplication):
       if self.cli_params.print_vars:
         log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(resolved_vars)}')
 
-      self.render_jinja_step.configure(self.env_name, self.app_name, self.APPLICATION_RESOUCE_TEMPLATE, resolved_vars)
+      self.render_jinja_step.configure(self.env_name, self.app_name, textwrap.dedent(resolved_vars['argocd_application_cr_template']), resolved_vars)
       await self.render_jinja_step.run()
 
     log.debug(f'Generated resources for application {self.app_name} in environment {self.env_name}')
