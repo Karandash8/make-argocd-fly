@@ -1,0 +1,17 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: 04-kustomize-helm-app-example
+  namespace: argocd
+  finalizers: []
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/my_user/my_repo.git
+    targetRevision: HEAD
+    path: output/example/04_kustomize_helm_app
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy: {}

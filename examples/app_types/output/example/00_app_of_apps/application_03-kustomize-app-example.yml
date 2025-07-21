@@ -1,0 +1,17 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: 03-kustomize-app-example
+  namespace: argocd
+  finalizers: []
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/my_user/my_repo.git
+    targetRevision: HEAD
+    path: output/example/03_kustomize_app
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy: {}

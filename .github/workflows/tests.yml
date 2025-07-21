@@ -71,8 +71,8 @@ jobs:
         run: |
           python -m tox
 
-  examples-e2e:
-    name: Run end-to-end tests for examples
+  examples-app-types:
+    name: Run examples (app types)
     runs-on: make-argocd-fly
 
     steps:
@@ -92,11 +92,11 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
-      - name: Run end-to-end tests
+      - name: Run examples
         run: |
-          python main.py --root-dir tests/examples/app_types --skip-latest-version-check
-          if [[ -n $(git status --porcelain tests/examples/app_types/output) ]]; then
-            echo "Unstaged files found in tests/examples/app_types/output. Failing the job."
+          python main.py --root-dir examples/app_types --skip-latest-version-check
+          if [[ -n $(git status --porcelain examples/app_types/output) ]]; then
+            echo "Unstaged files found in examples/app_types/output. Failing the job."
             exit 1
           fi
 

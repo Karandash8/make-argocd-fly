@@ -20,7 +20,7 @@ ARGOCD_APPLICATION_CR_TEMPLATE = '''\
   kind: Application
   metadata:
     name: {{ __application.application_name }}
-    namespace: {{ argocd.namespace | default('argocd') }}
+    namespace: {{ argocd.namespace }}
   {% if 'sync_wave' in argocd %}
     annotations:
       argocd.argoproj.io/sync-wave: "{{ argocd.sync_wave }}"
@@ -32,7 +32,7 @@ ARGOCD_APPLICATION_CR_TEMPLATE = '''\
     finalizers: []
   {%- endif %}
   spec:
-    project: {{ argocd.project | default('default') }}
+    project: {{ argocd.project }}
     source:
       repoURL: {{ argocd.source.repo_url }}
       targetRevision: {{ argocd.source.target_revision }}
@@ -43,7 +43,7 @@ ARGOCD_APPLICATION_CR_TEMPLATE = '''\
   {% endif %}
     destination:
       server: {{ argocd.destination.server }}
-      namespace: {{ argocd.destination.namespace | default('argocd') }}
+      namespace: {{ argocd.destination.namespace }}
     syncPolicy:
       {{ argocd.sync_policy | default({}) | to_nice_yaml(indent=2) | trim | indent(4) }}
     {%- if argocd.ignoreDifferences | default([]) %}
@@ -51,6 +51,18 @@ ARGOCD_APPLICATION_CR_TEMPLATE = '''\
     {{ argocd.ignoreDifferences | default([]) | to_nice_yaml(indent=2) | trim | indent(2) }}
     {%- endif %}
   '''
+
+ARGOCD_DEFAULTS = {
+  'namespace': 'argocd',
+  'project': 'default',
+  'source': {
+    'target_revision': 'HEAD',
+  },
+  'destination': {
+    'server': 'https://kubernetes.default.svc',
+    'namespace': 'argocd',
+  },
+}
 
 
 class ParamNames:
