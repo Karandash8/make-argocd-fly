@@ -1,20 +1,20 @@
 envs:
   example:
+    params:
+      parent_app: 00_app_of_apps
     apps:
+      00_app_of_apps: {params: {parent_app: null}}
       01_yaml_app: {}
       02_jinja2_app: {}
       03_kustomize_app: {}
       04_kustomize_helm_app: {}
-      05_app_dir: {}
-      06_helm_app:
-        params:
-          parent_app: 05_app_dir
+      05_argocd_managed_helm_app:
         vars:
           argocd_application_cr_template: |
             apiVersion: argoproj.io/v1alpha1
             kind: Application
             metadata:
-              name: hello-world
+              name: {{ __application.application_name }}
               namespace: argocd
             spec:
               project: default
@@ -29,5 +29,8 @@ envs:
                 namespace: argocd
 
 vars:
+  argocd:
+    source:
+      repo_url: https://github.com/my_user/my_repo.git
   namespace: kube-default
   version: 0.1.0
