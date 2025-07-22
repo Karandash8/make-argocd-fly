@@ -89,20 +89,20 @@ What it does:
 
 ## 📘 Documentation
 
-- [Getting Started](docs/getting-started.md)
-- [Configuration](docs/configuration.md)
-- [Argocd Application Generation](docs/argocd.md)
-- [Kustomize & Helm Integration](docs/kustomize.md)
-- [Using Jinja2 Templates](docs/templates.md)
-- [CLI Reference](docs/cli.md)
-- [Caveats & Limitations](docs/caveats.md)
+- [Getting Started](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/getting-started.md)
+- [Configuration](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/configuration.md)
+- [Argocd Application Generation](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/argocd.md)
+- [Kustomize & Helm Integration](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/kustomize.md)
+- [Using Jinja2 Templates](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/templates.md)
+- [CLI Reference](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/cli.md)
+- [Caveats & Limitations](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/caveats.md)
 
 ---
 
 ## 📣 Community & Feedback
 
 - Found a bug or have a feature request? [Open an issue](https://github.com/Karandash8/make-argocd-fly/issues)
-- Want to contribute? Check out [CONTRIBUTING.md](CONTRIBUTING.md)
+- Want to contribute? Check out [CONTRIBUTING.md](https://github.com/Karandash8/make-argocd-fly/blob/main/CONTRIBUTING.md)
 
 ---
 
