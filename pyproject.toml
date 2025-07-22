@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "make-argocd-fly"
 description = "A tool to generate Kubernetes manifests from templates"
-# license = "GPL-3.0-only"  # https://github.com/pypa/packaging-problems/issues/870
+# license = "MIT"  # https://github.com/pypa/packaging-problems/issues/870
 authors = [
     {name = "Andrei Lapin", email = "karandash8@gmail.com"},
 ]

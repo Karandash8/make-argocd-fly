@@ -69,8 +69,8 @@ Variables are used to define values that can be used in Jinja2 templates across 
 - Overridable: `argocd_application_cr_template`
   - **Description**: This variable can be overridden to customize the ArgoCD application CR template.
   - **Type**: String
-  - **Default Value**: [ARGOCD_APPLICATION_CR_TEMPLATE in `make_argocd_fly/consts.py`](../make_argocd_fly/consts.py#L18)
-  - **Override Example**: [05_argocd_managed_helm_app in `examples/app_types/config/config.yml`](../examples/app_types/config/config.yml#L13)
+  - **Default Value**: [ARGOCD_APPLICATION_CR_TEMPLATE in `make_argocd_fly/consts.py`](https://github.com/Karandash8/make-argocd-fly/blob/main/make_argocd_fly/consts.py#L18)
+  - **Override Example**: [05_argocd_managed_helm_app in `examples/app_types/config/config.yml`](https://github.com/Karandash8/make-argocd-fly/blob/main/examples/app_types/config/config.yml#L13)
 
 ### 🔗 Variables Referencing Other Variables
 Variables can reference other variables in the config files, using the following syntax:

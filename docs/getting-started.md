@@ -52,7 +52,7 @@ Applications can be defined in:
 After running `make-argocd-fly`, this directory is **automatically populated** with the rendered application manifests.
 The structure will mirror your environment and application layout for easy navigation.
 
-For a reference project structure, see the [example under `examples/app_types`](../examples/app_types).
+For a reference project structure, see the [example under `examples/app_types`](https://github.com/Karandash8/make-argocd-fly/tree/main/examples/app_types).
 
 ## 🚀 First Run
 To render your applications, run the following command:
