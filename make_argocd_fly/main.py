@@ -32,11 +32,11 @@ async def generate() -> None:
   apps = []
 
   log.info('Creating applications')
-  for env_name, env_data in config.get_envs().items():
+  for env_name in config.list_envs():
     if envs_to_render and env_name not in envs_to_render:
       continue
 
-    for app_name in env_data[consts.KEYWORK_APPS].keys():
+    for app_name in config.list_apps(env_name):
       if apps_to_render and app_name not in apps_to_render:
         continue
 

@@ -47,7 +47,7 @@ envs:
           non_k8s_files_to_render: ['values.yml']
 ```
 
-And then reference them in your Helm chart configuration:
+And then reference it in your Helm chart configuration:
 
 ```yaml
 helmCharts:
