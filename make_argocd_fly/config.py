@@ -50,12 +50,51 @@ class Config:
 
     return self._tmp_dir
 
-  def get_envs(self) -> dict:
+  def list_envs(self) -> list[str]:
     if self.config is None:
       log.error('Config is not populated')
       raise InternalError
 
-    return self.config[consts.KEYWORK_ENVS] if consts.KEYWORK_ENVS in self.config else {}
+    if consts.KEYWORK_ENVS not in self.config:
+      log.warning('Missing `envs` keyword in config')
+      return []
+
+    return list(self.config[consts.KEYWORK_ENVS].keys())
+
+  def get_env(self, env_name: str) -> dict:
+    if self.config is None:
+      log.error('Config is not populated')
+      raise InternalError
+
+    if env_name not in self.list_envs():
+      log.error(f'Environment {env_name} is not defined')
+      raise ConfigFileError
+
+    return self.config[consts.KEYWORK_ENVS][env_name]
+
+  def list_apps(self, env_name: str) -> list[str]:
+    if self.config is None:
+      log.error('Config is not populated')
+      raise InternalError
+
+    env = self.get_env(env_name)
+    if consts.KEYWORK_APPS not in env:
+      log.warning(f'Missing `apps` keyword in environment {env_name}')
+      return []
+
+    return list(env[consts.KEYWORK_APPS].keys())
+
+  def get_app(self, env_name: str, app_name: str) -> dict:
+    if self.config is None:
+      log.error('Config is not populated')
+      raise InternalError
+
+    env = self.get_env(env_name)
+    if consts.KEYWORK_APPS not in env or app_name not in env[consts.KEYWORK_APPS]:
+      log.error(f'Application {app_name} is not defined in environment {env_name}')
+      raise ConfigFileError
+
+    return env[consts.KEYWORK_APPS][app_name]
 
   def _get_global_scope(self, keyword: str) -> dict:
     if self.config is None:
@@ -65,27 +104,14 @@ class Config:
     return self.config[keyword] if keyword in self.config else {}
 
   def _get_env_scope(self, keyword: str, env_name: str) -> dict:
-    envs = self.get_envs()
-    if env_name not in envs:
-      log.error(f'Environment {env_name} is not defined')
-      raise ConfigFileError
+    env = self.get_env(env_name)
 
-    return envs[env_name][keyword] if keyword in envs[env_name] else {}
+    return env[keyword] if keyword in env else {}
 
   def _get_app_scope(self, keyword: str, env_name: str, app_name: str) -> dict:
-    envs = self.get_envs()
-    if env_name not in envs:
-      log.error(f'Environment {env_name} is not defined')
-      raise ConfigFileError
+    app = self.get_app(env_name, app_name)
 
-    if consts.KEYWORK_APPS not in envs[env_name] or app_name not in envs[env_name][consts.KEYWORK_APPS]:
-      log.error(f'Application {app_name} is not defined in environment {env_name}')
-      raise ConfigFileError
-
-    if keyword in envs[env_name][consts.KEYWORK_APPS][app_name]:
-      return envs[env_name][consts.KEYWORK_APPS][app_name][keyword]
-    else:
-      return {}
+    return app[keyword] if keyword in app else {}
 
   def get_vars(self, env_name: str | None = None, app_name: str | None = None, extra_vars: dict | None = None) -> dict:
     if extra_vars is None:
@@ -139,21 +165,11 @@ class Config:
     return params
 
   def get_app_params_deprecated(self, env_name: str, app_name: str) -> dict:
-    envs = self.get_envs()
-    if env_name not in envs:
-      log.error(f'Environment {env_name} is not defined')
-      raise ConfigFileError
-
-    if consts.KEYWORK_APPS not in envs[env_name] or app_name not in envs[env_name][consts.KEYWORK_APPS]:
-      log.error(f'Application {app_name} is not defined in environment {env_name}')
-      raise ConfigFileError
-
-    app_params = {key: value for key, value in envs[env_name][consts.KEYWORK_APPS][app_name].items() if
+    app = self.get_app(env_name, app_name)
+    app_params = {key: value for key, value in app.items() if
                   (key != consts.KEYWORK_VARS) and (key != consts.KEYWORK_PARAMS)}
-    if app_params:
-      return self.return_app_params_deprecated(app_params)
-    else:
-      return {}
+
+    return self.return_app_params_deprecated(app_params) if app_params else {}
 
   @deprecated(version='v0.2.15', reason='Application parameters under application definition are deprecated, use scoped `params` keyword instead')
   def return_app_params_deprecated(self, params: dict) -> dict:

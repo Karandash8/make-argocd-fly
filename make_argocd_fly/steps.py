@@ -49,9 +49,8 @@ class FindAppsStep(AbstractStep):
       log.error('Step is not configured')
       raise InternalError
 
-    for env_name, env_data in self.config.get_envs().items():
-      if consts.KEYWORK_APPS in env_data:
-        for app_name in env_data[consts.KEYWORK_APPS].keys():
+    for env_name in self.config.list_envs():
+      for app_name in self.config.list_apps(env_name):
           app_params = self.config.get_app_params_deprecated(env_name, app_name)
           if not app_params:
             app_params = self.config.get_params(env_name, app_name)

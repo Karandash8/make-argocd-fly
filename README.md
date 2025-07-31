@@ -80,8 +80,8 @@ make-argocd-fly
 ```
 
 What it does:
-- Renders Helm or Kustomize into raw manifests
 - Applies Jinja2 templates with the right variables
+- Renders Helm and Kustomize into raw manifests
 - Generates `Application` manifests for ArgoCD
 - Organizes everything under `./output/`
 
