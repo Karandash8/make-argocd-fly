@@ -90,7 +90,7 @@ class Config:
       raise InternalError
 
     env = self.get_env(env_name)
-    if consts.KEYWORK_APPS not in env or app_name not in env[consts.KEYWORK_APPS]:
+    if app_name not in self.list_apps(env_name):
       log.error(f'Application {app_name} is not defined in environment {env_name}')
       raise ConfigFileError
 
