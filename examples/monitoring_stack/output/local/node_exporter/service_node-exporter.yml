@@ -12,7 +12,7 @@ metadata:
     app.kubernetes.io/part-of: node-exporter
     app.kubernetes.io/version: 1.9.1
     helm.sh/chart: prometheus-node-exporter-4.47.3
-  name: prometheus-node-exporter
+  name: node-exporter
   namespace: monitoring
 spec:
   ports:

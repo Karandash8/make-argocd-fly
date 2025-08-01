@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/part-of: node-exporter
     app.kubernetes.io/version: 1.9.1
     helm.sh/chart: prometheus-node-exporter-4.47.3
-  name: prometheus-node-exporter
+  name: node-exporter
   namespace: monitoring
 spec:
   revisionHistoryLimit: 10
@@ -107,7 +107,7 @@ spec:
         runAsGroup: 65534
         runAsNonRoot: true
         runAsUser: 65534
-      serviceAccountName: prometheus-node-exporter
+      serviceAccountName: node-exporter
       tolerations:
         - effect: NoSchedule
           operator: Exists
