@@ -1,0 +1,99 @@
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: prometheus
+  namespace: {{ monitoring.namespace }}
+spec:
+  replicas: {{ monitoring.prometheus_n_replicas }}
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      k8s-app: prometheus
+  template:
+    metadata:
+      labels:
+        k8s-app: prometheus
+      annotations:
+        checksum/config: |-
+          {% filter checksum | indent(1) %}
+          {% include 'ConfigMap.yml.j2' %}
+          {% endfilter %}
+    spec:
+      containers:
+        - name: prometheus
+          image: docker.io/prom/prometheus:v{{ monitoring.prometheus_version }}
+          args:
+            - --config.file=/etc/prometheus/config/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.no-lockfile
+            - --storage.tsdb.retention.time=6h
+            - --storage.tsdb.min-block-duration=2h
+            - --storage.tsdb.max-block-duration=2h
+            - --web.enable-lifecycle
+            - --log.level=info
+          ports:
+            - name: web
+              containerPort: 9090
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9090
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+          resources:
+            requests:
+              cpu: 200m
+              memory: 1000Mi
+          volumeMounts:
+            - name: prometheus-config-volume
+              mountPath: /etc/prometheus/config
+            - name: prometheus-rules-volume
+              mountPath: /etc/prometheus/rules
+      terminationGracePeriodSeconds: 300
+      serviceAccountName: prometheus
+      securityContext:
+        fsGroup: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: k8s-app
+                    operator: In
+                    values:
+                      - prometheus
+              topologyKey: kubernetes.io/hostname
+      volumes:
+        - name: prometheus-config-volume
+          configMap:
+            defaultMode: 420
+            name: prometheus-config
+        - name: prometheus-rules-volume
+          configMap:
+            defaultMode: 420
+            name: prometheus-rules
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: prometheus-storage-volume
+        namespace: {{ monitoring.namespace }}
+        annotations:
+          argocd.argoproj.io/sync-wave: "-1"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: "2Gi"

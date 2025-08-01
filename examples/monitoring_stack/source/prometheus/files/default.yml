@@ -1,0 +1,60 @@
+groups:
+  - name: Deployment
+    rules:
+      - alert: Deployment at 0 Replicas
+        annotations:
+          summary: Deployment {{$labels.deployment}} in {{$labels.namespace}} is currently having no pods running
+        expr: |
+          sum(kube_deployment_status_replicas{pod_template_hash="", namespace!~"default|kube-tests"}) by (deployment,namespace)  < 1
+        for: 1m
+        labels:
+          severity: warn
+
+  - name: Pods
+    rules:
+      - alert: Container restarted
+        annotations:
+          summary: Container named {{$labels.container}} in {{$labels.pod}} in {{$labels.namespace}} was restarted
+        expr: |
+          sum(increase(kube_pod_container_status_restarts_total{namespace!~"default|kube-tests",pod_template_hash=""}[1m])) by (pod,namespace,container) > 0
+        for: 0m
+        labels:
+          severity: warn
+
+      - alert: High CPU Usage of Container
+        annotations:
+          summary: Container named {{$labels.container}} in {{$labels.pod}} in {{$labels.namespace}} is using more than 75% of CPU Limit
+        expr: |
+          ((sum(irate(container_cpu_usage_seconds_total{image!="",container_name!="POD", namespace!~"default|kube-tests"}[30s])) by (namespace,container_name,pod_name) / sum(container_spec_cpu_quota{image!="",container_name!="POD", namespace!~"default|kube-tests"} / container_spec_cpu_period{image!="",container_name!="POD", namespace!~"default|kube-tests"}) by (namespace,container_name,pod_name) ) * 100)  > 75
+        for: 5m
+        labels:
+          severity: warn
+
+  - name: Nodes
+    rules:
+      - alert: High Node Memory Usage
+        annotations:
+          summary: Node {{$labels.instance}} has more than 80% memory used. Plan Capacity.
+        expr: |
+          (sum (container_memory_working_set_bytes{id="/",container_name!="POD"}) by (instance) / sum (machine_memory_bytes{}) by (instance) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+
+      - alert: High Node CPU Usage
+        annotations:
+          summary: Node {{$labels.instance}} has more than 80% allocatable cpu used. Plan Capacity.
+        expr: |
+          (sum(rate(container_cpu_usage_seconds_total{id="/", container_name!="POD"}[1m])) by (instance) / sum(machine_cpu_cores) by (instance)  * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+
+      - alert: High Node Disk Usage
+        annotations:
+          summary: Node {{$labels.instance}} has more than 85% disk used. Plan Capacity.
+        expr: |
+          (sum(container_fs_usage_bytes{device=~"^/dev/[sv]d[a-z][1-9]$",id="/",container_name!="POD"}) by (instance) / sum(container_fs_limit_bytes{container_name!="POD",device=~"^/dev/[sv]d[a-z][1-9]$",id="/"}) by (instance)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning

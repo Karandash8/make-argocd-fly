@@ -100,6 +100,35 @@ jobs:
             exit 1
           fi
 
+  examples-monitoring-stack:
+    name: Run examples (monitoring stack)
+    runs-on: make-argocd-fly
+
+    steps:
+      - uses: actions/checkout@v4
+      - if: ${{ runner.arch == 'arm64' }}
+        name: Set up Python
+        uses: deadsnakes/action@v3.1.0
+        with:
+          python-version: "3.11"
+      - if: ${{ runner.arch == 'amd64' }}
+        name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
+      - name: Run examples
+        run: |
+          python main.py --root-dir examples/monitoring_stack --skip-latest-version-check
+          if [[ -n $(git status --porcelain examples/monitoring_stack/output) ]]; then
+            echo "Unstaged files found in examples/monitoring_stack/output. Failing the job."
+            exit 1
+          fi
+
   e2e:
     name: Run end-to-end tests
     runs-on: make-argocd-fly

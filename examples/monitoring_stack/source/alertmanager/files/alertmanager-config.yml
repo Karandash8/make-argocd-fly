@@ -1,0 +1,21 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtpserver:25'
+  smtp_from: 'alertmanager@domain.com'
+  smtp_require_tls: false
+
+templates:
+  - '/etc/alertmanager-templates/*.tmpl'
+
+route:
+  group_by: ['alertname', 'service']
+  group_wait: 30s
+  group_interval: 1m
+  repeat_interval: 5h
+  receiver: "default-email"
+
+receivers:
+  - name: 'default-email'
+    email_configs:
+      - to: 'alertmanager@domain.com'
+        require_tls: false

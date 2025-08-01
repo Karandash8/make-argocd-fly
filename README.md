@@ -96,6 +96,7 @@ What it does:
 - [Using Jinja2 Templates](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/templates.md)
 - [CLI Reference](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/cli.md)
 - [Caveats & Limitations](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/caveats.md)
+- [EXAMPLES: Monitoring Stack](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/examples.md)
 
 ---
 
