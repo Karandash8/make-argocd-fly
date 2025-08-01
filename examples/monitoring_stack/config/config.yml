@@ -1,19 +1,20 @@
 envs:
   local:
     apps:
-      bootstrap_parent: {}
+      bootstrap_parent:
+        params:
+          parent_app: null
       bootstrap:
         params:
           parent_app: bootstrap_parent
       common:
-        params:
-          parent_app: bootstrap
         vars:
           argocd:
             sync_wave: -1
-      prometheus:
-        params:
-          parent_app: bootstrap
+      prometheus: {}
+      kube_state_metrics: {}
+    params:
+      parent_app: bootstrap
 vars:
   __application:
     path: examples/monitoring_stack/output/${env_name}/${app_name}
@@ -29,3 +30,4 @@ vars:
     prometheus__n_replicas: 2
     prometheus__version: 3.4.1
     alertmanager__n_replicas: 2
+    kube_state_metrics__version: 2.15.0

@@ -127,16 +127,6 @@ data:
           - targets:
               - 'kube-state-metrics.monitoring.svc:8080'
 
-      - job_name: promtail
-        file_sd_configs:
-          - files:
-              - /etc/prometheus/file_sd/promtail.yml
-
-      - job_name: node-exporter
-        file_sd_configs:
-          - files:
-              - /etc/prometheus/file_sd/node-exporter.yml
-
       - job_name: k8s-pod
         kubernetes_sd_configs:
           - role: pod
