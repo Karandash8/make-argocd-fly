@@ -9,6 +9,8 @@ envs:
         params:
           parent_app: bootstrap
 vars:
+  __application:
+    path: example/monitoring_stack/output/${env_name}/${app_name}
   argocd:
     source:
       repo_url: https://github.com/Karandash8/make-argocd-fly.git
