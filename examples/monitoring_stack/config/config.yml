@@ -19,17 +19,13 @@ envs:
     params:
       parent_app: bootstrap
 vars:
-  __application:
-    path: examples/monitoring_stack/output/${env_name}/${app_name}
   argocd:
     finalizers: []
     source:
-      repo_url: https://github.com/Karandash8/make-argocd-fly.git
-      target_revision: 181-add-examples-of-real-world-applications
+      repo_url: YOUR_GIT_REPO_URL
     sync_policy:
       automated:
         selfHeal: true
-      # https://www.arthurkoziel.com/fixing-argocd-crd-too-long-error/
       syncOptions:
         - ServerSideApply=true
         - CreateNamespace=true

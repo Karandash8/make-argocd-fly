@@ -8,9 +8,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/Karandash8/make-argocd-fly.git
-    targetRevision: 181-add-examples-of-real-world-applications
-    path: examples/monitoring_stack/output/local/alertmanager
+    repoURL: YOUR_GIT_REPO_URL
+    targetRevision: HEAD
+    path: output/local/alertmanager
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
