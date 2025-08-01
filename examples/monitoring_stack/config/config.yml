@@ -21,12 +21,17 @@ vars:
   __application:
     path: examples/monitoring_stack/output/${env_name}/${app_name}
   argocd:
+    finalizers: []
     source:
       repo_url: https://github.com/Karandash8/make-argocd-fly.git
       target_revision: 181-add-examples-of-real-world-applications
     sync_policy:
       automated:
         selfHeal: true
+      # https://www.arthurkoziel.com/fixing-argocd-crd-too-long-error/
+      syncOptions:
+        - ServerSideApply=true
+        - CreateNamespace=true
   monitoring:
     namespace: monitoring
     prometheus_n_replicas: 2
