@@ -1,9 +1,7 @@
-{%- for i in range(monitoring.prometheus_n_replicas) %}
----
 apiVersion: v1
 kind: Service
 metadata:
-  name: prometheus-{{ i }}
+  name: prometheus
   namespace: {{ monitoring.namespace }}
   labels:
     k8s-app: prometheus
@@ -18,6 +16,5 @@ spec:
       targetPort: 9090
   sessionAffinity: ClientIP
   selector:
-    statefulset.kubernetes.io/pod-name: prometheus-{{ i }}
+    k8s-app: prometheus
   type: ClusterIP
-{%- endfor %}
