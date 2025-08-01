@@ -8,4 +8,5 @@ helmCharts:
     releaseName: prometheus-node-exporter
     repo: oci://ghcr.io/prometheus-community/charts
     version: {{ monitoring.node_exporter_version }}
-    valuesInLine: {}
+    valuesInLine:
+      nameOverride: node-exporter

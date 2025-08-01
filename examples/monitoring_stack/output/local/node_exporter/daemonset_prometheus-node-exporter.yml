@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/component: metrics
     app.kubernetes.io/instance: prometheus-node-exporter
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: prometheus-node-exporter
-    app.kubernetes.io/part-of: prometheus-node-exporter
+    app.kubernetes.io/name: node-exporter
+    app.kubernetes.io/part-of: node-exporter
     app.kubernetes.io/version: 1.9.1
     helm.sh/chart: prometheus-node-exporter-4.47.3
   name: prometheus-node-exporter
@@ -17,7 +17,7 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/instance: prometheus-node-exporter
-      app.kubernetes.io/name: prometheus-node-exporter
+      app.kubernetes.io/name: node-exporter
   template:
     metadata:
       annotations:
@@ -26,8 +26,8 @@ spec:
         app.kubernetes.io/component: metrics
         app.kubernetes.io/instance: prometheus-node-exporter
         app.kubernetes.io/managed-by: Helm
-        app.kubernetes.io/name: prometheus-node-exporter
-        app.kubernetes.io/part-of: prometheus-node-exporter
+        app.kubernetes.io/name: node-exporter
+        app.kubernetes.io/part-of: node-exporter
         app.kubernetes.io/version: 1.9.1
         helm.sh/chart: prometheus-node-exporter-4.47.3
     spec:
