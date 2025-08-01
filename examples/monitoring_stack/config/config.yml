@@ -5,6 +5,12 @@ envs:
       bootstrap:
         params:
           parent_app: bootstrap_parent
+      common:
+        params:
+          parent_app: bootstrap
+        vars:
+          argocd:
+            sync_wave: -1
       prometheus:
         params:
           parent_app: bootstrap
