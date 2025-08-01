@@ -5,7 +5,7 @@ metadata:
   name: prometheus
   namespace: {{ monitoring.namespace }}
 spec:
-  replicas: {{ monitoring.prometheus__n_replicas }}
+  replicas: {{ monitoring.prometheus_n_replicas }}
   updateStrategy:
     type: RollingUpdate
   selector:
@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: prometheus
-          image: docker.io/prom/prometheus:v{{ monitoring.prometheus__version }}
+          image: docker.io/prom/prometheus:v{{ monitoring.prometheus_version }}
           args:
             - --config.file=/etc/prometheus/config/prometheus.yml
             - --storage.tsdb.path=/prometheus

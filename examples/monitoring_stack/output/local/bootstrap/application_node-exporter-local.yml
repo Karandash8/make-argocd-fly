@@ -1,0 +1,19 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: node-exporter-local
+  namespace: argocd
+  finalizers: []
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Karandash8/make-argocd-fly.git
+    targetRevision: 181-add-examples-of-real-world-applications
+    path: examples/monitoring_stack/output/local/node_exporter
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      selfHeal: true

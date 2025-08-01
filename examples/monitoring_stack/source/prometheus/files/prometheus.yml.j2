@@ -19,7 +19,7 @@ alerting:
       path_prefix: /
       static_configs:
         - targets:
-{%- for i in range(monitoring.alertmanager__n_replicas) %}
+{%- for i in range(monitoring.alertmanager_n_replicas) %}
             - 'alertmanager-{{ i }}:9093'
 {%- endfor %}
 

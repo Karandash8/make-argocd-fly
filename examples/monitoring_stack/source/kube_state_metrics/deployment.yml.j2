@@ -18,7 +18,7 @@ spec:
       automountServiceAccountToken: true
       containers:
         - name: kube-state-metrics
-          image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v{{ monitoring.kube_state_metrics__version }}
+          image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v{{ monitoring.kube_state_metrics_version }}
           livenessProbe:
             httpGet:
               path: /healthz

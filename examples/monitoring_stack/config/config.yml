@@ -13,6 +13,7 @@ envs:
             sync_wave: -1
       prometheus: {}
       kube_state_metrics: {}
+      node_exporter: {}
     params:
       parent_app: bootstrap
 vars:
@@ -27,7 +28,8 @@ vars:
         selfHeal: true
   monitoring:
     namespace: monitoring
-    prometheus__n_replicas: 2
-    prometheus__version: 3.4.1
-    alertmanager__n_replicas: 2
-    kube_state_metrics__version: 2.15.0
+    prometheus_n_replicas: 2
+    prometheus_version: 3.4.1
+    alertmanager_n_replicas: 2
+    kube_state_metrics_version: 2.15.0
+    node_exporter_version: 4.47.3
