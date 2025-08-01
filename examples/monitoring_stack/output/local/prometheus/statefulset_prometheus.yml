@@ -16,7 +16,7 @@ spec:
       labels:
         k8s-app: prometheus
       annotations:
-        checksum/config: 2fc4914018d3bb6f74570c2f6a4e0a931bd7e40c
+        checksum/config: 9e218dd057437a5acbb575309039dfb30dfc0848
     spec:
       containers:
         - name: prometheus

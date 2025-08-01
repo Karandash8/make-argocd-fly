@@ -42,7 +42,7 @@ data:
         rules:
           - alert: High Node Memory Usage
             annotations:
-              summary: Node {{$labels.instance}} has more than 80% memory used. Plan Capcity
+              summary: Node {{$labels.instance}} has more than 80% memory used. Plan Capacity.
             expr: |
               (sum (container_memory_working_set_bytes{id="/",container_name!="POD"}) by (instance) / sum (machine_memory_bytes{}) by (instance) * 100) > 80
             for: 5m
