@@ -16,7 +16,7 @@ spec:
       labels:
         k8s-app: prometheus
       annotations:
-        checksum/config: de237b90d701f5309d13c9f9b60ac12603710e69
+        checksum/config: 2007efdaefb2cd75e68906c3fe3cf496eef81264
     spec:
       containers:
         - name: prometheus
@@ -73,11 +73,9 @@ spec:
               topologyKey: kubernetes.io/hostname
       volumes:
         - name: prometheus-config-volume
-          emptyDir: {}
-        - name: prometheus-config-template-volume
           configMap:
             defaultMode: 420
-            name: prometheus-config-template
+            name: prometheus-config
         - name: prometheus-rules-volume
           configMap:
             defaultMode: 420
