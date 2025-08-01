@@ -13,8 +13,6 @@ spec:
     metadata:
       labels:
         k8s-app: kube-state-metrics
-      annotations:
-        enable.version-checker.io/kube-state-metrics: 'true'
     spec:
       automountServiceAccountToken: true
       containers:

@@ -14,6 +14,7 @@ envs:
       prometheus: {}
       kube_state_metrics: {}
       node_exporter: {}
+      grafana: {}
     params:
       parent_app: bootstrap
 vars:
@@ -33,3 +34,4 @@ vars:
     alertmanager_n_replicas: 2
     kube_state_metrics_version: 2.15.0
     node_exporter_version: 4.47.3
+    grafana_version: 12.0.2

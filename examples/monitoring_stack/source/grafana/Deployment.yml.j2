@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: {{ monitoring.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: grafana
+  template:
+    metadata:
+      labels:
+        k8s-app: grafana
+      annotations:
+        checksum/config: |-
+          {% filter checksum | indent(1) %}
+          {% include 'configmap.yml.j2' %}
+          {% include 'configmap_grafana-dashboard.yml.j2' %}
+          {% endfilter %}
+    spec:
+      containers:
+        - name: grafana-core
+          image: docker.io/grafana/grafana:{{ monitoring.grafana_version }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GF_PATHS_CONFIG
+              value: /configmap/grafana/grafana-config.ini
+            - name: GF_PATHS_PROVISIONING
+              value: /configmap/grafana/provisioning
+          ports:
+            - name: web
+              containerPort: 3000
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /login
+              port: 3000
+              scheme: HTTP
+          volumeMounts:
+            - mountPath: /configmap/grafana
+              name: grafana-config
+              readOnly: true
+            - name: grafana-dashboards
+              mountPath: /configmap/dashboards
+              readOnly: true
+          resources:
+            requests:
+              cpu: 150m
+              memory: 200Mi
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      volumes:
+        - name: grafana-config
+          configMap:
+            defaultMode: 420
+            items:
+              - key: grafana.ini
+                path: grafana-config.ini
+              - key: prometheus-datasource.yaml
+                path: provisioning/datasources/prometheus.yaml
+              - key: config.yaml
+                path: provisioning/dashboards/config.yaml
+            name: grafana-config
+        - name: grafana-dashboards
+          configMap:
+            defaultMode: 420
+            name: grafana-dashboards
