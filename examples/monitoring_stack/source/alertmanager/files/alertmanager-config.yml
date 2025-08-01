@@ -1,5 +1,8 @@
 global:
   resolve_timeout: 5m
+  smtp_smarthost: 'smtpserver:25'
+  smtp_from: 'alertmanager@domain.com'
+  smtp_require_tls: false
 
 templates:
   - '/etc/alertmanager-templates/*.tmpl'
@@ -14,5 +17,5 @@ route:
 receivers:
   - name: 'default-email'
     email_configs:
-      - to: 'example@domain.com'
+      - to: 'alertmanager@domain.com'
         require_tls: false
