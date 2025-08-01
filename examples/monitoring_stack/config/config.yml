@@ -1,0 +1,20 @@
+envs:
+  local:
+    apps:
+      bootstrap_parent: {}
+      bootstrap:
+        params:
+          parent_app: bootstrap_parent
+      prometheus:
+        params:
+          parent_app: bootstrap
+vars:
+  argocd:
+    source:
+      repo_url: https://github.com/Karandash8/make-argocd-fly.git
+      target_revision: 181-add-examples-of-real-world-applications
+  monitoring:
+    namespace: monitoring
+    prometheus__n_replicas: 2
+    prometheus__version: 3.4.1
+    alertmanager__n_replicas: 2

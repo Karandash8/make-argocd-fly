@@ -456,6 +456,9 @@ class JinjaRendererFromViewer(AbstractRenderer):
 
       log.error(f'Variable "{variable_name}" is undefined')
       raise UndefinedTemplateVariableError(variable_name) from None
+    except TypeError:
+      log.error(f'Likely a missing variable in template {self.filename}')
+      raise UndefinedTemplateVariableError('Unknown variable in template') from None
 
     return rendered
 
@@ -483,5 +486,8 @@ class JinjaRenderer(AbstractRenderer):
 
       log.error(f'Variable "{variable_name}" is undefined')
       raise UndefinedTemplateVariableError(variable_name) from None
+    except TypeError:
+      log.error(f'Likely a missing variable in template {self.filename}')
+      raise UndefinedTemplateVariableError('Unknown variable in template') from None
 
     return rendered
