@@ -21,6 +21,9 @@ vars:
     source:
       repo_url: https://github.com/Karandash8/make-argocd-fly.git
       target_revision: 181-add-examples-of-real-world-applications
+    sync_policy:
+      automated:
+        selfHeal: true
   monitoring:
     namespace: monitoring
     prometheus__n_replicas: 2
