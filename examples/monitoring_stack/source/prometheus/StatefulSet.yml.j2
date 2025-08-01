@@ -76,11 +76,9 @@ spec:
               topologyKey: kubernetes.io/hostname
       volumes:
         - name: prometheus-config-volume
-          emptyDir: {}
-        - name: prometheus-config-template-volume
           configMap:
             defaultMode: 420
-            name: prometheus-config-template
+            name: prometheus-config
         - name: prometheus-rules-volume
           configMap:
             defaultMode: 420

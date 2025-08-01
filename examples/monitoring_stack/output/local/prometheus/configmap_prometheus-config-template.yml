@@ -5,7 +5,7 @@ metadata:
   name: prometheus-config-template
   namespace: monitoring
 data:
-  prometheus.yml.tmpl: |-
+  prometheus.yml: |-
     global:
       scrape_interval: 20s
       scrape_timeout: 15s
