@@ -15,7 +15,7 @@ spec:
       labels:
         k8s-app: alertmanager
       annotations:
-        checksum/config: e8591d2bf8dff43f934f48ed066853537cc2dfc9
+        checksum/config: 4a9ee6d16aa0d6d754236804560ff76c3f4cd0e5
     spec:
       containers:
         - name: alertmanager

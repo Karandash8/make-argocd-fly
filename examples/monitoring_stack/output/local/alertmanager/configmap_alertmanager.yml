@@ -17,6 +17,10 @@ data:
       group_wait: 30s
       group_interval: 1m
       repeat_interval: 5h
-      receiver: ""
+      receiver: "default-email"
 
-    receivers: []
+    receivers:
+      - name: 'default-email'
+        email_configs:
+          - to: 'example@domain.com'
+            require_tls: false
