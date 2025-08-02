@@ -205,13 +205,7 @@ def _read_config_file(config_file: str) -> dict:
   return config_content
 
 
-@deprecated(version='v0.2.14', reason='`--config-file` is deprecated, use `--config-dir` instead')
-def read_config_file():
-  pass
-
-
 def populate_config(root_dir: str = consts.DEFAULT_ROOT_DIR,
-                    config_file: str = consts.DEFAULT_CONFIG_FILE,  # DEPRECATED
                     config_dir: str = consts.DEFAULT_CONFIG_DIR,
                     source_dir: str = consts.DEFAULT_SOURCE_DIR,
                     output_dir: str = consts.DEFAULT_OUTPUT_DIR,
@@ -220,9 +214,6 @@ def populate_config(root_dir: str = consts.DEFAULT_ROOT_DIR,
     config_files = _list_config_files(build_path(root_dir, config_dir))
     merged_config = merge_dicts_without_duplicates(*[_read_config_file(os.path.join(build_path(root_dir, config_dir),
                                                                                     config_file)) for config_file in config_files])
-  except InternalError:
-    read_config_file()
-    merged_config = _read_config_file(build_path(root_dir, config_file))
   except MergeError:
     log.error('Error merging config files')
     raise ConfigFileError

@@ -91,7 +91,7 @@ def remove_dir(dir: str) -> None:
 def main(**kwargs) -> None:
   try:
     cli_params = populate_cli_params(**kwargs)
-    config = populate_config(cli_params.root_dir, cli_params.config_file, cli_params.config_dir, cli_params.source_dir,
+    config = populate_config(cli_params.root_dir, cli_params.config_dir, cli_params.source_dir,
                              cli_params.output_dir, cli_params.tmp_dir)
 
     latest_version_check()
@@ -126,7 +126,6 @@ def main(**kwargs) -> None:
 def cli_entry_point() -> None:
   parser = argparse.ArgumentParser(prog='make-argocd-fly', description='Render ArgoCD Applications.')
   parser.add_argument('--root-dir', type=str, default=consts.DEFAULT_ROOT_DIR, help='Root directory (default: current directory)')
-  parser.add_argument('--config-file', type=str, default=consts.DEFAULT_CONFIG_FILE, help='Configuration file (default: config.yml) # DEPRECATED')
   parser.add_argument('--config-dir', type=str, default=consts.DEFAULT_CONFIG_DIR, help='Configuration files directory (default: config)')
   parser.add_argument('--source-dir', type=str, default=consts.DEFAULT_SOURCE_DIR, help='Source files directory (default: source)')
   parser.add_argument('--output-dir', type=str, default=consts.DEFAULT_OUTPUT_DIR, help='Output files directory (default: output)')
