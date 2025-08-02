@@ -1,6 +1,6 @@
-# Current deprecations in `make-argocd-fly`
+# Deprecations in `make-argocd-fly`
 ## `v0.2.14`
-### Root level config file deprecations
+### Root level config file deprecations (removed in `v0.3.0`)
 CLI parameter `--config-file` is deprecated and will be removed in the future. A new parameter `--config-dir` is introduced with the default value of `config`. The new parameter allows to specify a directory with multiple `*.yml` config files, while the old parameter allowed to specify a single file. When multiple config files are found in the directory they are merged together, while any duplicate keys are reported back to the user as an error.
 
 ## `v0.2.15`
