@@ -165,7 +165,7 @@ class RenderYamlStep(BaseResourceGenerationStep):
           self.resources.append((file_path, yaml.load(resource_yml, Loader=YamlLoader)))
         except ValueError:
           pass
-        except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
+        except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError, yaml.constructor.ConstructorError):
           log.error('Error building YAML')
           log.error(f'Error rendering template {resource_source}')
           log.debug(f'YAML content:\n{resource_yml}')
@@ -281,8 +281,8 @@ class RunKustomizeStep(BaseResourceGenerationStep):
       raise InternalError
 
     for attempt in range(retries):
-      proc = await asyncio.create_subprocess_shell(
-        f'kustomize build --enable-helm {self.dir_path}',
+      proc = await asyncio.create_subprocess_exec(
+        'kustomize', 'build', '--enable-helm', self.dir_path,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE)
 

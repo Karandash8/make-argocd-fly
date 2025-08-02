@@ -63,7 +63,7 @@ def run_yamllint() -> None:
   process = subprocess.Popen(['yamllint', '-d', '{extends: default, rules: {line-length: disable}}', config.output_dir],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                              universal_newlines=True)
-  stdout, stderr = process.communicate()
+  stdout, _ = process.communicate()
 
   log.info(f'{yamllint.APP_NAME} {yamllint.APP_VERSION}\n\n{stdout}')
 
