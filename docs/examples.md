@@ -2,7 +2,7 @@
 
 This example demonstrates how to use `make-argocd-fly` to render and manage a monitoring stack in Kubernetes using ArgoCD, following the App-of-Apps pattern.
 > **Note:**
-> To use this example, copy the `examples/monitoring_stack` directory into your own repository.
+> To use this example, copy the [examples/monitoring_stack](https://github.com/Karandash8/make-argocd-fly/tree/main/examples/monitoring_stack) directory into your own repository.
 > Make sure to set your repository URL in the `repo_url` variable inside `config/config.yml` so ArgoCD can reference the correct source location.
 ## 📦 Components
 
@@ -34,7 +34,7 @@ examples/
 ## ⚙️ Configuration Overview
 The `config/config.yml` file defines:
 
-- A single environment (e.g., local)
+- A single environment
 
 - Applications listed under that environment
 
@@ -42,7 +42,7 @@ The `config/config.yml` file defines:
 
 - ArgoCD deployment parameters (repository URL, target revision, destination cluster, etc.)
 
-- sync_wave and parent_app to control render order and nesting
+- `sync_wave` and `parent_app` to control render order and nesting
 
 ## 🚀 How It Works
 1. The `bootstrap_parent` application is treated specially:
@@ -57,9 +57,9 @@ The `config/config.yml` file defines:
 kubectl apply -f output/local/bootstrap_parent/application_bootstrap-local.yml
 ```
 
-3. ArgoCD picks up the Application defined in `bootstrap_parent`, which in turn deploys all other applications (prometheus, grafana, etc.) defined under it.
+1. ArgoCD picks up the `bootstrap` Application, which in turn deploys all other applications (prometheus, grafana, etc.) defined under it.
 
-4. From that point onward, ArgoCD manages the sync and lifecycle of all the rendered applications.
+2. From that point onward, ArgoCD manages the sync and lifecycle of all the rendered applications.
 
 ## 💡 Benefits
 - Clear separation between bootstrapping and runtime apps
@@ -71,10 +71,11 @@ kubectl apply -f output/local/bootstrap_parent/application_bootstrap-local.yml
 - Extensible configuration using Jinja2, Helm, and Kustomize
 
 ## 🔁 To Regenerate Output
-Run:
+Make changes to the `config/config.yml` or any source files, then run:
 
 ```bash
 make-argocd-fly
 ```
+This will render the updated manifests into the `output/` directory, maintaining the structure defined in your configuration.
 
-This will populate the `output/` directory with ArgoCD-ready application manifests.
+ Then ArgoCD will automatically deploy the changes to the cluster after you commit and push the regenerated manifests to your Git repository.
