@@ -1,7 +1,5 @@
 import logging
 import yaml
-import glob
-import os
 from deprecated import deprecated
 
 from make_argocd_fly import consts
@@ -189,12 +187,19 @@ def populate_config(root_dir: str = consts.DEFAULT_ROOT_DIR,
     viewer = ResourceViewer(build_path(root_dir, config_dir))
     viewer.build()
     yml_children = viewer.get_files_children(r'(\.yml)$')
-    merged_config = merge_dicts_without_duplicates(*[yaml.safe_load(child.content) for child in yml_children])
+
+    config_files_content = []
+    for child in yml_children:
+      log.debug(f'Found config file: {child.element_rel_path}')
+      try:
+        config_files_content.append(yaml.safe_load(child.content))
+      except yaml.YAMLError:
+        log.error(f'Invalid YAML in config file {child.element_rel_path}')
+        raise ConfigFileError
+
+    merged_config = merge_dicts_without_duplicates(*config_files_content)
   except MergeError:
     log.error('Error merging config files')
-    raise ConfigFileError
-  except yaml.YAMLError:
-    log.error('Invalid YAML in config files')
     raise ConfigFileError
 
   config.populate_config(config=merged_config,
@@ -202,6 +207,7 @@ def populate_config(root_dir: str = consts.DEFAULT_ROOT_DIR,
                          _output_dir=build_path(root_dir, output_dir, allow_missing=True),
                          _tmp_dir=build_path(root_dir, tmp_dir, allow_missing=True))
 
+  log.debug(f'Config directory: {build_path(root_dir, config_dir)}')
   log.debug(f'Source directory: {config.source_dir}')
   log.debug(f'Output directory: {config.output_dir}')
   log.debug(f'Temporary directory: {config.tmp_dir}')
