@@ -299,7 +299,7 @@ def test_get_resource_type__unknown(tmp_path):
   file_root.write_text('key: value')
 
   resource_type = get_resource_type(os.path.join(dir_root, file_path))
-  assert resource_type == get_resource_type(os.path.join(str(dir_root), file_path))
+  assert resource_type == ResourceType.UNKNOWN
 
 def test_get_resource_type__directory(tmp_path):
   dir_root = tmp_path / 'dir_root'
