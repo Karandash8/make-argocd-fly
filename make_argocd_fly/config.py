@@ -1,7 +1,5 @@
 import logging
 import yaml
-import glob
-import os
 from deprecated import deprecated
 
 from make_argocd_fly import consts
@@ -9,6 +7,7 @@ from make_argocd_fly.cliparams import get_cli_params
 from make_argocd_fly.params import Params
 from make_argocd_fly.utils import build_path, merge_dicts_without_duplicates, merge_dicts_with_overrides, VarsResolver
 from make_argocd_fly.exceptions import InternalError, ConfigFileError, MergeError
+from make_argocd_fly.resource import ResourceViewer
 
 
 log = logging.getLogger(__name__)
@@ -179,41 +178,26 @@ class Config:
 config = Config()
 
 
-def _list_config_files(config_dir: str) -> list[str]:
-  config_files = glob.glob('*.yml', root_dir=config_dir)
-
-  if not config_files:
-    log.error(f'No config files found in {config_dir}')
-    raise InternalError
-
-  return config_files
-
-
-def _read_config_file(config_file: str) -> dict:
-  config_content = {}
-
-  try:
-    with open(config_file) as f:
-      config_content = yaml.safe_load(f.read())
-  except FileNotFoundError:
-    log.error(f'Config file {config_file} not found')
-    raise InternalError
-  except yaml.YAMLError:
-    log.error(f'Invalid YAML config file {config_file}')
-    raise ConfigFileError
-
-  return config_content
-
-
 def populate_config(root_dir: str = consts.DEFAULT_ROOT_DIR,
                     config_dir: str = consts.DEFAULT_CONFIG_DIR,
                     source_dir: str = consts.DEFAULT_SOURCE_DIR,
                     output_dir: str = consts.DEFAULT_OUTPUT_DIR,
                     tmp_dir: str = consts.DEFAULT_TMP_DIR) -> Config:
   try:
-    config_files = _list_config_files(build_path(root_dir, config_dir))
-    merged_config = merge_dicts_without_duplicates(*[_read_config_file(os.path.join(build_path(root_dir, config_dir),
-                                                                                    config_file)) for config_file in config_files])
+    viewer = ResourceViewer(build_path(root_dir, config_dir))
+    viewer.build()
+    yml_children = viewer.get_files_children(r'(\.yml)$')
+
+    config_files_content = []
+    for child in yml_children:
+      log.debug(f'Found config file: {child.element_rel_path}')
+      try:
+        config_files_content.append(yaml.safe_load(child.content))
+      except yaml.YAMLError:
+        log.error(f'Invalid YAML in config file {child.element_rel_path}')
+        raise ConfigFileError
+
+    merged_config = merge_dicts_without_duplicates(*config_files_content)
   except MergeError:
     log.error('Error merging config files')
     raise ConfigFileError
@@ -223,6 +207,7 @@ def populate_config(root_dir: str = consts.DEFAULT_ROOT_DIR,
                          _output_dir=build_path(root_dir, output_dir, allow_missing=True),
                          _tmp_dir=build_path(root_dir, tmp_dir, allow_missing=True))
 
+  log.debug(f'Config directory: {build_path(root_dir, config_dir)}')
   log.debug(f'Source directory: {config.source_dir}')
   log.debug(f'Output directory: {config.output_dir}')
   log.debug(f'Temporary directory: {config.tmp_dir}')
