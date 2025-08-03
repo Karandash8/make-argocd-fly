@@ -46,7 +46,7 @@ class ResourceViewer:
     else:
       self.name = os.path.basename(self.element_rel_path)
 
-    self.resource_type = get_resource_type(os.path.join(self.root_element_abs_path, self.element_rel_path))
+    self.resource_type = None
     self.content = ''
     self.children = []
 
@@ -54,6 +54,8 @@ class ResourceViewer:
 
   def _build(self) -> None:
     path = os.path.join(self.root_element_abs_path, self.element_rel_path)
+    self.resource_type = get_resource_type(path)
+
     if self.resource_type == ResourceType.DIRECTORY:
       for child_name in os.listdir(path):
         child_rel_path = os.path.join(self.element_rel_path, child_name)

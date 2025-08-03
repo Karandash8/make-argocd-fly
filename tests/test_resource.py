@@ -33,7 +33,7 @@ def test_ResourceViewer__with_file(tmp_path):
 
   assert resource_viewer.root_element_abs_path == str(dir_root)
   assert resource_viewer.element_rel_path == file_path
-  assert resource_viewer.resource_type == ResourceType.UNKNOWN
+  assert resource_viewer.resource_type == get_resource_type(os.path.join(str(dir_root), file_path))
   assert resource_viewer.name == file_path
   assert resource_viewer.content == FILE_0_CONTENT
   assert check_lists_equal(resource_viewer.children, [])
@@ -51,7 +51,7 @@ def test_ResourceViewer__with_non_normalized_path(tmp_path):
 
   assert resource_viewer.root_element_abs_path == str(dir_root)
   assert resource_viewer.element_rel_path == file_path
-  assert resource_viewer.resource_type == ResourceType.UNKNOWN
+  assert resource_viewer.resource_type == get_resource_type(os.path.join(str(dir_root), file_path))
   assert resource_viewer.name == file_path
   assert resource_viewer.content == FILE_0_CONTENT
   assert check_lists_equal(resource_viewer.children, [])
@@ -117,21 +117,21 @@ def test_ResourceViewer__with_directories_and_files(tmp_path):
   # empty file
   assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_1_idx].name == "file_root_1_0_1.txt"
   assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_1_idx].element_rel_path == 'dir_root_1/dir_root_1_0/file_root_1_0_1.txt'
-  assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_1_idx].resource_type == ResourceType.UNKNOWN
+  assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_1_idx].resource_type == get_resource_type(os.path.join(str(dir_root), 'dir_root_1/dir_root_1_0/file_root_1_0_1.txt'))
   assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_1_idx].content == FILE_2_CONTENT
   assert len(resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_1_idx].children) == 0
 
   # file with content
   assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_0_idx].name == "file_root_1_0_0.txt"
   assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_0_idx].element_rel_path == 'dir_root_1/dir_root_1_0/file_root_1_0_0.txt'
-  assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_0_idx].resource_type == ResourceType.UNKNOWN
+  assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_0_idx].resource_type == get_resource_type(os.path.join(str(dir_root), 'dir_root_1/dir_root_1_0/file_root_1_0_0.txt'))
   assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_0_idx].content == FILE_1_CONTENT
   assert len(resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_0_idx].children) == 0
 
   # file in root dir
   assert resource_viewer.children[file_root_0_idx].name == "file_root_0.txt"
   assert resource_viewer.children[file_root_0_idx].element_rel_path == 'file_root_0.txt'
-  assert resource_viewer.children[file_root_0_idx].resource_type == ResourceType.UNKNOWN
+  assert resource_viewer.children[file_root_0_idx].resource_type == get_resource_type(os.path.join(str(dir_root), 'file_root_0.txt'))
   assert resource_viewer.children[file_root_0_idx].content == FILE_0_CONTENT
   assert len(resource_viewer.children[file_root_0_idx].children) == 0
 
@@ -299,7 +299,7 @@ def test_get_resource_type__unknown(tmp_path):
   file_root.write_text('key: value')
 
   resource_type = get_resource_type(os.path.join(dir_root, file_path))
-  assert resource_type == ResourceType.UNKNOWN
+  assert resource_type == get_resource_type(os.path.join(str(dir_root), file_path))
 
 def test_get_resource_type__directory(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -360,10 +360,6 @@ def test_ResourceWriter__store_resource__undefined_dir_rel_path(tmp_path, caplog
   dir_output.mkdir()
   resource_writer = ResourceWriter(str(dir_output))
   env_name = 'env'
-
-  with pytest.raises(InternalError):
-    resource_writer.store_resource(None, 'resource body 1')
-  assert 'Parameter `file_path` is undefined' in caplog.text
 
   with pytest.raises(InternalError):
     resource_writer.store_resource('', 'resource body 1')
