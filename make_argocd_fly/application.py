@@ -5,15 +5,15 @@ import textwrap
 import shutil
 from pprint import pformat
 
-from make_argocd_fly.resource import ResourceViewer
-from make_argocd_fly import consts
-from make_argocd_fly.utils import get_app_rel_path
+from make_argocd_fly.resource.viewer import ResourceViewer
+from make_argocd_fly import const
+from make_argocd_fly.util import get_app_rel_path
 from make_argocd_fly.config import get_config
-from make_argocd_fly.cliparams import get_cli_params
-from make_argocd_fly.exceptions import ConfigFileError
-from make_argocd_fly.steps import FindAppsStep, RenderYamlStep, RenderJinjaFromViewerStep, RenderJinjaFromMemoryStep, \
+from make_argocd_fly.cliparam import get_cli_params
+from make_argocd_fly.exception import ConfigFileError
+from make_argocd_fly.step import FindAppsStep, RenderYamlStep, RenderJinjaFromViewerStep, RenderJinjaFromMemoryStep, \
   WriteResourcesStep, ReadSourceStep, RunKustomizeStep
-from make_argocd_fly.exceptions import ResourceViewerIsFake
+from make_argocd_fly.exception import ResourceViewerIsFake
 
 log = logging.getLogger(__name__)
 
@@ -50,12 +50,12 @@ class AppOfAppsApplication(AbstractApplication):
 
     for (app_name, env_name) in self.find_apps_step.get_apps():
       extra_vars = {
-        'argocd_application_cr_template': consts.ARGOCD_APPLICATION_CR_TEMPLATE,
+        'argocd_application_cr_template': const.ARGOCD_APPLICATION_CR_TEMPLATE,
         '__application': {
           'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
           'path': os.path.join(os.path.basename(self.config.output_dir), env_name, app_name)
         },
-        'argocd': consts.ARGOCD_DEFAULTS,
+        'argocd': const.ARGOCD_DEFAULTS,
         'env_name': env_name,
         'app_name': app_name
       }
@@ -100,8 +100,8 @@ class SimpleApplication(AbstractApplication):
     log.debug(f'Starting to process application {self.app_name} in environment {self.env_name}')
 
     extra_vars = {
-      'argocd_application_cr_template': consts.ARGOCD_APPLICATION_CR_TEMPLATE,
-      'argocd': consts.ARGOCD_DEFAULTS,
+      'argocd_application_cr_template': const.ARGOCD_APPLICATION_CR_TEMPLATE,
+      'argocd': const.ARGOCD_DEFAULTS,
       'env_name': self.env_name,
       'app_name': self.app_name
     }
@@ -147,8 +147,8 @@ class KustomizeApplication(AbstractApplication):
     log.debug(f'Starting to process application {self.app_name} in environment {self.env_name}')
 
     extra_vars = {
-      'argocd_application_cr_template': consts.ARGOCD_APPLICATION_CR_TEMPLATE,
-      'argocd': consts.ARGOCD_DEFAULTS,
+      'argocd_application_cr_template': const.ARGOCD_APPLICATION_CR_TEMPLATE,
+      'argocd': const.ARGOCD_DEFAULTS,
       'env_name': self.env_name,
       'app_name': self.app_name
     }

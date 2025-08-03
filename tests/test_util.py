@@ -2,9 +2,9 @@ import logging
 import pytest
 import textwrap
 
-from make_argocd_fly.utils import extract_single_resource, merge_dicts_with_overrides, merge_dicts_without_duplicates, VarsResolver, \
+from make_argocd_fly.util import extract_single_resource, merge_dicts_with_overrides, merge_dicts_without_duplicates, VarsResolver, \
   FilePathGenerator, get_module_name, get_package_name, build_path, extract_undefined_variable
-from make_argocd_fly.exceptions import InternalError, UnknownJinja2Error, MergeError, ConfigFileError
+from make_argocd_fly.exception import InternalError, UnknownJinja2Error, MergeError, ConfigFileError
 
 ###################
 ### FilePathGenerator

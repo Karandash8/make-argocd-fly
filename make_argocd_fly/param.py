@@ -1,7 +1,7 @@
 import logging
 
-from make_argocd_fly.exceptions import ConfigFileError
-from make_argocd_fly.consts import ParamNames
+from make_argocd_fly.exception import ConfigFileError
+from make_argocd_fly.const import ParamNames
 
 log = logging.getLogger(__name__)
 

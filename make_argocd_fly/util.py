@@ -14,9 +14,9 @@ from collections.abc import Iterator
 from importlib.metadata import version, PackageNotFoundError
 from packaging.version import Version
 
-from make_argocd_fly import consts
-from make_argocd_fly.cliparams import get_cli_params
-from make_argocd_fly.exceptions import UnknownJinja2Error, InternalError, MergeError, ConfigFileError
+from make_argocd_fly import const
+from make_argocd_fly.cliparam import get_cli_params
+from make_argocd_fly.exception import UnknownJinja2Error, InternalError, MergeError, ConfigFileError
 
 
 log = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ def check_lists_equal(list_1: list, list_2: list) -> bool:
 
 
 class VarsResolver:
-  def __init__(self, var_identifier: str = consts.DEFAULT_VAR_IDENTIFIER) -> None:
+  def __init__(self, var_identifier: str = const.DEFAULT_VAR_IDENTIFIER) -> None:
     self.var_identifier = var_identifier
     self.resolution_counter = 0
 
@@ -118,7 +118,7 @@ class VarsResolver:
   @staticmethod
   def resolve_all(to_resolve: dict,
                   source: dict,
-                  var_identifier: str = consts.DEFAULT_VAR_IDENTIFIER,
+                  var_identifier: str = const.DEFAULT_VAR_IDENTIFIER,
                   allow_unresolved: bool = False) -> dict:
       resolver = VarsResolver(var_identifier)
 
@@ -329,7 +329,7 @@ def merge_dicts_with_overrides(*dicts):
 
 def init_logging(loglevel: str) -> None:
   try:
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), consts.DEFAULT_LOG_CONFIG_FILE)) as f:
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), const.DEFAULT_LOG_CONFIG_FILE)) as f:
       yaml_config = yaml.safe_load(f.read())
       if loglevel in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
         yaml_config['loggers']['make_argocd_fly']['level'] = loglevel
