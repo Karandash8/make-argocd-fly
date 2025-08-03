@@ -1,9 +1,9 @@
 import pytest
 import jinja2
 import textwrap
-from make_argocd_fly.resource import ResourceViewer
+from make_argocd_fly.resource.viewer import ResourceViewer
 from make_argocd_fly.renderer import JinjaRenderer, JinjaRendererFromViewer
-from make_argocd_fly.exceptions import UndefinedTemplateVariableError, MissingFileError
+from make_argocd_fly.exception import UndefinedTemplateVariableError, MissingFileError
 
 ###############
 ### _get_source
@@ -17,7 +17,6 @@ def test_JinjaRenderer_get_source_simple(tmp_path):
   template.write_text(TEMPLATE)
 
   resource_viewer = ResourceViewer(str(dir_root))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   assert renderer._get_source('template.txt.j2') == (TEMPLATE, 'template.txt.j2', None)
@@ -27,7 +26,6 @@ def test_JinjaRenderer_get_source_does_not_exist(tmp_path, caplog):
   dir_root.mkdir()
 
   resource_viewer = ResourceViewer(str(dir_root))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   with pytest.raises(MissingFileError):
@@ -49,7 +47,6 @@ def test_JinjaRenderer_get_source_same_filename(tmp_path):
   template_1.write_text(TEMPLATE_1)
 
   resource_viewer = ResourceViewer(str(dir_root))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   assert renderer._get_source('dir_1/template.txt.j2') == (TEMPLATE_1, 'dir_1/template.txt.j2', None)
@@ -66,7 +63,6 @@ def test_JinjaRenderer_get_rendered_simple(tmp_path):
   template.write_text(TEMPLATE)
 
   resource_viewer = ResourceViewer(str(dir_root))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
   renderer.set_template_vars({'var': 'content'})
 
@@ -77,7 +73,6 @@ def test_JinjaRenderer_get_rendered_does_not_exist(tmp_path, caplog):
   dir_root.mkdir()
 
   resource_viewer = ResourceViewer(str(dir_root))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   with pytest.raises(MissingFileError):
@@ -145,7 +140,6 @@ def test_JinjaRenderer_function_loader_render_with_include_raw(tmp_path):
   template_0.write_text(TEMPLATE_0)
 
   resource_viewer = ResourceViewer(str(dir_0))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
@@ -169,7 +163,6 @@ def test_JinjaRenderer_function_loader_render_with_rawinclude(tmp_path):
   template_0.write_text(TEMPLATE_0)
 
   resource_viewer = ResourceViewer(str(dir_0))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
@@ -193,7 +186,6 @@ def test_JinjaRenderer_function_loader_render_with_include(tmp_path):
   template_0.write_text(TEMPLATE_0)
 
   resource_viewer = ResourceViewer(str(dir_0))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
@@ -221,7 +213,6 @@ def test_JinjaRenderer_function_loader_render_with_include_inception(tmp_path):
   template_1.write_text(TEMPLATE_1)
 
   resource_viewer = ResourceViewer(str(dir_0))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
@@ -274,7 +265,6 @@ def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_kv(tmp_pa
   file_3.write_text(textwrap.dedent(FILE_3))
 
   resource_viewer = ResourceViewer(str(dir_0))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
@@ -319,7 +309,6 @@ def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_list(tmp_
   file_3.write_text(textwrap.dedent(FILE_3))
 
   resource_viewer = ResourceViewer(str(dir_0))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
@@ -354,7 +343,6 @@ def test_JinjaRenderer_function_loader_render_with_include_all_as_yaml_names_lis
   file_2.write_text(FILE_2)
 
   resource_viewer = ResourceViewer(str(dir_0))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
@@ -386,7 +374,6 @@ def test_JinjaRenderer_function_loader_render_with_file_list_without_prefix(tmp_
   file_2.write_text(FILE_2)
 
   resource_viewer = ResourceViewer(str(dir_0))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
@@ -418,7 +405,6 @@ def test_JinjaRenderer_function_loader_render_with_file_list_with_prefix(tmp_pat
   file_2.write_text(FILE_2)
 
   resource_viewer = ResourceViewer(str(dir_0))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
@@ -457,7 +443,6 @@ def test_JinjaRenderer_function_loader_render_with_include_map(tmp_path):
   file_3.write_text(textwrap.dedent(FILE_3))
 
   resource_viewer = ResourceViewer(str(dir_0))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
@@ -502,7 +487,6 @@ def test_JinjaRenderer_function_loader_render_with_rawinclude_map(tmp_path):
   file_3.write_text(textwrap.dedent(FILE_3))
 
   resource_viewer = ResourceViewer(str(dir_0))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
@@ -547,7 +531,6 @@ def test_JinjaRenderer_function_loader_render_with_include_list(tmp_path):
   file_3.write_text(textwrap.dedent(FILE_3))
 
   resource_viewer = ResourceViewer(str(dir_0))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\
@@ -590,7 +573,6 @@ def test_JinjaRenderer_function_loader_render_with_rawinclude_list(tmp_path):
   file_3.write_text(textwrap.dedent(FILE_3))
 
   resource_viewer = ResourceViewer(str(dir_0))
-  resource_viewer.build()
   renderer = JinjaRendererFromViewer(resource_viewer)
 
   TEMPLATE = '''\

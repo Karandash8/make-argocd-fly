@@ -1,6 +1,6 @@
 import pytest
-from make_argocd_fly.exceptions import ConfigFileError
-from make_argocd_fly.params import Params
+from make_argocd_fly.exception import ConfigFileError
+from make_argocd_fly.param import Params
 
 ##################
 ### Params.populate_params

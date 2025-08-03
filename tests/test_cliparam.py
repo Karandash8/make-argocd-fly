@@ -1,5 +1,5 @@
 import pytest
-from make_argocd_fly.cliparams import populate_cli_params
+from make_argocd_fly.cliparam import populate_cli_params
 
 
 def test_populate_cli_params():

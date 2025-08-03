@@ -12,12 +12,13 @@ try:
 except ImportError:
   from yaml import SafeLoader
 
-from make_argocd_fly import consts
+from make_argocd_fly import const
 from make_argocd_fly.config import get_config
 from make_argocd_fly.renderer import YamlRenderer, JinjaRenderer, JinjaRendererFromViewer
-from make_argocd_fly.resource import ResourceViewer, ResourceWriter
-from make_argocd_fly.utils import extract_single_resource, FilePathGenerator, get_app_rel_path
-from make_argocd_fly.exceptions import UndefinedTemplateVariableError, TemplateRenderingError, InternalError, KustomizeError, \
+from make_argocd_fly.resource.viewer import ResourceViewer
+from make_argocd_fly.resource.writer import ResourceWriter
+from make_argocd_fly.util import extract_single_resource, FilePathGenerator, get_app_rel_path
+from make_argocd_fly.exception import UndefinedTemplateVariableError, TemplateRenderingError, InternalError, KustomizeError, \
   MissingFileError
 
 log = logging.getLogger(__name__)
@@ -62,10 +63,10 @@ class FindAppsStep(AbstractStep):
                 self.apps.append((app_name, env_name))
           else:
             # DEPRECATED
-            if consts.AppParamsNames.APP_DEPLOYER in app_params:
-              if (self.parent_app_name == app_params[consts.AppParamsNames.APP_DEPLOYER] and
-                  ((consts.AppParamsNames.APP_DEPLOYER_ENV not in app_params and env_name == self.parent_app_env_name) or
-                  (consts.AppParamsNames.APP_DEPLOYER_ENV in app_params and self.parent_app_env_name == app_params[consts.AppParamsNames.APP_DEPLOYER_ENV]))):
+            if const.AppParamsNames.APP_DEPLOYER in app_params:
+              if (self.parent_app_name == app_params[const.AppParamsNames.APP_DEPLOYER] and
+                  ((const.AppParamsNames.APP_DEPLOYER_ENV not in app_params and env_name == self.parent_app_env_name) or
+                  (const.AppParamsNames.APP_DEPLOYER_ENV in app_params and self.parent_app_env_name == app_params[const.AppParamsNames.APP_DEPLOYER_ENV]))):
                 self.apps.append((app_name, env_name))
 
   def get_apps(self) -> list:
@@ -92,7 +93,7 @@ class BaseResourceGenerationStep(AbstractStep):
       # TODO use @singledispatch here
       if source_file_path and app_params.non_k8s_files_to_render:
         if not isinstance(app_params.non_k8s_files_to_render, list):
-          log.error(f'Application parameter {consts.ParamNames.NON_K8S_FILES_TO_RENDER} must be a list')
+          log.error(f'Application parameter {const.ParamNames.NON_K8S_FILES_TO_RENDER} must be a list')
           raise InternalError
 
         for element in app_params.non_k8s_files_to_render:
@@ -102,7 +103,7 @@ class BaseResourceGenerationStep(AbstractStep):
       # TODO use @singledispatch here
       if source_file_path and app_params.exclude_rendering:
         if not isinstance(app_params.exclude_rendering, list):
-          log.error(f'Application parameter {consts.ParamNames.EXCLUDE_RENDERING} must be a list')
+          log.error(f'Application parameter {const.ParamNames.EXCLUDE_RENDERING} must be a list')
           raise InternalError
 
         for element in app_params.exclude_rendering:
@@ -113,22 +114,22 @@ class BaseResourceGenerationStep(AbstractStep):
       # DEPRECATED
 
       # TODO use @singledispatch here
-      if source_file_path and consts.AppParamsNames.NON_K8S_FILES_TO_RENDER in app_params:
-        if not isinstance(app_params[consts.AppParamsNames.NON_K8S_FILES_TO_RENDER], list):
-          log.error(f'Application parameter {consts.AppParamsNames.NON_K8S_FILES_TO_RENDER} must be a list')
+      if source_file_path and const.AppParamsNames.NON_K8S_FILES_TO_RENDER in app_params:
+        if not isinstance(app_params[const.AppParamsNames.NON_K8S_FILES_TO_RENDER], list):
+          log.error(f'Application parameter {const.AppParamsNames.NON_K8S_FILES_TO_RENDER} must be a list')
           raise InternalError
 
-        for element in app_params[consts.AppParamsNames.NON_K8S_FILES_TO_RENDER]:
+        for element in app_params[const.AppParamsNames.NON_K8S_FILES_TO_RENDER]:
           if source_file_path.startswith(element):
             return os.path.join(get_app_rel_path(self.env_name, self.app_name), generator.generate_from_source_file())
 
       # TODO use @singledispatch here
-      if source_file_path and consts.AppParamsNames.EXCLUDE_RENDERING in app_params:
-        if not isinstance(app_params[consts.AppParamsNames.EXCLUDE_RENDERING], list):
-          log.error(f'Application parameter {consts.AppParamsNames.EXCLUDE_RENDERING} must be a list')
+      if source_file_path and const.AppParamsNames.EXCLUDE_RENDERING in app_params:
+        if not isinstance(app_params[const.AppParamsNames.EXCLUDE_RENDERING], list):
+          log.error(f'Application parameter {const.AppParamsNames.EXCLUDE_RENDERING} must be a list')
           raise InternalError
 
-        for element in app_params[consts.AppParamsNames.EXCLUDE_RENDERING]:
+        for element in app_params[const.AppParamsNames.EXCLUDE_RENDERING]:
           if source_file_path.startswith(element):
             log.debug(f'Exclude rendering for file {source_file_path}')
             raise ValueError
@@ -328,10 +329,10 @@ class ReadSourceStep(AbstractStep):
     pass
 
   def configure(self, input_dir_abs_path: str) -> None:
-    self.viewer = ResourceViewer(input_dir_abs_path)
+    self.resource_path = input_dir_abs_path
 
   async def run(self) -> None:
-    self.viewer.build()
+    self.viewer = ResourceViewer(self.resource_path)
 
   def get_viewer(self) -> ResourceViewer:
     return self.viewer

@@ -3,8 +3,8 @@ import textwrap
 from unittest.mock import MagicMock
 
 from make_argocd_fly.config import populate_config, get_config, Config
-from make_argocd_fly.exceptions import ConfigFileError, InternalError
-from make_argocd_fly.utils import check_lists_equal
+from make_argocd_fly.exception import ConfigFileError, InternalError
+from make_argocd_fly.util import check_lists_equal
 
 
 ##################

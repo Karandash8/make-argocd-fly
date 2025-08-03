@@ -1,5 +1,5 @@
-from make_argocd_fly.consts import AppParamsNames
-from make_argocd_fly.utils import check_lists_equal
+from make_argocd_fly.const import AppParamsNames
+from make_argocd_fly.util import check_lists_equal
 
 
 ###################

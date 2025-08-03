@@ -10,9 +10,9 @@ from jinja2.ext import Extension
 from markupsafe import Markup
 from deprecated import deprecated
 
-from make_argocd_fly.resource import ResourceViewer
-from make_argocd_fly.exceptions import UndefinedTemplateVariableError, MissingFileError, InternalError
-from make_argocd_fly.utils import extract_undefined_variable
+from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
+from make_argocd_fly.exception import UndefinedTemplateVariableError, MissingFileError, InternalError
+from make_argocd_fly.util import extract_undefined_variable
 
 log = logging.getLogger(__name__)
 
@@ -433,7 +433,7 @@ class JinjaRendererFromViewer(AbstractRenderer):
 
   def _list_templates(self, path: str) -> List[ResourceViewer]:
     element = self.viewer.get_element(path)
-    if not element or not element.is_dir:
+    if not element or element.resource_type != ResourceType.DIRECTORY:
       log.error(f'Provided path {path} is not a directory')
       return []
 

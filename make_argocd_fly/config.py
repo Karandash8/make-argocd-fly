@@ -2,12 +2,12 @@ import logging
 import yaml
 from deprecated import deprecated
 
-from make_argocd_fly import consts
-from make_argocd_fly.cliparams import get_cli_params
-from make_argocd_fly.params import Params
-from make_argocd_fly.utils import build_path, merge_dicts_without_duplicates, merge_dicts_with_overrides, VarsResolver
-from make_argocd_fly.exceptions import InternalError, ConfigFileError, MergeError
-from make_argocd_fly.resource import ResourceViewer
+from make_argocd_fly import const
+from make_argocd_fly.cliparam import get_cli_params
+from make_argocd_fly.param import Params
+from make_argocd_fly.util import build_path, merge_dicts_without_duplicates, merge_dicts_with_overrides, VarsResolver
+from make_argocd_fly.exception import InternalError, ConfigFileError, MergeError
+from make_argocd_fly.resource.viewer import ResourceViewer
 
 
 log = logging.getLogger(__name__)
@@ -54,11 +54,11 @@ class Config:
       log.error('Config is not populated')
       raise InternalError
 
-    if consts.KEYWORK_ENVS not in self.config:
+    if const.KEYWORK_ENVS not in self.config:
       log.warning('Missing `envs` keyword in config')
       return []
 
-    return list(self.config[consts.KEYWORK_ENVS].keys())
+    return list(self.config[const.KEYWORK_ENVS].keys())
 
   def get_env(self, env_name: str) -> dict:
     if self.config is None:
@@ -69,7 +69,7 @@ class Config:
       log.error(f'Environment {env_name} is not defined')
       raise ConfigFileError
 
-    return self.config[consts.KEYWORK_ENVS][env_name]
+    return self.config[const.KEYWORK_ENVS][env_name]
 
   def list_apps(self, env_name: str) -> list[str]:
     if self.config is None:
@@ -77,11 +77,11 @@ class Config:
       raise InternalError
 
     env = self.get_env(env_name)
-    if consts.KEYWORK_APPS not in env:
+    if const.KEYWORK_APPS not in env:
       log.warning(f'Missing `apps` keyword in environment {env_name}')
       return []
 
-    return list(env[consts.KEYWORK_APPS].keys())
+    return list(env[const.KEYWORK_APPS].keys())
 
   def get_app(self, env_name: str, app_name: str) -> dict:
     if self.config is None:
@@ -93,7 +93,7 @@ class Config:
       log.error(f'Application {app_name} is not defined in environment {env_name}')
       raise ConfigFileError
 
-    return env[consts.KEYWORK_APPS][app_name]
+    return env[const.KEYWORK_APPS][app_name]
 
   def _get_global_scope(self, keyword: str) -> dict:
     if self.config is None:
@@ -116,9 +116,9 @@ class Config:
     if extra_vars is None:
       extra_vars = {}
 
-    global_vars = self._get_global_scope(consts.KEYWORK_VARS)
-    env_vars = self._get_env_scope(consts.KEYWORK_VARS, env_name) if env_name else {}
-    app_vars = self._get_app_scope(consts.KEYWORK_VARS, env_name, app_name) if env_name and app_name else {}
+    global_vars = self._get_global_scope(const.KEYWORK_VARS)
+    env_vars = self._get_env_scope(const.KEYWORK_VARS, env_name) if env_name else {}
+    app_vars = self._get_app_scope(const.KEYWORK_VARS, env_name, app_name) if env_name and app_name else {}
 
     resolved_vars = merge_dicts_with_overrides(
       extra_vars,
@@ -154,9 +154,9 @@ class Config:
     return resolved_vars
 
   def get_params(self, env_name: str | None = None, app_name: str | None = None) -> Params:
-    global_params = self._get_global_scope(consts.KEYWORK_PARAMS)
-    env_params = self._get_env_scope(consts.KEYWORK_PARAMS, env_name) if env_name else {}
-    app_params = self._get_app_scope(consts.KEYWORK_PARAMS, env_name, app_name) if env_name and app_name else {}
+    global_params = self._get_global_scope(const.KEYWORK_PARAMS)
+    env_params = self._get_env_scope(const.KEYWORK_PARAMS, env_name) if env_name else {}
+    app_params = self._get_app_scope(const.KEYWORK_PARAMS, env_name, app_name) if env_name and app_name else {}
 
     params = Params()
     params.populate_params(**merge_dicts_with_overrides(global_params, env_params, app_params))
@@ -166,7 +166,7 @@ class Config:
   def get_app_params_deprecated(self, env_name: str, app_name: str) -> dict:
     app = self.get_app(env_name, app_name)
     app_params = {key: value for key, value in app.items() if
-                  (key != consts.KEYWORK_VARS) and (key != consts.KEYWORK_PARAMS)}
+                  (key != const.KEYWORK_VARS) and (key != const.KEYWORK_PARAMS)}
 
     return self.return_app_params_deprecated(app_params) if app_params else {}
 
@@ -178,14 +178,13 @@ class Config:
 config = Config()
 
 
-def populate_config(root_dir: str = consts.DEFAULT_ROOT_DIR,
-                    config_dir: str = consts.DEFAULT_CONFIG_DIR,
-                    source_dir: str = consts.DEFAULT_SOURCE_DIR,
-                    output_dir: str = consts.DEFAULT_OUTPUT_DIR,
-                    tmp_dir: str = consts.DEFAULT_TMP_DIR) -> Config:
+def populate_config(root_dir: str = const.DEFAULT_ROOT_DIR,
+                    config_dir: str = const.DEFAULT_CONFIG_DIR,
+                    source_dir: str = const.DEFAULT_SOURCE_DIR,
+                    output_dir: str = const.DEFAULT_OUTPUT_DIR,
+                    tmp_dir: str = const.DEFAULT_TMP_DIR) -> Config:
   try:
     viewer = ResourceViewer(build_path(root_dir, config_dir))
-    viewer.build()
     yml_children = viewer.get_files_children(r'(\.yml)$')
 
     config_files_content = []
