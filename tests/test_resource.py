@@ -234,7 +234,7 @@ def test_ResourceViewer__search_subresources__by_type(tmp_path):
                             ('app.txt', 'text file content', ResourceType.UNKNOWN),
                             ('app.yaml', 'key: app', ResourceType.YAML),
                             ('app_2.yml', 'key: app_2', ResourceType.YAML),
-                            ('app.j2', 'key: {{ value }}',ResourceType.JINJA2),
+                            ('app.j2', 'key: {{ value }}', ResourceType.JINJA2),
                             ('empty', '', ResourceType.DIRECTORY)])
 
   none_resources = list(resource_viewer.search_subresources(resource_types=[]))
@@ -350,7 +350,7 @@ def test_ResourceViewer__search_subresources__by_subdirs(tmp_path):
                            [('app.txt', 'text file content', ResourceType.UNKNOWN),
                             ('app.yaml', 'key: app', ResourceType.YAML),
                             ('app_2.yml', 'key: app_2', ResourceType.YAML),
-                            ('app.j2', 'key: {{ value }}',ResourceType.JINJA2),
+                            ('app.j2', 'key: {{ value }}', ResourceType.JINJA2),
                             ('empty', '', ResourceType.DIRECTORY),
                             ('subdir', '', ResourceType.DIRECTORY),
                             ('app_subdir.yaml', 'key: app_subdir', ResourceType.YAML)])
