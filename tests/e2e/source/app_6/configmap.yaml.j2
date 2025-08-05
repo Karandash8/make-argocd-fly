@@ -1,0 +1,13 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: prometheus-config-yaml
+data:
+  ip: {{ 'localhost' | dig }}
+  number: {{ number }}
+  number_oct: {{ number_oct }}
+  number_string: "{{ number_string }}"
+  number_string_2: "{{ number_string_2 }}"
+  number_oct_string: "{{ number_oct_string }}"
+  boolean_string: "yes"

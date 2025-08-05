@@ -7,7 +7,7 @@ from make_argocd_fly.cliparam import get_cli_params
 from make_argocd_fly.param import Params
 from make_argocd_fly.util import build_path, merge_dicts_without_duplicates, merge_dicts_with_overrides, VarsResolver
 from make_argocd_fly.exception import InternalError, ConfigFileError, MergeError
-from make_argocd_fly.resource.viewer import ResourceViewer
+from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
 
 
 log = logging.getLogger(__name__)
@@ -185,7 +185,7 @@ def populate_config(root_dir: str = const.DEFAULT_ROOT_DIR,
                     tmp_dir: str = const.DEFAULT_TMP_DIR) -> Config:
   try:
     viewer = ResourceViewer(build_path(root_dir, config_dir))
-    yml_children = viewer.get_files_children(r'(\.yml)$')
+    yml_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML]))
 
     config_files_content = []
     for child in yml_children:
