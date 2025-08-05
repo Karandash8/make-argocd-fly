@@ -5,7 +5,7 @@ import textwrap
 import shutil
 from pprint import pformat
 
-from make_argocd_fly.resource.viewer import ResourceViewer
+from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
 from make_argocd_fly import const
 from make_argocd_fly.util import get_app_rel_path
 from make_argocd_fly.config import get_config
@@ -110,11 +110,11 @@ class SimpleApplication(AbstractApplication):
     if self.cli_params.print_vars:
       log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(resolved_vars)}')
 
-    yml_children = self.app_viewer.get_files_children(r'(\.yml)$')
+    yml_children = list(self.app_viewer.search_subresources(resource_types=[ResourceType.YAML]))
     self.render_yaml_step.configure(self.env_name, self.app_name, yml_children)
     await self.render_yaml_step.run()
 
-    j2_children = self.app_viewer.get_files_children(r'(\.yml\.j2)$')
+    j2_children = list(self.app_viewer.search_subresources(resource_types=[ResourceType.JINJA2]))
     self.render_jinja_step.configure(self.env_name, self.app_name, j2_children, resolved_vars)
     await self.render_jinja_step.run()
 
@@ -157,11 +157,14 @@ class KustomizeApplication(AbstractApplication):
     if self.cli_params.print_vars:
       log.info(f'Variables for application {self.app_name} in environment {self.env_name}:\n{pformat(resolved_vars)}')
 
-    yml_children = self.app_viewer.get_files_children(r'(\.yml)$', ['base', self.env_name])
+    search_subdirs = ['base', self.env_name] if list(self.app_viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
+                                                                                         name_pattern='base$')) else None
+
+    yml_children = list(self.app_viewer.search_subresources(resource_types=[ResourceType.YAML], search_subdirs=search_subdirs))
     self.render_yaml_step.configure(self.env_name, self.app_name, yml_children)
     await self.render_yaml_step.run()
 
-    j2_children = self.app_viewer.get_files_children(r'(\.yml\.j2)$', ['base', self.env_name])
+    j2_children = list(self.app_viewer.search_subresources(resource_types=[ResourceType.JINJA2], search_subdirs=search_subdirs))
     self.render_jinja_step.configure(self.env_name, self.app_name, j2_children, resolved_vars)
     await self.render_jinja_step.run()
 
@@ -195,7 +198,8 @@ async def application_factory(env_name: str, app_name: str, source_path: str) ->
   viewer = read_source_step.get_viewer()
 
   try:
-    kustomize_children = viewer.get_files_children('kustomization.yml')
+    kustomize_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML, ResourceType.JINJA2],
+                                                         name_pattern='kustomization|Kustomization'))
 
     if kustomize_children:
       return KustomizeApplication(app_name, env_name, viewer)

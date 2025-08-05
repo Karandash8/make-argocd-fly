@@ -6,6 +6,67 @@ from make_argocd_fly.exception import ResourceViewerIsFake, InternalError
 from make_argocd_fly.util import check_lists_equal
 
 ##################
+### get_resource_type
+##################
+
+def test_get_resource_type__does_not_exist(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  file_path = 'non_existent_file.txt'
+
+  resource_type = get_resource_type(os.path.join(dir_root, file_path))
+  assert resource_type == ResourceType.DOES_NOT_EXIST
+
+def test_get_resource_type__yaml(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  file_path = 'file.yaml'
+  file_root = dir_root / file_path
+  file_root.write_text('key: value')
+
+  resource_type = get_resource_type(os.path.join(dir_root, file_path))
+  assert resource_type == ResourceType.YAML
+
+def test_get_resource_type__yaml_2(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  file_path = 'file.yml'
+  file_root = dir_root / file_path
+  file_root.write_text('key: value')
+
+  resource_type = get_resource_type(os.path.join(dir_root, file_path))
+  assert resource_type == ResourceType.YAML
+
+def test_get_resource_type__jinja2(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  file_path = 'file.j2'
+  file_root = dir_root / file_path
+  file_root.write_text('key: {{ value }}')
+
+  resource_type = get_resource_type(os.path.join(dir_root, file_path))
+  assert resource_type == ResourceType.JINJA2
+
+def test_get_resource_type__unknown(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  file_path = 'file.txt'
+  file_root = dir_root / file_path
+  file_root.write_text('key: value')
+
+  resource_type = get_resource_type(os.path.join(dir_root, file_path))
+  assert resource_type == ResourceType.UNKNOWN
+
+def test_get_resource_type__directory(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_subdir = dir_root / 'subdir'
+  dir_subdir.mkdir()
+
+  resource_type = get_resource_type(str(dir_subdir))
+  assert resource_type == ResourceType.DIRECTORY
+
+##################
 ### ResourceViewer
 ##################
 
@@ -143,6 +204,211 @@ def test_ResourceViewer__with_directories_and_files(tmp_path):
   assert len(resource_viewer.children[dir_root_0_idx].children) == 0
 
 ##################
+### ResourceViewer.search_subresources()
+##################
+
+def test_ResourceViewer__search_subresources__by_type(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  file_yaml = dir_root / 'file.yaml'
+  file_yaml.write_text('key: file')
+  dir_app = dir_root / 'app'
+  dir_app.mkdir()
+  file_app_txt = dir_app / 'app.txt'
+  file_app_txt.write_text('text file content')
+  file_app_yaml = dir_app / 'app.yaml'
+  file_app_yaml.write_text('key: app')
+  file_app_yaml_2 = dir_app / 'app_2.yml'
+  file_app_yaml_2.write_text('key: app_2')
+  file_app_j2 = dir_app / 'app.j2'
+  file_app_j2.write_text('key: {{ value }}')
+  dir_app_empty = dir_app / 'empty'
+  dir_app_empty.mkdir()
+
+  resource_viewer = ResourceViewer(str(dir_root))
+
+  all_resources = list(resource_viewer.search_subresources())
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in all_resources],
+                           [('file.yaml', 'key: file', ResourceType.YAML),
+                            ('app', '', ResourceType.DIRECTORY),
+                            ('app.txt', 'text file content', ResourceType.UNKNOWN),
+                            ('app.yaml', 'key: app', ResourceType.YAML),
+                            ('app_2.yml', 'key: app_2', ResourceType.YAML),
+                            ('app.j2', 'key: {{ value }}',ResourceType.JINJA2),
+                            ('empty', '', ResourceType.DIRECTORY)])
+
+  none_resources = list(resource_viewer.search_subresources(resource_types=[]))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in none_resources], [])
+
+  unknown_resources = list(resource_viewer.search_subresources(resource_types=[ResourceType.UNKNOWN]))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in unknown_resources],
+                           [('app.txt', 'text file content', ResourceType.UNKNOWN)])
+
+  yaml_resources = list(resource_viewer.search_subresources(resource_types=[ResourceType.YAML]))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in yaml_resources],
+                           [('file.yaml', 'key: file', ResourceType.YAML),
+                            ('app.yaml', 'key: app', ResourceType.YAML),
+                            ('app_2.yml', 'key: app_2', ResourceType.YAML)])
+
+  jinja2_resources = list(resource_viewer.search_subresources(resource_types=[ResourceType.JINJA2]))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in jinja2_resources],
+                           [('app.j2', 'key: {{ value }}', ResourceType.JINJA2)])
+
+  non_existent_resources = list(resource_viewer.search_subresources(resource_types=[ResourceType.DOES_NOT_EXIST]))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in non_existent_resources], [])
+
+  directory_resources = list(resource_viewer.search_subresources(resource_types=[ResourceType.DIRECTORY]))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in directory_resources],
+                           [('app', '', ResourceType.DIRECTORY),
+                            ('empty', '', ResourceType.DIRECTORY)])
+
+  yaml_and_jinja2_resources = list(resource_viewer.search_subresources(resource_types=[ResourceType.YAML, ResourceType.JINJA2]))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in yaml_and_jinja2_resources],
+                           [('file.yaml', 'key: file', ResourceType.YAML),
+                            ('app.yaml', 'key: app', ResourceType.YAML),
+                            ('app_2.yml', 'key: app_2', ResourceType.YAML),
+                            ('app.j2', 'key: {{ value }}', ResourceType.JINJA2)])
+
+  directory_and_yaml_resources = list(resource_viewer.search_subresources(resource_types=[ResourceType.DIRECTORY, ResourceType.YAML]))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in directory_and_yaml_resources],
+                           [('file.yaml', 'key: file', ResourceType.YAML),
+                            ('app', '', ResourceType.DIRECTORY),
+                            ('app.yaml', 'key: app', ResourceType.YAML),
+                            ('app_2.yml', 'key: app_2', ResourceType.YAML),
+                            ('empty', '', ResourceType.DIRECTORY)])
+
+def test_ResourceViewer__search_subresources__by_pattern(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  file_yaml = dir_root / 'file.yaml'
+  file_yaml.write_text('key: file')
+  dir_app = dir_root / 'app'
+  dir_app.mkdir()
+  file_app_txt = dir_app / 'app.txt'
+  file_app_txt.write_text('text file content')
+  file_app_yaml = dir_app / 'app.yaml'
+  file_app_yaml.write_text('key: app')
+  file_app_yaml_2 = dir_app / 'app_2.yml'
+  file_app_yaml_2.write_text('key: app_2')
+  file_app_j2 = dir_app / 'app.j2'
+  file_app_j2.write_text('key: {{ value }}')
+  dir_app_empty = dir_app / 'empty'
+  dir_app_empty.mkdir()
+
+  resource_viewer = ResourceViewer(str(dir_root))
+
+  pattern_resources = list(resource_viewer.search_subresources(name_pattern='app'))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in pattern_resources],
+                           [('app', '', ResourceType.DIRECTORY),
+                            ('app.txt', 'text file content', ResourceType.UNKNOWN),
+                            ('app.yaml', 'key: app', ResourceType.YAML),
+                            ('app_2.yml', 'key: app_2', ResourceType.YAML),
+                            ('app.j2', 'key: {{ value }}', ResourceType.JINJA2)])
+
+  pattern_resources = list(resource_viewer.search_subresources(name_pattern='app.j2'))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in pattern_resources],
+                           [('app.j2', 'key: {{ value }}', ResourceType.JINJA2)])
+
+  pattern_resources = list(resource_viewer.search_subresources(name_pattern='file'))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in pattern_resources],
+                           [('file.yaml', 'key: file', ResourceType.YAML)])
+
+  pattern_resources = list(resource_viewer.search_subresources(name_pattern='non_existent'))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in pattern_resources], [])
+
+  pattern_resources = list(resource_viewer.search_subresources(resource_types=[ResourceType.YAML], name_pattern='app'))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in pattern_resources],
+                           [('app.yaml', 'key: app', ResourceType.YAML),
+                            ('app_2.yml', 'key: app_2', ResourceType.YAML)])
+
+def test_ResourceViewer__search_subresources__by_subdirs(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  file_yaml = dir_root / 'file.yaml'
+  file_yaml.write_text('key: file')
+  dir_app = dir_root / 'app'
+  dir_app.mkdir()
+  file_app_txt = dir_app / 'app.txt'
+  file_app_txt.write_text('text file content')
+  file_app_yaml = dir_app / 'app.yaml'
+  file_app_yaml.write_text('key: app')
+  file_app_yaml_2 = dir_app / 'app_2.yml'
+  file_app_yaml_2.write_text('key: app_2')
+  file_app_j2 = dir_app / 'app.j2'
+  file_app_j2.write_text('key: {{ value }}')
+  dir_app_empty = dir_app / 'empty'
+  dir_app_empty.mkdir()
+  dir_app_subdir = dir_app / 'subdir'
+  dir_app_subdir.mkdir()
+  file_app_subdir_yaml = dir_app_subdir / 'app_subdir.yaml'
+  file_app_subdir_yaml.write_text('key: app_subdir')
+
+  resource_viewer = ResourceViewer(str(dir_root))
+
+  subdir_resources = list(resource_viewer.search_subresources(search_subdirs=['app']))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in subdir_resources],
+                           [('app.txt', 'text file content', ResourceType.UNKNOWN),
+                            ('app.yaml', 'key: app', ResourceType.YAML),
+                            ('app_2.yml', 'key: app_2', ResourceType.YAML),
+                            ('app.j2', 'key: {{ value }}',ResourceType.JINJA2),
+                            ('empty', '', ResourceType.DIRECTORY),
+                            ('subdir', '', ResourceType.DIRECTORY),
+                            ('app_subdir.yaml', 'key: app_subdir', ResourceType.YAML)])
+
+  subdir_resources = list(resource_viewer.search_subresources(search_subdirs=['app/empty']))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in subdir_resources], [])
+
+  subdir_resources = list(resource_viewer.search_subresources(search_subdirs=['app/subdir']))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in subdir_resources],
+                           [('app_subdir.yaml', 'key: app_subdir', ResourceType.YAML)])
+
+  subdir_resources = list(resource_viewer.search_subresources(search_subdirs=['subdir']))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in subdir_resources], [])
+
+  subdir_resources = list(resource_viewer.search_subresources(search_subdirs=['app'], resource_types=[ResourceType.YAML], depth=1))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in subdir_resources],
+                           [('app.yaml', 'key: app', ResourceType.YAML),
+                            ('app_2.yml', 'key: app_2', ResourceType.YAML)])
+
+  subdir_resources = list(resource_viewer.search_subresources(search_subdirs=['app'], resource_types=[ResourceType.YAML], depth=2))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in subdir_resources],
+                           [('app.yaml', 'key: app', ResourceType.YAML),
+                            ('app_2.yml', 'key: app_2', ResourceType.YAML),
+                            ('app_subdir.yaml', 'key: app_subdir', ResourceType.YAML)])
+
+  subdir_resources = list(resource_viewer.search_subresources(search_subdirs=['app'], resource_types=[ResourceType.YAML], name_pattern='app_'))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in subdir_resources],
+                           [('app_2.yml', 'key: app_2', ResourceType.YAML),
+                            ('app_subdir.yaml', 'key: app_subdir', ResourceType.YAML)])
+
+def test_ResourceViewer__search_subresources__by_depth(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  file_yaml = dir_root / 'file.yaml'
+  file_yaml.write_text('key: file')
+  dir_app = dir_root / 'app'
+  dir_app.mkdir()
+  file_app_yaml = dir_app / 'app.yaml'
+  file_app_yaml.write_text('key: app')
+  file_app_yaml_2 = dir_app / 'app_2.yml'
+  file_app_yaml_2.write_text('key: app_2')
+
+  resource_viewer = ResourceViewer(str(dir_root))
+
+  depth_resources = list(resource_viewer.search_subresources(resource_types=[ResourceType.YAML], depth=2))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in depth_resources],
+                           [('file.yaml', 'key: file', ResourceType.YAML),
+                            ('app.yaml', 'key: app', ResourceType.YAML),
+                            ('app_2.yml', 'key: app_2', ResourceType.YAML)])
+
+  depth_resources = list(resource_viewer.search_subresources(resource_types=[ResourceType.YAML], depth=1))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in depth_resources],
+                           [('file.yaml', 'key: file', ResourceType.YAML)])
+
+  depth_resources = list(resource_viewer.search_subresources(resource_types=[ResourceType.YAML], depth=0))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in depth_resources], [])
+
+##################
 ### ResourceViewer._get_child()
 ##################
 
@@ -248,67 +514,6 @@ def test_ResourceViewer__get_children__simple(tmp_path):
   children = resource_viewer.get_children()
   assert len(children) == 1
   assert children[0].name == 'app'
-
-##################
-### get_resource_type
-##################
-
-def test_get_resource_type__does_not_exist(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  file_path = 'non_existent_file.txt'
-
-  resource_type = get_resource_type(os.path.join(dir_root, file_path))
-  assert resource_type == ResourceType.DOES_NOT_EXIST
-
-def test_get_resource_type__yaml(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  file_path = 'file.yaml'
-  file_root = dir_root / file_path
-  file_root.write_text('key: value')
-
-  resource_type = get_resource_type(os.path.join(dir_root, file_path))
-  assert resource_type == ResourceType.YAML
-
-def test_get_resource_type__yaml_2(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  file_path = 'file.yml'
-  file_root = dir_root / file_path
-  file_root.write_text('key: value')
-
-  resource_type = get_resource_type(os.path.join(dir_root, file_path))
-  assert resource_type == ResourceType.YAML
-
-def test_get_resource_type__jinja2(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  file_path = 'file.j2'
-  file_root = dir_root / file_path
-  file_root.write_text('key: {{ value }}')
-
-  resource_type = get_resource_type(os.path.join(dir_root, file_path))
-  assert resource_type == ResourceType.JINJA2
-
-def test_get_resource_type__unknown(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  file_path = 'file.txt'
-  file_root = dir_root / file_path
-  file_root.write_text('key: value')
-
-  resource_type = get_resource_type(os.path.join(dir_root, file_path))
-  assert resource_type == ResourceType.UNKNOWN
-
-def test_get_resource_type__directory(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  dir_subdir = dir_root / 'subdir'
-  dir_subdir.mkdir()
-
-  resource_type = get_resource_type(str(dir_subdir))
-  assert resource_type == ResourceType.DIRECTORY
 
 ##################
 ### ResourceWriter

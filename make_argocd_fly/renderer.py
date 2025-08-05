@@ -432,6 +432,7 @@ class JinjaRendererFromViewer(AbstractRenderer):
     raise MissingFileError(path)
 
   def _list_templates(self, path: str) -> List[ResourceViewer]:
+    # TODO: replace with a more efficient search
     element = self.viewer.get_element(path)
     if not element or element.resource_type != ResourceType.DIRECTORY:
       log.error(f'Provided path {path} is not a directory')

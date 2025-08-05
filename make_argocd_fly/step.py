@@ -15,7 +15,7 @@ except ImportError:
 from make_argocd_fly import const
 from make_argocd_fly.config import get_config
 from make_argocd_fly.renderer import YamlRenderer, JinjaRenderer, JinjaRendererFromViewer
-from make_argocd_fly.resource.viewer import ResourceViewer
+from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
 from make_argocd_fly.resource.writer import ResourceWriter
 from make_argocd_fly.util import extract_single_resource, FilePathGenerator, get_app_rel_path
 from make_argocd_fly.exception import UndefinedTemplateVariableError, TemplateRenderingError, InternalError, KustomizeError, \
@@ -261,16 +261,20 @@ class RunKustomizeStep(BaseResourceGenerationStep):
     self.app_name = app_name
     self.viewer = viewer
 
-    kustomization_children = self.viewer.get_files_children('kustomization.yml')
-    kustomization_locations = [
-      os.path.join(self.env_name, 'kustomization.yml'),
-      os.path.join('base', 'kustomization.yml'),
-      'kustomization.yml'
-    ]
-    for location in kustomization_locations:
-      if location in [child.element_rel_path for child in kustomization_children]:
-        self.dir_path = os.path.join(self.viewer.root_element_abs_path, os.path.dirname(location))
-        break
+    if list(viewer.search_subresources(resource_types=[ResourceType.YAML],
+                                                       name_pattern='kustomization|Kustomization',
+                                                       search_subdirs=[self.env_name],
+                                                       depth=1)):
+      self.dir_path = os.path.join(self.viewer.root_element_abs_path, self.env_name)
+    elif list(viewer.search_subresources(resource_types=[ResourceType.YAML],
+                                                       name_pattern='kustomization|Kustomization',
+                                                       search_subdirs=['base'],
+                                                       depth=1)):
+      self.dir_path = os.path.join(self.viewer.root_element_abs_path, 'base')
+    elif list(viewer.search_subresources(resource_types=[ResourceType.YAML],
+                                                       name_pattern='kustomization|Kustomization',
+                                                       depth=1)):
+      self.dir_path = self.viewer.root_element_abs_path
     else:
       log.error(f'Missing kustomization.yml in the application directory. Skipping application {self.app_name} in environment {self.env_name}')
 
