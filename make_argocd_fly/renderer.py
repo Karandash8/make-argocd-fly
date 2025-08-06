@@ -418,8 +418,11 @@ class JinjaRendererFromViewer(AbstractRenderer):
                                                  search_subdirs=[os.path.normpath(os.path.dirname(path))],
                                                  name_pattern=os.path.basename(path)))
     if not child:
-      log.error(f'Missing file {path}')
+      log.error(f'No matching resource found for path {path}')
       raise MissingFileError(path)
+    if len(child) > 1:
+      log.error(f'Multiple files matched the pattern for {path}: {[c.name for c in child]}')
+      raise InternalError
 
     return (child[0].content, path, None)
 
@@ -430,8 +433,11 @@ class JinjaRendererFromViewer(AbstractRenderer):
                                                  search_subdirs=[os.path.normpath(os.path.dirname(path))],
                                                  name_pattern=os.path.basename(path)))
     if not child:
-      log.error(f'Missing file {path}')
+      log.error(f'No matching resource found for path {path}')
       raise MissingFileError(path)
+    if len(child) > 1:
+      log.error(f'Multiple files matched the pattern for {path}: {[c.name for c in child]}')
+      raise InternalError
 
     return (self.render(child[0].content), path, None)
 
@@ -489,7 +495,7 @@ class JinjaRenderer(AbstractRenderer):
       log.error(f'Variable "{variable_name}" is undefined')
       raise UndefinedTemplateVariableError(variable_name) from None
     except TypeError:
-      log.error(f'Likely a missing variable in template {self.filename}')
+      log.error(f'Likely a missing variable in ArgoCD Application CustomResource template')
       raise UndefinedTemplateVariableError('Unknown variable in template') from None
 
     return rendered
