@@ -495,7 +495,7 @@ class JinjaRenderer(AbstractRenderer):
       log.error(f'Variable "{variable_name}" is undefined')
       raise UndefinedTemplateVariableError(variable_name) from None
     except TypeError:
-      log.error(f'Likely a missing variable in ArgoCD Application CustomResource template')
+      log.error('Likely a missing variable in ArgoCD Application CustomResource template')
       raise UndefinedTemplateVariableError('Unknown variable in template') from None
 
     return rendered
