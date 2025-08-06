@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 def build_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
   if not path:
     log.error('Path is empty')
-    raise InternalError
+    raise InternalError()
 
   if os.path.isabs(path):
     abs_path = path
@@ -34,7 +34,7 @@ def build_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
 
   if (not allow_missing) and (not os.path.exists(abs_path)):
     log.error(f'Path does not exist: {abs_path}')
-    raise InternalError
+    raise InternalError()
 
   return abs_path
 
@@ -132,7 +132,7 @@ class VarsResolver:
 def extract_single_resource(multi_resource_yml: Optional[str]) -> Iterator[str]:
   if multi_resource_yml is None:
     log.error('Multi-resource YAML is empty')
-    raise InternalError
+    raise InternalError()
 
   for resource_yml in multi_resource_yml.split('\n---\n'):
     resource_yml = resource_yml.strip()

@@ -82,7 +82,7 @@ class RawIncludeExtension(Extension):
   def _render(self, filename):
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     (source, _, _) = self.environment.loader.get_source(self.environment, filename)
 
@@ -102,7 +102,7 @@ class FileListExtension(Extension):
   def _render(self, dir_path: str, prepend_path: str | None = None) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(dir_path), key=lambda child: child.name)
     yaml_names_as_list = []
@@ -140,7 +140,7 @@ class IncludeMapExtension(Extension):
   def _render(self, path: str) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -175,7 +175,7 @@ class RawIncludeMapExtension(Extension):
   def _render(self, path: str) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -206,7 +206,7 @@ class IncludeListExtension(Extension):
   def _render(self, path: str) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -238,7 +238,7 @@ class RawIncludeListExtension(Extension):
   def _render(self, path: str) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -268,7 +268,7 @@ class IncludeRawExtension(Extension):
   def _render(self, filename):
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     loaded_template = self.environment.loader.get_source(self.environment, filename)
     content = loaded_template[0] if loaded_template else ''
@@ -291,7 +291,7 @@ class IncludeAllAsYamlNamesListExtension(Extension):
   def _render(self, path: str, base_path: str | None = None) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     base_path = base_path or ''
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
@@ -330,7 +330,7 @@ class IncludeAllAsYamlKVExtension(Extension):
   def _render(self, path: str) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -368,7 +368,7 @@ class IncludeAllAsYamlListExtension(Extension):
   def _render(self, path: str) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -424,7 +424,7 @@ class JinjaRendererFromViewer(AbstractRenderer):
       raise MissingFileError(path)
     if len(child) > 1:
       log.error(f'Multiple files matched the pattern for {path}: {[c.name for c in child]}')
-      raise InternalError
+      raise InternalError()
 
     return (child[0].content, path, None)
 
@@ -437,7 +437,7 @@ class JinjaRendererFromViewer(AbstractRenderer):
       raise MissingFileError(path)
     if len(child) > 1:
       log.error(f'Multiple files matched the pattern for {path}: {[c.name for c in child]}')
-      raise InternalError
+      raise InternalError()
 
     return (self.render(child[0].content), path, None)
 

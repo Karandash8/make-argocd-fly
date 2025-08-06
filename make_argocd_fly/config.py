@@ -29,7 +29,7 @@ class Config:
   def source_dir(self) -> str:
     if not self._source_dir:
       log.error('Config is not populated')
-      raise InternalError
+      raise InternalError()
 
     return self._source_dir
 
@@ -37,7 +37,7 @@ class Config:
   def output_dir(self) -> str:
     if not self._output_dir:
       log.error('Config is not populated')
-      raise InternalError
+      raise InternalError()
 
     return self._output_dir
 
@@ -45,14 +45,14 @@ class Config:
   def tmp_dir(self) -> str:
     if not self._tmp_dir:
       log.error('Config is not populated')
-      raise InternalError
+      raise InternalError()
 
     return self._tmp_dir
 
   def list_envs(self) -> list[str]:
     if self.config is None:
       log.error('Config is not populated')
-      raise InternalError
+      raise InternalError()
 
     if const.KEYWORK_ENVS not in self.config:
       log.warning('Missing `envs` keyword in config')
@@ -63,7 +63,7 @@ class Config:
   def get_env(self, env_name: str) -> dict:
     if self.config is None:
       log.error('Config is not populated')
-      raise InternalError
+      raise InternalError()
 
     if env_name not in self.list_envs():
       log.error(f'Environment {env_name} is not defined')
@@ -74,7 +74,7 @@ class Config:
   def list_apps(self, env_name: str) -> list[str]:
     if self.config is None:
       log.error('Config is not populated')
-      raise InternalError
+      raise InternalError()
 
     env = self.get_env(env_name)
     if const.KEYWORK_APPS not in env:
@@ -86,7 +86,7 @@ class Config:
   def get_app(self, env_name: str, app_name: str) -> dict:
     if self.config is None:
       log.error('Config is not populated')
-      raise InternalError
+      raise InternalError()
 
     env = self.get_env(env_name)
     if app_name not in self.list_apps(env_name):
@@ -98,7 +98,7 @@ class Config:
   def _get_global_scope(self, keyword: str) -> dict:
     if self.config is None:
       log.error('Config is not populated')
-      raise InternalError
+      raise InternalError()
 
     return self.config[keyword] if keyword in self.config else {}
 
