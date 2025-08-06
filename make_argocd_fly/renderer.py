@@ -82,7 +82,7 @@ class RawIncludeExtension(Extension):
   def _render(self, filename):
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     (source, _, _) = self.environment.loader.get_source(self.environment, filename)
 
@@ -102,7 +102,7 @@ class FileListExtension(Extension):
   def _render(self, dir_path: str, prepend_path: str | None = None) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(dir_path), key=lambda child: child.name)
     yaml_names_as_list = []
@@ -140,7 +140,7 @@ class IncludeMapExtension(Extension):
   def _render(self, path: str) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -175,7 +175,7 @@ class RawIncludeMapExtension(Extension):
   def _render(self, path: str) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -206,7 +206,7 @@ class IncludeListExtension(Extension):
   def _render(self, path: str) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -238,7 +238,7 @@ class RawIncludeListExtension(Extension):
   def _render(self, path: str) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -268,7 +268,7 @@ class IncludeRawExtension(Extension):
   def _render(self, filename):
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     loaded_template = self.environment.loader.get_source(self.environment, filename)
     content = loaded_template[0] if loaded_template else ''
@@ -291,7 +291,7 @@ class IncludeAllAsYamlNamesListExtension(Extension):
   def _render(self, path: str, base_path: str | None = None) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     base_path = base_path or ''
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
@@ -330,7 +330,7 @@ class IncludeAllAsYamlKVExtension(Extension):
   def _render(self, path: str) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -368,7 +368,7 @@ class IncludeAllAsYamlListExtension(Extension):
   def _render(self, path: str) -> str:
     if not self.environment.loader:
       log.error("Jinja2 environment loader is not set")
-      raise InternalError
+      raise InternalError()
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -390,6 +390,10 @@ class IncludeAllAsYamlListExtension(Extension):
 
 
 class JinjaRendererFromViewer(AbstractRenderer):
+  file_types = [resource_type for resource_type in ResourceType if
+                (resource_type != ResourceType.DIRECTORY and
+                 resource_type != ResourceType.DOES_NOT_EXIST)]
+
   def __init__(self, viewer: ResourceViewer) -> None:
     self.viewer = viewer
     self.loader = CustomFunctionLoader(self._get_source, self._get_rendered, self._list_templates)
@@ -412,33 +416,34 @@ class JinjaRendererFromViewer(AbstractRenderer):
     self.filename = '<template>'
 
   def _get_source(self, path: str):
-    # TODO: this is unoptimal, because it first searches for all files with the same filename and then searches for the one with the same path
-    files_children = self.viewer.get_files_children(os.path.basename(path))
-    for file_child in files_children:
-      if file_child.element_rel_path == path:
-        return (file_child.content, path, None)
+    child = list(self.viewer.search_subresources(resource_types=self.file_types,
+                                                 search_subdirs=[os.path.normpath(os.path.dirname(path))],
+                                                 name_pattern=re.escape(os.path.basename(path))))
+    if not child:
+      log.error(f'No matching resource found for path {path}')
+      raise MissingFileError(path)
+    if len(child) > 1:
+      log.error(f'Multiple files matched the pattern for {path}: {[c.name for c in child]}')
+      raise InternalError()
 
-    log.error(f'Missing file {path}')
-    raise MissingFileError(path)
+    return (child[0].content, path, None)
 
   def _get_rendered(self, path: str):
-    # TODO: this is unoptimal, because it first searches for all files with the same filename and then searches for the one with the same path
-    files_children = self.viewer.get_files_children(os.path.basename(path))
-    for file_child in files_children:
-      if file_child.element_rel_path == path:
-        return (self.render(file_child.content), path, None)
+    child = list(self.viewer.search_subresources(resource_types=self.file_types,
+                                                 search_subdirs=[os.path.normpath(os.path.dirname(path))],
+                                                 name_pattern=re.escape(os.path.basename(path))))
+    if not child:
+      log.error(f'No matching resource found for path {path}')
+      raise MissingFileError(path)
+    if len(child) > 1:
+      log.error(f'Multiple files matched the pattern for {path}: {[c.name for c in child]}')
+      raise InternalError()
 
-    log.error(f'Missing file {path}')
-    raise MissingFileError(path)
+    return (self.render(child[0].content), path, None)
 
   def _list_templates(self, path: str) -> List[ResourceViewer]:
-    # TODO: replace with a more efficient search
-    element = self.viewer.get_element(path)
-    if not element or element.resource_type != ResourceType.DIRECTORY:
-      log.error(f'Provided path {path} is not a directory')
-      return []
-
-    return element.get_files_children('.+')
+    return list(self.viewer.search_subresources(resource_types=self.file_types,
+                                                search_subdirs=[os.path.normpath(path)]))
 
   def set_template_vars(self, template_vars: dict) -> None:
     self.template_vars = template_vars
@@ -488,7 +493,7 @@ class JinjaRenderer(AbstractRenderer):
       log.error(f'Variable "{variable_name}" is undefined')
       raise UndefinedTemplateVariableError(variable_name) from None
     except TypeError:
-      log.error(f'Likely a missing variable in template {self.filename}')
+      log.error('Likely a missing variable in ArgoCD Application CustomResource template')
       raise UndefinedTemplateVariableError('Unknown variable in template') from None
 
     return rendered

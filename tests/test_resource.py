@@ -80,7 +80,7 @@ def test_ResourceViewer__with_empty_dir(tmp_path):
   assert resource_viewer.resource_type == ResourceType.DIRECTORY
   assert resource_viewer.name == 'dir_root'
   assert resource_viewer.content == ''
-  assert check_lists_equal(resource_viewer.children, [])
+  assert resource_viewer.subresources == {}
 
 def test_ResourceViewer__with_file(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -97,7 +97,7 @@ def test_ResourceViewer__with_file(tmp_path):
   assert resource_viewer.resource_type == get_resource_type(os.path.join(str(dir_root), file_path))
   assert resource_viewer.name == file_path
   assert resource_viewer.content == FILE_0_CONTENT
-  assert check_lists_equal(resource_viewer.children, [])
+  assert resource_viewer.subresources == {}
 
 def test_ResourceViewer__with_non_normalized_path(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -115,7 +115,7 @@ def test_ResourceViewer__with_non_normalized_path(tmp_path):
   assert resource_viewer.resource_type == get_resource_type(os.path.join(str(dir_root), file_path))
   assert resource_viewer.name == file_path
   assert resource_viewer.content == FILE_0_CONTENT
-  assert check_lists_equal(resource_viewer.children, [])
+  assert resource_viewer.subresources == {}
 
 def test_ResourceViewer__with_directories_and_files(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -138,70 +138,56 @@ def test_ResourceViewer__with_directories_and_files(tmp_path):
 
   resource_viewer = ResourceViewer(str(dir_root))
 
-  assert resource_viewer.children is not None
-
-  for child in resource_viewer.children:
-    if child.name == 'dir_root_0':
-      dir_root_0_idx = resource_viewer.children.index(child)
-    elif child.name == 'dir_root_1':
-      dir_root_1_idx = resource_viewer.children.index(child)
-    elif child.name == 'file_root_0.txt':
-      file_root_0_idx = resource_viewer.children.index(child)
-
-  for child in resource_viewer.children[dir_root_1_idx].children[0].children:
-    if child.name == 'file_root_1_0_0.txt':
-      file_root_1_0_0_idx = resource_viewer.children[dir_root_1_idx].children[0].children.index(child)
-    elif child.name == 'file_root_1_0_1.txt':
-      file_root_1_0_1_idx = resource_viewer.children[dir_root_1_idx].children[0].children.index(child)
+  assert resource_viewer.subresources
 
   # root dir
   assert resource_viewer.name == 'dir_root'
   assert resource_viewer.element_rel_path == '.'
   assert resource_viewer.resource_type == ResourceType.DIRECTORY
   assert resource_viewer.content == ''
-  assert len(resource_viewer.children) == 3
+  assert len(resource_viewer.subresources) == 3
 
   # dir with a dir
-  assert resource_viewer.children[dir_root_1_idx].name == "dir_root_1"
-  assert resource_viewer.children[dir_root_1_idx].element_rel_path == 'dir_root_1'
-  assert resource_viewer.children[dir_root_1_idx].resource_type == ResourceType.DIRECTORY
-  assert resource_viewer.children[dir_root_1_idx].content == ''
-  assert len(resource_viewer.children[dir_root_1_idx].children) == 1
+  assert resource_viewer.subresources['dir_root_1'].name == 'dir_root_1'
+  assert resource_viewer.subresources['dir_root_1'].element_rel_path == 'dir_root_1'
+  assert resource_viewer.subresources['dir_root_1'].resource_type == ResourceType.DIRECTORY
+  assert resource_viewer.subresources['dir_root_1'].content == ''
+  assert len(resource_viewer.subresources['dir_root_1'].subresources) == 1
 
   # dir with files
-  assert resource_viewer.children[dir_root_1_idx].children[0].name == "dir_root_1_0"
-  assert resource_viewer.children[dir_root_1_idx].children[0].element_rel_path == 'dir_root_1/dir_root_1_0'
-  assert resource_viewer.children[dir_root_1_idx].children[0].resource_type == ResourceType.DIRECTORY
-  assert resource_viewer.children[dir_root_1_idx].children[0].content == ''
-  assert len(resource_viewer.children[dir_root_1_idx].children[0].children) == 2
+  assert resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].name == 'dir_root_1_0'
+  assert resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].element_rel_path == 'dir_root_1/dir_root_1_0'
+  assert resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].resource_type == ResourceType.DIRECTORY
+  assert resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].content == ''
+  assert len(resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].subresources) == 2
 
   # empty file
-  assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_1_idx].name == "file_root_1_0_1.txt"
-  assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_1_idx].element_rel_path == 'dir_root_1/dir_root_1_0/file_root_1_0_1.txt'
-  assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_1_idx].resource_type == get_resource_type(os.path.join(str(dir_root), 'dir_root_1/dir_root_1_0/file_root_1_0_1.txt'))
-  assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_1_idx].content == FILE_2_CONTENT
-  assert len(resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_1_idx].children) == 0
+  assert resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].subresources['dir_root_1/dir_root_1_0/file_root_1_0_1.txt'].name == 'file_root_1_0_1.txt'
+  assert resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].subresources['dir_root_1/dir_root_1_0/file_root_1_0_1.txt'].element_rel_path == 'dir_root_1/dir_root_1_0/file_root_1_0_1.txt'
+  assert resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].subresources['dir_root_1/dir_root_1_0/file_root_1_0_1.txt'].resource_type == get_resource_type(os.path.join(str(dir_root), 'dir_root_1/dir_root_1_0/file_root_1_0_1.txt'))
+  assert resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].subresources['dir_root_1/dir_root_1_0/file_root_1_0_1.txt'].content == FILE_2_CONTENT
+  assert len(resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].subresources['dir_root_1/dir_root_1_0/file_root_1_0_1.txt'].subresources) == 0
 
   # file with content
-  assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_0_idx].name == "file_root_1_0_0.txt"
-  assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_0_idx].element_rel_path == 'dir_root_1/dir_root_1_0/file_root_1_0_0.txt'
-  assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_0_idx].resource_type == get_resource_type(os.path.join(str(dir_root), 'dir_root_1/dir_root_1_0/file_root_1_0_0.txt'))
-  assert resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_0_idx].content == FILE_1_CONTENT
-  assert len(resource_viewer.children[dir_root_1_idx].children[0].children[file_root_1_0_0_idx].children) == 0
+  assert resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].subresources['dir_root_1/dir_root_1_0/file_root_1_0_0.txt'].name == 'file_root_1_0_0.txt'
+  assert resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].subresources['dir_root_1/dir_root_1_0/file_root_1_0_0.txt'].element_rel_path == 'dir_root_1/dir_root_1_0/file_root_1_0_0.txt'
+  assert resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].subresources['dir_root_1/dir_root_1_0/file_root_1_0_0.txt'].resource_type == get_resource_type(os.path.join(str(dir_root), 'dir_root_1/dir_root_1_0/file_root_1_0_0.txt'))
+  assert resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].subresources['dir_root_1/dir_root_1_0/file_root_1_0_0.txt'].content == FILE_1_CONTENT
+  assert len(resource_viewer.subresources['dir_root_1'].subresources['dir_root_1/dir_root_1_0'].subresources['dir_root_1/dir_root_1_0/file_root_1_0_0.txt'].subresources) == 0
 
   # file in root dir
-  assert resource_viewer.children[file_root_0_idx].name == "file_root_0.txt"
-  assert resource_viewer.children[file_root_0_idx].element_rel_path == 'file_root_0.txt'
-  assert resource_viewer.children[file_root_0_idx].resource_type == get_resource_type(os.path.join(str(dir_root), 'file_root_0.txt'))
-  assert resource_viewer.children[file_root_0_idx].content == FILE_0_CONTENT
-  assert len(resource_viewer.children[file_root_0_idx].children) == 0
+  assert resource_viewer.subresources['file_root_0.txt'].name == 'file_root_0.txt'
+  assert resource_viewer.subresources['file_root_0.txt'].element_rel_path == 'file_root_0.txt'
+  assert resource_viewer.subresources['file_root_0.txt'].resource_type == get_resource_type(os.path.join(str(dir_root), 'file_root_0.txt'))
+  assert resource_viewer.subresources['file_root_0.txt'].content == FILE_0_CONTENT
+  assert len(resource_viewer.subresources['file_root_0.txt'].subresources) == 0
 
   # empty dir
-  assert resource_viewer.children[dir_root_0_idx].name == "dir_root_0"
-  assert resource_viewer.children[dir_root_0_idx].element_rel_path == 'dir_root_0'
-  assert resource_viewer.children[dir_root_0_idx].resource_type == ResourceType.DIRECTORY
-  assert resource_viewer.children[dir_root_0_idx].content == ''
-  assert len(resource_viewer.children[dir_root_0_idx].children) == 0
+  assert resource_viewer.subresources['dir_root_0'].name == 'dir_root_0'
+  assert resource_viewer.subresources['dir_root_0'].element_rel_path == 'dir_root_0'
+  assert resource_viewer.subresources['dir_root_0'].resource_type == ResourceType.DIRECTORY
+  assert resource_viewer.subresources['dir_root_0'].content == ''
+  assert len(resource_viewer.subresources['dir_root_0'].subresources) == 0
 
 ##################
 ### ResourceViewer.search_subresources()
@@ -381,6 +367,10 @@ def test_ResourceViewer__search_subresources__by_subdirs(tmp_path):
                            [('app_2.yml', 'key: app_2', ResourceType.YAML),
                             ('app_subdir.yaml', 'key: app_subdir', ResourceType.YAML)])
 
+  subdir_resources = list(resource_viewer.search_subresources(search_subdirs=['.'], resource_types=[ResourceType.YAML], depth=1))
+  assert check_lists_equal([(res.name, res.content, res.resource_type) for res in subdir_resources],
+                           [('file.yaml', 'key: file', ResourceType.YAML)])
+
 def test_ResourceViewer__search_subresources__by_depth(tmp_path):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
@@ -407,113 +397,6 @@ def test_ResourceViewer__search_subresources__by_depth(tmp_path):
 
   depth_resources = list(resource_viewer.search_subresources(resource_types=[ResourceType.YAML], depth=0))
   assert check_lists_equal([(res.name, res.content, res.resource_type) for res in depth_resources], [])
-
-##################
-### ResourceViewer._get_child()
-##################
-
-def test_ResourceViewer__get_child__fake(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  resource_viewer = ResourceViewer(os.path.join(dir_root, 'non_existent_element'))
-
-  with pytest.raises(ResourceViewerIsFake):
-    resource_viewer._get_child('file.txt')
-
-def test_ResourceViewer__get_child__simple(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  dir_app = dir_root / 'app'
-  dir_app.mkdir()
-
-  resource_viewer = ResourceViewer(str(dir_root))
-
-  child = resource_viewer._get_child('app')
-  assert child is not None
-  assert child.name == 'app'
-
-##################
-### ResourceViewer.get_element()
-##################
-
-def test_ResourceViewer__get_element__fake(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  resource_viewer = ResourceViewer(os.path.join(dir_root, 'non_existent_element'))
-
-  with pytest.raises(ResourceViewerIsFake):
-    resource_viewer.get_element('file.txt')
-
-def test_ResourceViewer__get_element__simple(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  dir_app = dir_root / 'app'
-  dir_app.mkdir()
-
-  resource_viewer = ResourceViewer(str(dir_root))
-
-  child = resource_viewer.get_element('app')
-  assert child is not None
-  assert child.name == 'app'
-
-def test_ResourceViewer__get_element__non_existent_simple(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-
-  resource_viewer = ResourceViewer(str(dir_root))
-
-  child = resource_viewer.get_element('app')
-  assert child == None
-
-def test_ResourceViewer__get_element__path(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  dir_subdir = dir_root / 'subdir'
-  dir_subdir.mkdir()
-  dir_app = dir_subdir / 'app'
-  dir_app.mkdir()
-
-  resource_viewer = ResourceViewer(str(dir_root))
-
-  child = resource_viewer.get_element('subdir/app')
-  assert child is not None
-  assert child.name == 'app'
-  assert child.element_rel_path == 'subdir/app'
-
-def test_ResourceViewer__get_element__non_existent_path(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  dir_subdir = dir_root / 'subdir'
-  dir_subdir.mkdir()
-
-  resource_viewer = ResourceViewer(str(dir_root))
-
-  child = resource_viewer.get_element('subdir/app')
-  assert child == None
-
-##################
-### ResourceViewer.get_children()
-##################
-
-def test_ResourceViewer__get_children__fake(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  resource_viewer = ResourceViewer(os.path.join(dir_root, 'non_existent_element'))
-
-  with pytest.raises(ResourceViewerIsFake):
-    resource_viewer.get_children()
-
-def test_ResourceViewer__get_children__simple(tmp_path):
-  dir_root = tmp_path / 'dir_root'
-  dir_root.mkdir()
-  dir_app = dir_root / 'app'
-  dir_app.mkdir()
-
-  resource_viewer = ResourceViewer(str(dir_root))
-
-  children = resource_viewer.get_children()
-  assert len(children) == 1
-  assert children[0].name == 'app'
 
 ##################
 ### ResourceWriter

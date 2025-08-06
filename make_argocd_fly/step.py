@@ -48,7 +48,7 @@ class FindAppsStep(AbstractStep):
   async def run(self) -> None:
     if not self.parent_app_name or not self.parent_app_env_name:
       log.error('Step is not configured')
-      raise InternalError
+      raise InternalError()
 
     for env_name in self.config.list_envs():
       for app_name in self.config.list_apps(env_name):
@@ -83,7 +83,7 @@ class BaseResourceGenerationStep(AbstractStep):
   def _generate_file_path(self, resource_yml: str, source_file_path: Optional[str] = None) -> str:
     if not self.env_name or not self.app_name:
       log.error('Step is not configured')
-      raise InternalError
+      raise InternalError()
 
     generator = FilePathGenerator(resource_yml, source_file_path)
     app_params = get_config().get_app_params_deprecated(self.env_name, self.app_name)
@@ -94,7 +94,7 @@ class BaseResourceGenerationStep(AbstractStep):
       if source_file_path and app_params.non_k8s_files_to_render:
         if not isinstance(app_params.non_k8s_files_to_render, list):
           log.error(f'Application parameter {const.ParamNames.NON_K8S_FILES_TO_RENDER} must be a list')
-          raise InternalError
+          raise InternalError()
 
         for element in app_params.non_k8s_files_to_render:
           if source_file_path.startswith(element):
@@ -104,7 +104,7 @@ class BaseResourceGenerationStep(AbstractStep):
       if source_file_path and app_params.exclude_rendering:
         if not isinstance(app_params.exclude_rendering, list):
           log.error(f'Application parameter {const.ParamNames.EXCLUDE_RENDERING} must be a list')
-          raise InternalError
+          raise InternalError()
 
         for element in app_params.exclude_rendering:
           if source_file_path.startswith(element):
@@ -117,7 +117,7 @@ class BaseResourceGenerationStep(AbstractStep):
       if source_file_path and const.AppParamsNames.NON_K8S_FILES_TO_RENDER in app_params:
         if not isinstance(app_params[const.AppParamsNames.NON_K8S_FILES_TO_RENDER], list):
           log.error(f'Application parameter {const.AppParamsNames.NON_K8S_FILES_TO_RENDER} must be a list')
-          raise InternalError
+          raise InternalError()
 
         for element in app_params[const.AppParamsNames.NON_K8S_FILES_TO_RENDER]:
           if source_file_path.startswith(element):
@@ -127,7 +127,7 @@ class BaseResourceGenerationStep(AbstractStep):
       if source_file_path and const.AppParamsNames.EXCLUDE_RENDERING in app_params:
         if not isinstance(app_params[const.AppParamsNames.EXCLUDE_RENDERING], list):
           log.error(f'Application parameter {const.AppParamsNames.EXCLUDE_RENDERING} must be a list')
-          raise InternalError
+          raise InternalError()
 
         for element in app_params[const.AppParamsNames.EXCLUDE_RENDERING]:
           if source_file_path.startswith(element):
@@ -153,7 +153,7 @@ class RenderYamlStep(BaseResourceGenerationStep):
   async def run(self) -> None:
     if not self.env_name or not self.app_name:
       log.error('Step is not configured')
-      raise InternalError
+      raise InternalError()
 
     for yml_child in self.yml_children:
       resource_source = os.path.join(yml_child.root_element_abs_path, yml_child.element_rel_path)
@@ -187,7 +187,7 @@ class RenderJinjaFromViewerStep(BaseResourceGenerationStep):
   async def run(self) -> None:
     if not self.env_name or not self.app_name:
       log.error('Step is not configured')
-      raise InternalError
+      raise InternalError()
 
     for j2_child in self.j2_children:
       resource_source = os.path.join(j2_child.root_element_abs_path, j2_child.element_rel_path)
@@ -227,7 +227,7 @@ class RenderJinjaFromMemoryStep(BaseResourceGenerationStep):
   async def run(self) -> None:
     if not self.env_name or not self.app_name:
       log.error('Step is not configured')
-      raise InternalError
+      raise InternalError()
 
     resource_source = 'ArgoCD Application CustomResource'
 
@@ -283,7 +283,7 @@ class RunKustomizeStep(BaseResourceGenerationStep):
 
     if not self.dir_path:
       log.error('Step is not configured')
-      raise InternalError
+      raise InternalError()
 
     for attempt in range(retries):
       proc = await asyncio.create_subprocess_exec(

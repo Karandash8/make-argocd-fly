@@ -42,11 +42,11 @@ class ResourceWriter:
   def store_resource(self, file_path: str, yaml_object: str) -> None:
     if not file_path:
       log.error('Parameter `file_path` is undefined')
-      raise InternalError
+      raise InternalError()
 
     if file_path in self.resources:
       log.error(f'Resource ({file_path}) already exists')
-      raise InternalError
+      raise InternalError()
 
     self.resources[file_path] = yaml_object
 

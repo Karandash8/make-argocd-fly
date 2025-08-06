@@ -30,7 +30,7 @@ def test_JinjaRenderer_get_source_does_not_exist(tmp_path, caplog):
 
   with pytest.raises(MissingFileError):
     renderer._get_source('template.txt.j2')
-  assert 'Missing file template.txt.j2' in caplog.text
+  assert 'No matching resource found for path template.txt.j2' in caplog.text
 
 def test_JinjaRenderer_get_source_same_filename(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -77,7 +77,7 @@ def test_JinjaRenderer_get_rendered_does_not_exist(tmp_path, caplog):
 
   with pytest.raises(MissingFileError):
     renderer._get_source('template.txt.j2')
-  assert 'Missing file template.txt.j2' in caplog.text
+  assert 'No matching resource found for path template.txt.j2' in caplog.text
 
 ###########
 ### Loaders
