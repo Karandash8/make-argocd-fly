@@ -412,33 +412,34 @@ class JinjaRendererFromViewer(AbstractRenderer):
     self.filename = '<template>'
 
   def _get_source(self, path: str):
-    # TODO: this is unoptimal, because it first searches for all files with the same filename and then searches for the one with the same path
-    files_children = self.viewer.get_files_children(os.path.basename(path))
-    for file_child in files_children:
-      if file_child.element_rel_path == path:
-        return (file_child.content, path, None)
+    child = list(self.viewer.search_subresources(resource_types=[resource_type for resource_type in ResourceType if
+                                                                 (resource_type != ResourceType.DIRECTORY and
+                                                                  resource_type != ResourceType.DOES_NOT_EXIST)],
+                                                 search_subdirs=[os.path.normpath(os.path.dirname(path))],
+                                                 name_pattern=os.path.basename(path)))
+    if not child:
+      log.error(f'Missing file {path}')
+      raise MissingFileError(path)
 
-    log.error(f'Missing file {path}')
-    raise MissingFileError(path)
+    return (child[0].content, path, None)
 
   def _get_rendered(self, path: str):
-    # TODO: this is unoptimal, because it first searches for all files with the same filename and then searches for the one with the same path
-    files_children = self.viewer.get_files_children(os.path.basename(path))
-    for file_child in files_children:
-      if file_child.element_rel_path == path:
-        return (self.render(file_child.content), path, None)
+    child = list(self.viewer.search_subresources(resource_types=[resource_type for resource_type in ResourceType if
+                                                                 (resource_type != ResourceType.DIRECTORY and
+                                                                  resource_type != ResourceType.DOES_NOT_EXIST)],
+                                                 search_subdirs=[os.path.normpath(os.path.dirname(path))],
+                                                 name_pattern=os.path.basename(path)))
+    if not child:
+      log.error(f'Missing file {path}')
+      raise MissingFileError(path)
 
-    log.error(f'Missing file {path}')
-    raise MissingFileError(path)
+    return (self.render(child[0].content), path, None)
 
   def _list_templates(self, path: str) -> List[ResourceViewer]:
-    # TODO: replace with a more efficient search
-    element = self.viewer.get_element(path)
-    if not element or element.resource_type != ResourceType.DIRECTORY:
-      log.error(f'Provided path {path} is not a directory')
-      return []
-
-    return element.get_files_children('.+')
+    return list(self.viewer.search_subresources(resource_types=[resource_type for resource_type in ResourceType if
+                                                                (resource_type != ResourceType.DIRECTORY and
+                                                                 resource_type != ResourceType.DOES_NOT_EXIST)],
+                                                search_subdirs=[os.path.normpath(path)]))
 
   def set_template_vars(self, template_vars: dict) -> None:
     self.template_vars = template_vars
