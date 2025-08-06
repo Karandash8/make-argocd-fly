@@ -390,6 +390,10 @@ class IncludeAllAsYamlListExtension(Extension):
 
 
 class JinjaRendererFromViewer(AbstractRenderer):
+  file_types = [resource_type for resource_type in ResourceType if
+                (resource_type != ResourceType.DIRECTORY and
+                 resource_type != ResourceType.DOES_NOT_EXIST)]
+
   def __init__(self, viewer: ResourceViewer) -> None:
     self.viewer = viewer
     self.loader = CustomFunctionLoader(self._get_source, self._get_rendered, self._list_templates)
@@ -412,11 +416,9 @@ class JinjaRendererFromViewer(AbstractRenderer):
     self.filename = '<template>'
 
   def _get_source(self, path: str):
-    child = list(self.viewer.search_subresources(resource_types=[resource_type for resource_type in ResourceType if
-                                                                 (resource_type != ResourceType.DIRECTORY and
-                                                                  resource_type != ResourceType.DOES_NOT_EXIST)],
+    child = list(self.viewer.search_subresources(resource_types=self.file_types,
                                                  search_subdirs=[os.path.normpath(os.path.dirname(path))],
-                                                 name_pattern=os.path.basename(path)))
+                                                 name_pattern=re.escape(os.path.basename(path))))
     if not child:
       log.error(f'No matching resource found for path {path}')
       raise MissingFileError(path)
@@ -427,11 +429,9 @@ class JinjaRendererFromViewer(AbstractRenderer):
     return (child[0].content, path, None)
 
   def _get_rendered(self, path: str):
-    child = list(self.viewer.search_subresources(resource_types=[resource_type for resource_type in ResourceType if
-                                                                 (resource_type != ResourceType.DIRECTORY and
-                                                                  resource_type != ResourceType.DOES_NOT_EXIST)],
+    child = list(self.viewer.search_subresources(resource_types=self.file_types,
                                                  search_subdirs=[os.path.normpath(os.path.dirname(path))],
-                                                 name_pattern=os.path.basename(path)))
+                                                 name_pattern=re.escape(os.path.basename(path))))
     if not child:
       log.error(f'No matching resource found for path {path}')
       raise MissingFileError(path)
@@ -442,9 +442,7 @@ class JinjaRendererFromViewer(AbstractRenderer):
     return (self.render(child[0].content), path, None)
 
   def _list_templates(self, path: str) -> List[ResourceViewer]:
-    return list(self.viewer.search_subresources(resource_types=[resource_type for resource_type in ResourceType if
-                                                                (resource_type != ResourceType.DIRECTORY and
-                                                                 resource_type != ResourceType.DOES_NOT_EXIST)],
+    return list(self.viewer.search_subresources(resource_types=self.file_types,
                                                 search_subdirs=[os.path.normpath(path)]))
 
   def set_template_vars(self, template_vars: dict) -> None:
