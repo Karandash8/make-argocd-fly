@@ -7,7 +7,8 @@ from make_argocd_fly.cliparam import get_cli_params
 from make_argocd_fly.param import Params
 from make_argocd_fly.util import build_path, merge_dicts_without_duplicates, merge_dicts_with_overrides, VarsResolver
 from make_argocd_fly.exception import InternalError, ConfigFileError, MergeError
-from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
+from make_argocd_fly.resource.viewer import ResourceViewer
+from make_argocd_fly.resource.type import ResourceType
 
 
 log = logging.getLogger(__name__)

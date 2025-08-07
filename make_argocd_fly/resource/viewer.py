@@ -1,20 +1,12 @@
 import logging
 import os
 import re
-from enum import Enum
 from typing import Generator
 
 from make_argocd_fly.exception import ResourceViewerIsFake
+from make_argocd_fly.resource.type import ResourceType
 
 log = logging.getLogger(__name__)
-
-
-class ResourceType(Enum):
-  YAML = "yaml"
-  JINJA2 = "jinja2"
-  UNKNOWN = "unknown"
-  DIRECTORY = "directory"
-  DOES_NOT_EXIST = "does_not_exist"
 
 
 EXTENSION_MAP = {
