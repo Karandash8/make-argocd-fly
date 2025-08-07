@@ -10,7 +10,8 @@ from jinja2.ext import Extension
 from markupsafe import Markup
 from deprecated import deprecated
 
-from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
+from make_argocd_fly.resource.viewer import ResourceViewer
+from make_argocd_fly.resource.type import ResourceType
 from make_argocd_fly.exception import UndefinedTemplateVariableError, MissingFileError, InternalError
 from make_argocd_fly.util import extract_undefined_variable
 

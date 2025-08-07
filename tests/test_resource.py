@@ -1,8 +1,11 @@
 import os
 import pytest
-from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType, get_resource_type
-from make_argocd_fly.resource.writer import ResourceWriter
-from make_argocd_fly.exception import ResourceViewerIsFake, InternalError
+import yaml
+from make_argocd_fly.resource.viewer import ResourceViewer, get_resource_type
+from make_argocd_fly.resource.type import ResourceType
+from make_argocd_fly.step import YamlLoader
+from make_argocd_fly.resource.persistence import ResourcePersistence, writer_factory, GenericWriter, YamlWriter
+from make_argocd_fly.exception import InternalError
 from make_argocd_fly.util import check_lists_equal
 
 ##################
@@ -399,56 +402,133 @@ def test_ResourceViewer__search_subresources__by_depth(tmp_path):
   assert check_lists_equal([(res.name, res.content, res.resource_type) for res in depth_resources], [])
 
 ##################
-### ResourceWriter
+### ResourcePersistence
 ##################
 
 def test_ResourceWriter__with_default_values(tmp_path):
   dir_output = tmp_path / 'dir_output'
   dir_output.mkdir()
-  resource_writer = ResourceWriter(str(dir_output))
+  resource_writer = ResourcePersistence(str(dir_output))
 
   assert resource_writer.output_dir_abs_path == str(dir_output)
   assert resource_writer.resources == {}
 
 ##################
-### ResourceWriter.store_resource()
+### ResourcePersistence.store_resource()
 ##################
 
 def test_ResourceWriter__store_resource__multiple(tmp_path):
   dir_output = tmp_path / 'dir_output'
   dir_output.mkdir()
-  resource_writer = ResourceWriter(str(dir_output))
+  resource_writer = ResourcePersistence(str(dir_output))
   env_name = 'env'
 
-  resource_writer.store_resource('/a/b/c', 'resource body 1')
-  resource_writer.store_resource('/a/b/d', 'resource body 2')
-  resource_writer.store_resource('/a/b/e', 'resource body 3')
+  resource_writer.store_resource('/a/b/c', ResourceType.YAML, 'resource body 1')
+  resource_writer.store_resource('/a/b/d', ResourceType.YAML, 'resource body 2')
+  resource_writer.store_resource('/a/b/e', ResourceType.YAML, 'resource body 3')
 
-  assert len(resource_writer.resources) == 3
-  assert '/a/b/c' in resource_writer.resources
-  assert resource_writer.resources['/a/b/c'] == 'resource body 1'
-  assert '/a/b/d' in resource_writer.resources
-  assert resource_writer.resources['/a/b/d'] == 'resource body 2'
-  assert '/a/b/e' in resource_writer.resources
-  assert resource_writer.resources['/a/b/e'] == 'resource body 3'
+  assert resource_writer.resources == {'/a/b/c': (ResourceType.YAML, 'resource body 1'),
+                                        '/a/b/d': (ResourceType.YAML, 'resource body 2'),
+                                        '/a/b/e': (ResourceType.YAML, 'resource body 3')}
 
 def test_ResourceWriter__store_resource__duplicate(tmp_path, caplog):
   dir_output = tmp_path / 'dir_output'
   dir_output.mkdir()
-  resource_writer = ResourceWriter(str(dir_output))
+  resource_writer = ResourcePersistence(str(dir_output))
   env_name = 'env'
 
-  resource_writer.store_resource('/a/b/c', 'resource body 1')
+  resource_writer.store_resource('/a/b/c', ResourceType.YAML, 'resource body 1')
   with pytest.raises(InternalError):
-      resource_writer.store_resource('/a/b/c', 'resource body 1')
+      resource_writer.store_resource('/a/b/c', ResourceType.YAML, 'resource body 1')
   assert 'Resource (/a/b/c) already exists' in caplog.text
 
 def test_ResourceWriter__store_resource__undefined_dir_rel_path(tmp_path, caplog):
   dir_output = tmp_path / 'dir_output'
   dir_output.mkdir()
-  resource_writer = ResourceWriter(str(dir_output))
+  resource_writer = ResourcePersistence(str(dir_output))
   env_name = 'env'
 
   with pytest.raises(InternalError):
-    resource_writer.store_resource('', 'resource body 1')
-  assert 'Parameter `file_path` is undefined' in caplog.text
+    resource_writer.store_resource('', ResourceType.YAML, 'resource body 1')
+  assert 'Parameter `path` is undefined' in caplog.text
+
+
+##################
+### writer_factory
+##################
+
+def test_writer_factory__yaml():
+  assert isinstance(writer_factory(ResourceType.YAML), YamlWriter)
+
+def test_writer_factory__generic():
+  assert isinstance(writer_factory(ResourceType.UNKNOWN), GenericWriter)
+  assert isinstance(writer_factory(ResourceType.JINJA2), GenericWriter)
+
+def test_writer_factory__unsupported(caplog):
+  with pytest.raises(InternalError):
+    writer_factory(ResourceType.DIRECTORY)
+  assert 'Cannot write resource of type ResourceType.DIRECTORY' in caplog.text
+
+  with pytest.raises(InternalError):
+    writer_factory(ResourceType.DOES_NOT_EXIST)
+  assert 'Cannot write resource of type ResourceType.DOES_NOT_EXIST' in caplog.text
+
+##################
+### GenericWriter
+##################
+
+def test_GenericWriter__write__simple(tmp_path):
+  dir_root = tmp_path / 'output'
+  dir_root.mkdir()
+  file = dir_root / 'file.txt'
+  content = 'content'
+
+  writer = GenericWriter()
+  writer.write(file, content)
+
+  assert file.exists()
+  assert file.read_text() == content
+
+def test_GenericWriter__write__multiline(tmp_path):
+  dir_root = tmp_path / 'output'
+  dir_root.mkdir()
+  file = dir_root / 'file.txt'
+  content = 'line 1\nline 2\nline 3'
+
+  writer = GenericWriter()
+  writer.write(file, content)
+
+  assert file.exists()
+  assert file.read_text() == content
+
+##################
+### YamlWriter
+##################
+
+def test_YamlWriter__write__simple(tmp_path):
+  dir_root = tmp_path / 'output'
+  dir_root.mkdir()
+  file = dir_root / 'file.yaml'
+  content = 'key: value'
+
+  expected_content = f'---\n{content}\n'
+
+  writer = YamlWriter()
+  writer.write(file, yaml.load(content, Loader=YamlLoader))
+
+  assert file.exists()
+  assert file.read_text() == expected_content
+
+def test_YamlWriter__write__multiline(tmp_path):
+  dir_root = tmp_path / 'output'
+  dir_root.mkdir()
+  file = dir_root / 'file.yaml'
+  content = 'key: value\nanother_key: another_value'
+
+  expected_content = '---\nkey: value\nanother_key: another_value\n'
+
+  writer = YamlWriter()
+  writer.write(file, yaml.load(content, Loader=YamlLoader))
+
+  assert file.exists()
+  assert file.read_text() == expected_content

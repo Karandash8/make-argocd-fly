@@ -5,7 +5,8 @@ import textwrap
 import shutil
 from pprint import pformat
 
-from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
+from make_argocd_fly.resource.viewer import ResourceViewer
+from make_argocd_fly.resource.type import ResourceType
 from make_argocd_fly import const
 from make_argocd_fly.util import get_app_rel_path
 from make_argocd_fly.config import get_config

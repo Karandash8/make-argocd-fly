@@ -15,8 +15,9 @@ except ImportError:
 from make_argocd_fly import const
 from make_argocd_fly.config import get_config
 from make_argocd_fly.renderer import YamlRenderer, JinjaRenderer, JinjaRendererFromViewer
-from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
-from make_argocd_fly.resource.writer import ResourceWriter
+from make_argocd_fly.resource.viewer import ResourceViewer
+from make_argocd_fly.resource.type import ResourceType
+from make_argocd_fly.resource.persistence import ResourcePersistence
 from make_argocd_fly.util import extract_single_resource, FilePathGenerator, get_app_rel_path
 from make_argocd_fly.exception import UndefinedTemplateVariableError, TemplateRenderingError, InternalError, KustomizeError, \
   MissingFileError
@@ -163,7 +164,7 @@ class RenderYamlStep(BaseResourceGenerationStep):
       for resource_yml in extract_single_resource(result):
         try:
           file_path = self._generate_file_path(resource_yml, yml_child.element_rel_path)
-          self.resources.append((file_path, yaml.load(resource_yml, Loader=YamlLoader)))
+          self.resources.append((file_path, (ResourceType.YAML, yaml.load(resource_yml, Loader=YamlLoader))))
         except ValueError:
           pass
         except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError, yaml.constructor.ConstructorError):
@@ -200,7 +201,7 @@ class RenderJinjaFromViewerStep(BaseResourceGenerationStep):
         for resource_yml in extract_single_resource(result):
           try:
             file_path = self._generate_file_path(resource_yml, j2_child.element_rel_path)
-            self.resources.append((file_path, yaml.load(resource_yml, Loader=YamlLoader)))
+            self.resources.append((file_path, (ResourceType.YAML, yaml.load(resource_yml, Loader=YamlLoader))))
           except ValueError:
             pass
           except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
@@ -238,7 +239,7 @@ class RenderJinjaFromMemoryStep(BaseResourceGenerationStep):
       for resource_yml in extract_single_resource(result):
         try:
           file_path = self._generate_file_path(resource_yml)
-          self.resources.append((file_path, yaml.load(resource_yml, Loader=YamlLoader)))
+          self.resources.append((file_path, (ResourceType.YAML, yaml.load(resource_yml, Loader=YamlLoader))))
         except ValueError:
           pass
         except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
@@ -304,7 +305,7 @@ class RunKustomizeStep(BaseResourceGenerationStep):
     for resource_yml in extract_single_resource(stdout.decode('utf-8')):
       try:
         file_path = self._generate_file_path(resource_yml)
-        self.resources.append((file_path, yaml.load(resource_yml, Loader=YamlLoader)))
+        self.resources.append((file_path, (ResourceType.YAML, yaml.load(resource_yml, Loader=YamlLoader))))
       except ValueError:
         pass
       except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError):
@@ -319,10 +320,10 @@ class WriteResourcesStep(AbstractStep):
     pass
 
   def configure(self, output_dir_abs_path: str, resources_to_write: list) -> None:
-    self.writer = ResourceWriter(output_dir_abs_path)
+    self.writer = ResourcePersistence(output_dir_abs_path)
 
-    for path, yaml_object in resources_to_write:
-      self.writer.store_resource(path, yaml_object)
+    for path, (data_type, data) in resources_to_write:
+      self.writer.store_resource(path, data_type, data)
 
   async def run(self) -> None:
     await self.writer.write_resources()
