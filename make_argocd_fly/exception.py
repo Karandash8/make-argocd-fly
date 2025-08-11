@@ -36,6 +36,13 @@ class TemplateRenderingError(BaseError):
     super().__init__(f'Error rendering template {template_filename}')
 
 
+class YamlError(BaseError):
+  def __init__(self, app_name: str, env_name: str) -> None:
+    self.app_name = app_name
+    self.env_name = env_name
+    super().__init__(f'YAML error in application {app_name} in environment {env_name}')
+
+
 class MissingFileError(BaseError):
   def __init__(self, path: str) -> None:
     self.path = path

@@ -3,7 +3,7 @@ import pytest
 import yaml
 from make_argocd_fly.resource.viewer import ResourceViewer, get_resource_type
 from make_argocd_fly.resource.type import ResourceType
-from make_argocd_fly.step import YamlLoader
+from make_argocd_fly.resource.data import OutputResource
 from make_argocd_fly.resource.persistence import ResourcePersistence, writer_factory, GenericWriter, YamlWriter
 from make_argocd_fly.exception import InternalError
 from make_argocd_fly.util import check_lists_equal
@@ -422,14 +422,37 @@ def test_ResourceWriter__store_resource__multiple(tmp_path):
   dir_output.mkdir()
   resource_writer = ResourcePersistence(str(dir_output))
   env_name = 'env'
+  resource_1 = OutputResource(
+      app_name='app',
+      env_name=env_name,
+      resource_type=ResourceType.YAML,
+      data='resource body 1',
+      source_resource_path='/a/b/c',
+      output_resource_path='/a/b/c'
+  )
+  resource_2 = OutputResource(
+      app_name='app',
+      env_name=env_name,
+      resource_type=ResourceType.YAML,
+      data='resource body 2',
+      source_resource_path='/a/b/d',
+      output_resource_path='/a/b/d'
+  )
+  resource_3 = OutputResource(
+      app_name='app',
+      env_name=env_name,
+      resource_type=ResourceType.YAML,
+      data='resource body 3',
+      source_resource_path='/a/b/e',
+      output_resource_path='/a/b/e'
+  )
+  resource_writer.store_resource(resource_1)
+  resource_writer.store_resource(resource_2)
+  resource_writer.store_resource(resource_3)
 
-  resource_writer.store_resource('/a/b/c', ResourceType.YAML, 'resource body 1')
-  resource_writer.store_resource('/a/b/d', ResourceType.YAML, 'resource body 2')
-  resource_writer.store_resource('/a/b/e', ResourceType.YAML, 'resource body 3')
-
-  assert resource_writer.resources == {'/a/b/c': (ResourceType.YAML, 'resource body 1'),
-                                        '/a/b/d': (ResourceType.YAML, 'resource body 2'),
-                                        '/a/b/e': (ResourceType.YAML, 'resource body 3')}
+  assert resource_writer.resources == {'/a/b/c': resource_1,
+                                        '/a/b/d': resource_2,
+                                        '/a/b/e': resource_3}
 
 def test_ResourceWriter__store_resource__duplicate(tmp_path, caplog):
   dir_output = tmp_path / 'dir_output'
@@ -437,9 +460,23 @@ def test_ResourceWriter__store_resource__duplicate(tmp_path, caplog):
   resource_writer = ResourcePersistence(str(dir_output))
   env_name = 'env'
 
-  resource_writer.store_resource('/a/b/c', ResourceType.YAML, 'resource body 1')
+  resource_writer.store_resource(OutputResource(
+      app_name='app',
+      env_name=env_name,
+      resource_type=ResourceType.YAML,
+      data='resource body 1',
+      source_resource_path='/a/b/c',
+      output_resource_path='/a/b/c'
+  ))
   with pytest.raises(InternalError):
-      resource_writer.store_resource('/a/b/c', ResourceType.YAML, 'resource body 1')
+      resource_writer.store_resource(OutputResource(
+          app_name='app',
+          env_name=env_name,
+          resource_type=ResourceType.YAML,
+          data='resource body 1',
+          source_resource_path='/a/b/c',
+          output_resource_path='/a/b/c'
+      ))
   assert 'Resource (/a/b/c) already exists' in caplog.text
 
 def test_ResourceWriter__store_resource__undefined_dir_rel_path(tmp_path, caplog):
@@ -449,8 +486,15 @@ def test_ResourceWriter__store_resource__undefined_dir_rel_path(tmp_path, caplog
   env_name = 'env'
 
   with pytest.raises(InternalError):
-    resource_writer.store_resource('', ResourceType.YAML, 'resource body 1')
-  assert 'Parameter `path` is undefined' in caplog.text
+    resource_writer.store_resource(OutputResource(
+        app_name='app',
+        env_name=env_name,
+        resource_type=ResourceType.YAML,
+        data='resource body 1',
+        source_resource_path='/a/b/c',
+        output_resource_path=''
+    ))
+  assert 'Parameter `output_resource_path` is not set for resource' in caplog.text
 
 
 ##################
@@ -484,7 +528,13 @@ def test_GenericWriter__write__simple(tmp_path):
   content = 'content'
 
   writer = GenericWriter()
-  writer.write(file, content)
+  writer.write(file, OutputResource(
+      app_name='app',
+      env_name='env',
+      resource_type=ResourceType.UNKNOWN,
+      data=content,
+      source_resource_path=file,
+      output_resource_path='/a/b/c'))
 
   assert file.exists()
   assert file.read_text() == content
@@ -496,7 +546,13 @@ def test_GenericWriter__write__multiline(tmp_path):
   content = 'line 1\nline 2\nline 3'
 
   writer = GenericWriter()
-  writer.write(file, content)
+  writer.write(file, OutputResource(
+      app_name='app',
+      env_name='env',
+      resource_type=ResourceType.UNKNOWN,
+      data=content,
+      source_resource_path=file,
+      output_resource_path='/a/b/c'))
 
   assert file.exists()
   assert file.read_text() == content
@@ -514,7 +570,13 @@ def test_YamlWriter__write__simple(tmp_path):
   expected_content = f'---\n{content}\n'
 
   writer = YamlWriter()
-  writer.write(file, yaml.load(content, Loader=YamlLoader))
+  writer.write(file, OutputResource(
+      app_name='app',
+      env_name='env',
+      resource_type=ResourceType.YAML,
+      data=content,
+      source_resource_path=file,
+      output_resource_path='/a/b/c'))
 
   assert file.exists()
   assert file.read_text() == expected_content
@@ -528,7 +590,13 @@ def test_YamlWriter__write__multiline(tmp_path):
   expected_content = '---\nkey: value\nanother_key: another_value\n'
 
   writer = YamlWriter()
-  writer.write(file, yaml.load(content, Loader=YamlLoader))
+  writer.write(file, OutputResource(
+      app_name='app',
+      env_name='env',
+      resource_type=ResourceType.YAML,
+      data=content,
+      source_resource_path=file,
+      output_resource_path='/a/b/c'))
 
   assert file.exists()
   assert file.read_text() == expected_content

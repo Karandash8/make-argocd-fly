@@ -3,13 +3,25 @@ import logging
 import os
 import asyncio
 import yaml
-from typing import Any
+import yaml.composer
+import yaml.parser
+import yaml.scanner
 from yaml import SafeDumper
 
-from make_argocd_fly.exception import InternalError
+try:
+  from yaml import CSafeLoader as SafeLoader
+except ImportError:
+  from yaml import SafeLoader
+
+from make_argocd_fly.exception import InternalError, YamlError
 from make_argocd_fly.resource.type import ResourceType
+from make_argocd_fly.resource.data import OutputResource
 
 log = logging.getLogger(__name__)
+
+
+class YamlLoader(SafeLoader):
+  pass
 
 
 class YamlDumper(SafeDumper):
@@ -39,24 +51,31 @@ yaml.add_representer(str, represent_str, Dumper=YamlDumper)
 
 class AbstractWriter(ABC):
   @abstractmethod
-  def write(self, path: str, data: Any) -> None:
+  def write(self, path: str, resource: OutputResource) -> None:
     pass
 
 
 class GenericWriter(AbstractWriter):
-  def write(self, path: str, data: Any) -> None:
+  def write(self, path: str, resource: OutputResource) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
     with open(path, 'w') as f:
-      f.write(data)
+      f.write(resource.data)
 
 
 class YamlWriter(AbstractWriter):
-  def write(self, path: str, data: Any) -> None:
+  def write(self, path: str, resource: OutputResource) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
+    try:
+      yaml_resource = yaml.load(resource.data, Loader=YamlLoader)
+    except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError, yaml.constructor.ConstructorError):
+      log.error(f'Error building YAML from source file {resource.source_resource_path}')
+      log.debug(f'YAML content:\n{resource.data}')
+      raise YamlError(resource.app_name, resource.env_name) from None
+
     with open(path, 'w') as f:
-      yaml.dump(data, f, Dumper=YamlDumper,
+      yaml.dump(yaml_resource, f, Dumper=YamlDumper,
                 default_flow_style=False,
                 sort_keys=False,
                 allow_unicode=True,
@@ -80,27 +99,21 @@ class ResourcePersistence:
     self.output_dir_abs_path = output_dir_abs_path
     self.resources = {}
 
-  def store_resource(self, path: str, data_type: ResourceType, data: Any) -> None:
-    if not path:
-      log.error('Parameter `path` is undefined')
+  def store_resource(self, resource: OutputResource) -> None:
+    if not resource.output_resource_path:
+      log.error('Parameter `output_resource_path` is not set for resource')
       raise InternalError()
 
-    if path in self.resources:
-      log.error(f'Resource ({path}) already exists')
+    if resource.output_resource_path in self.resources:
+      log.error(f'Resource ({resource.output_resource_path}) already exists')
       raise InternalError()
 
-    self.resources[path] = (data_type, data)
+    self.resources[resource.output_resource_path] = resource
 
-  async def _write_resource(self, file_path: str, data_type: ResourceType, data: Any) -> None:
-    writer = writer_factory(data_type)
-    writer.write(os.path.join(self.output_dir_abs_path, file_path), data)
+  async def _write_resource(self, resource: OutputResource) -> None:
+    writer = writer_factory(resource.resource_type)
+    writer.write(os.path.join(self.output_dir_abs_path, resource.output_resource_path), resource)
 
   async def write_resources(self) -> None:
-    try:
-      await asyncio.gather(
-        *[asyncio.create_task(self._write_resource(file_path, data_type, data)) for file_path, (data_type, data) in self.resources.items()]
-      )
-    except Exception as e:
-      for task in asyncio.all_tasks():
-        task.cancel()
-      raise e
+    for resource in self.resources.values():
+      await self._write_resource(resource)
