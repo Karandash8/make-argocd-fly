@@ -4,7 +4,9 @@ import textwrap
 from unittest.mock import MagicMock
 
 from make_argocd_fly.const import AppParamsNames
-from make_argocd_fly.step import FindAppsStep, RenderYamlStep
+from make_argocd_fly.step import FindAppsStep, RenderYamlStep, FileNameGeneratorStep
+from make_argocd_fly.resource.type import ResourceType
+from make_argocd_fly.resource.data import OutputResource
 from make_argocd_fly.config import populate_config
 from make_argocd_fly.util import check_lists_equal
 from make_argocd_fly.exception import InternalError
@@ -39,7 +41,7 @@ async def test_FindAppsStep__run__without_configure(caplog):
 
   with pytest.raises(InternalError):
     await find_apps_step.run()
-  assert 'Step is not configured' in caplog.text
+  assert 'FindAppsStep step is not configured' in caplog.text
 
 @pytest.mark.asyncio
 async def test_FindAppsStep__run__single_app_same_env(tmp_path):
@@ -186,17 +188,22 @@ def test_RenderYamlStep__configure(render_yaml_step):
   assert render_yaml_step.app_name == app_name
   assert check_lists_equal(render_yaml_step.yml_children, yml_children)
 
-def test_RenderYamlStep__get_resources__no_elements(render_yaml_step):
-  resources = render_yaml_step.get_resources()
+def test_RenderYamlStep__get_output_resources__no_elements(render_yaml_step):
+  resources = render_yaml_step.get_output_resources()
 
   assert isinstance(resources, list)
   assert check_lists_equal(resources, [])
 
 ###################
-### RenderYamlStep._generate_file_path
+### FileNameGeneratorStep
 ###################
 
-def test_RenderYamlStep___generate_file_path__step_is_not_configured(render_yaml_step, caplog):
+@pytest.fixture
+def file_name_generator_step():
+  return FileNameGeneratorStep()
+
+@pytest.mark.asyncio
+async def test_FileNameGeneratorStep__step_is_not_configured(file_name_generator_step, caplog):
   resource_yml = textwrap.dedent('''\
     kind: Deployment
     apiVersion: apps/v1
@@ -207,10 +214,11 @@ def test_RenderYamlStep___generate_file_path__step_is_not_configured(render_yaml
   source_file_path = 'path/file.txt'
 
   with pytest.raises(InternalError):
-    render_yaml_step._generate_file_path(resource_yml, source_file_path)
-  assert 'Step is not configured' in caplog.text
+    await file_name_generator_step.run()
+  assert 'FileNameGeneratorStep step is not configured' in caplog.text
 
-def test_RenderYamlStep___generate_file_path__from_yaml_simple(render_yaml_step, mocker):
+@pytest.mark.asyncio
+async def test_FileNameGeneratorStep__from_yaml_simple(file_name_generator_step, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
@@ -231,12 +239,22 @@ def test_RenderYamlStep___generate_file_path__from_yaml_simple(render_yaml_step,
     ''')
   source_file_path = 'path/file.txt'
 
-  render_yaml_step.configure(env_name, app_name, yml_children)
+  output_resource = OutputResource(
+      app_name=app_name,
+      env_name=env_name,
+      resource_type=ResourceType.YAML,
+      data=resource_yml,
+      source_resource_path=source_file_path,
+  )
 
-  assert render_yaml_step._generate_file_path(resource_yml, source_file_path) == 'my_env/my_app/path/deployment_grafana.yml'
+  file_name_generator_step.configure([output_resource])
+  await file_name_generator_step.run()
+
+  assert output_resource.output_resource_path == 'my_env/my_app/path/deployment_grafana.yml'
   mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
-def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render(render_yaml_step, mocker):
+@pytest.mark.asyncio
+async def test_FileNameGeneratorStep__non_k8s_files_to_render(file_name_generator_step, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
@@ -253,12 +271,22 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render(render_yam
     ''')
   source_file_path = 'path/file.yml'
 
-  render_yaml_step.configure(env_name, app_name, yml_children)
+  output_resource = OutputResource(
+      app_name=app_name,
+      env_name=env_name,
+      resource_type=ResourceType.YAML,
+      data=resource_yml,
+      source_resource_path=source_file_path,
+  )
 
-  assert render_yaml_step._generate_file_path(resource_yml, source_file_path) == 'my_env/my_app/path/file.yml'
+  file_name_generator_step.configure([output_resource])
+  await file_name_generator_step.run()
+
+  assert output_resource.output_resource_path == 'my_env/my_app/path/file.yml'
   mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
-def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_j2(render_yaml_step, mocker):
+@pytest.mark.asyncio
+async def test_FileNameGeneratorStep__non_k8s_files_to_render_as_j2(file_name_generator_step, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
@@ -275,12 +303,22 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_j2(rend
     ''')
   source_file_path = 'path/file.yml.j2'
 
-  render_yaml_step.configure(env_name, app_name, yml_children)
+  output_resource = OutputResource(
+      app_name=app_name,
+      env_name=env_name,
+      resource_type=ResourceType.JINJA2,
+      data=resource_yml,
+      source_resource_path=source_file_path,
+  )
 
-  assert render_yaml_step._generate_file_path(resource_yml, source_file_path) == 'my_env/my_app/path/file.yml'
+  file_name_generator_step.configure([output_resource])
+  await file_name_generator_step.run()
+
+  assert output_resource.output_resource_path == 'my_env/my_app/path/file.yml'
   mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
-def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_not_in_the_list(render_yaml_step, mocker, caplog):
+@pytest.mark.asyncio
+async def test_FileNameGeneratorStep__non_k8s_files_to_render_not_in_the_list(file_name_generator_step, mocker, caplog):
   caplog.set_level(logging.DEBUG)
   mock_get_config = MagicMock()
   mock_config = MagicMock()
@@ -298,15 +336,22 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_not_in_the
     ''')
   source_file_path = 'path/file.yml'
 
-  render_yaml_step.configure(env_name, app_name, yml_children)
+  output_resource = OutputResource(
+      app_name=app_name,
+      env_name=env_name,
+      resource_type=ResourceType.YAML,
+      data=resource_yml,
+      source_resource_path=source_file_path,
+  )
 
-  with pytest.raises(ValueError):
-    render_yaml_step._generate_file_path(resource_yml, source_file_path)
-  assert 'Filename cannot be constructed'
+  file_name_generator_step.configure([output_resource])
+  await file_name_generator_step.run()
 
+  assert 'Filename cannot be constructed' in caplog.text
   mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
-def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_dir(render_yaml_step, mocker):
+@pytest.mark.asyncio
+async def test_FileNameGeneratorStep__non_k8s_files_to_render_as_dir(file_name_generator_step, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
@@ -323,12 +368,22 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_dir(ren
     ''')
   source_file_path = 'path/file.yml.j2'
 
-  render_yaml_step.configure(env_name, app_name, yml_children)
+  output_resource = OutputResource(
+      app_name=app_name,
+      env_name=env_name,
+      resource_type=ResourceType.JINJA2,
+      data=resource_yml,
+      source_resource_path=source_file_path,
+  )
 
-  assert render_yaml_step._generate_file_path(resource_yml, source_file_path) == 'my_env/my_app/path/file.yml'
+  file_name_generator_step.configure([output_resource])
+  await file_name_generator_step.run()
+
+  assert output_resource.output_resource_path == 'my_env/my_app/path/file.yml'
   mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
-def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_dir_2(render_yaml_step, mocker):
+@pytest.mark.asyncio
+async def test_FileNameGeneratorStep__non_k8s_files_to_render_as_dir_2(file_name_generator_step, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
@@ -345,12 +400,22 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_dir_2(r
     ''')
   source_file_path = 'path/file.yml.j2'
 
-  render_yaml_step.configure(env_name, app_name, yml_children)
+  output_resource = OutputResource(
+      app_name=app_name,
+      env_name=env_name,
+      resource_type=ResourceType.JINJA2,
+      data=resource_yml,
+      source_resource_path=source_file_path,
+  )
 
-  assert render_yaml_step._generate_file_path(resource_yml, source_file_path) == 'my_env/my_app/path/file.yml'
+  file_name_generator_step.configure([output_resource])
+  await file_name_generator_step.run()
+
+  assert output_resource.output_resource_path == 'my_env/my_app/path/file.yml'
   mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
-def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_str(render_yaml_step, mocker, caplog):
+@pytest.mark.asyncio
+async def test_FileNameGeneratorStep__non_k8s_files_to_render_as_str(file_name_generator_step, mocker, caplog):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_get_config.return_value = mock_config
@@ -367,14 +432,23 @@ def test_RenderYamlStep___generate_file_path__non_k8s_files_to_render_as_str(ren
     ''')
   source_file_path = 'path/file.yml'
 
-  render_yaml_step.configure(env_name, app_name, yml_children)
+  output_resource = OutputResource(
+      app_name=app_name,
+      env_name=env_name,
+      resource_type=ResourceType.JINJA2,
+      data=resource_yml,
+      source_resource_path=source_file_path,
+  )
+
+  file_name_generator_step.configure([output_resource])
 
   with pytest.raises(InternalError):
-    render_yaml_step._generate_file_path(resource_yml, source_file_path)
+    await file_name_generator_step.run()
   assert f'Application parameter {AppParamsNames.NON_K8S_FILES_TO_RENDER} must be a list' in caplog.text
   mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
-def test_RenderYamlStep___generate_file_path__exclude_rendering(render_yaml_step, mocker, caplog):
+@pytest.mark.asyncio
+async def test_FileNameGeneratorStep__exclude_rendering(file_name_generator_step, mocker, caplog):
   caplog.set_level(logging.DEBUG)
   mock_get_config = MagicMock()
   mock_config = MagicMock()
@@ -392,14 +466,22 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering(render_yaml_step
     ''')
   source_file_path = 'path/file.yml'
 
-  render_yaml_step.configure(env_name, app_name, yml_children)
+  output_resource = OutputResource(
+      app_name=app_name,
+      env_name=env_name,
+      resource_type=ResourceType.JINJA2,
+      data=resource_yml,
+      source_resource_path=source_file_path,
+  )
 
-  with pytest.raises(ValueError):
-    render_yaml_step._generate_file_path(resource_yml, source_file_path)
-  assert f'Exclude rendering for file {source_file_path}' in caplog.text
+  file_name_generator_step.configure([output_resource])
+
+  await file_name_generator_step.run()
+  assert f'Excluding file {source_file_path}' in caplog.text
   mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
-def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir(render_yaml_step, mocker, caplog):
+@pytest.mark.asyncio
+async def test_FileNameGeneratorStep__exclude_rendering_as_dir(file_name_generator_step, mocker, caplog):
   caplog.set_level(logging.DEBUG)
   mock_get_config = MagicMock()
   mock_config = MagicMock()
@@ -417,14 +499,22 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir(render_ya
     ''')
   source_file_path = 'path/file.yml'
 
-  render_yaml_step.configure(env_name, app_name, yml_children)
+  output_resource = OutputResource(
+      app_name=app_name,
+      env_name=env_name,
+      resource_type=ResourceType.JINJA2,
+      data=resource_yml,
+      source_resource_path=source_file_path,
+  )
 
-  with pytest.raises(ValueError):
-    render_yaml_step._generate_file_path(resource_yml, source_file_path)
-  assert f'Exclude rendering for file {source_file_path}' in caplog.text
+  file_name_generator_step.configure([output_resource])
+
+  await file_name_generator_step.run()
+  assert f'Excluding file {source_file_path}' in caplog.text
   mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
-def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir_2(render_yaml_step, mocker, caplog):
+@pytest.mark.asyncio
+async def test_FileNameGeneratorStep__exclude_rendering_as_dir_2(file_name_generator_step, mocker, caplog):
   caplog.set_level(logging.DEBUG)
   mock_get_config = MagicMock()
   mock_config = MagicMock()
@@ -442,14 +532,22 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering_as_dir_2(render_
     ''')
   source_file_path = 'path/file.yml'
 
-  render_yaml_step.configure(env_name, app_name, yml_children)
+  output_resource = OutputResource(
+      app_name=app_name,
+      env_name=env_name,
+      resource_type=ResourceType.JINJA2,
+      data=resource_yml,
+      source_resource_path=source_file_path,
+  )
 
-  with pytest.raises(ValueError):
-    render_yaml_step._generate_file_path(resource_yml, source_file_path)
-  assert f'Exclude rendering for file {source_file_path}' in caplog.text
+  file_name_generator_step.configure([output_resource])
+
+  await file_name_generator_step.run()
+  assert f'Excluding file {source_file_path}' in caplog.text
   mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)
 
-def test_RenderYamlStep___generate_file_path__exclude_rendering_as_str(render_yaml_step, mocker, caplog):
+@pytest.mark.asyncio
+async def test_FileNameGeneratorStep__exclude_rendering_as_str(file_name_generator_step, mocker, caplog):
   caplog.set_level(logging.DEBUG)
   mock_get_config = MagicMock()
   mock_config = MagicMock()
@@ -467,9 +565,17 @@ def test_RenderYamlStep___generate_file_path__exclude_rendering_as_str(render_ya
     ''')
   source_file_path = 'path/file.yml'
 
-  render_yaml_step.configure(env_name, app_name, yml_children)
+  output_resource = OutputResource(
+      app_name=app_name,
+      env_name=env_name,
+      resource_type=ResourceType.JINJA2,
+      data=resource_yml,
+      source_resource_path=source_file_path,
+  )
+
+  file_name_generator_step.configure([output_resource])
 
   with pytest.raises(InternalError):
-    render_yaml_step._generate_file_path(resource_yml, source_file_path)
+    await file_name_generator_step.run()
   assert f'Application parameter {AppParamsNames.EXCLUDE_RENDERING} must be a list' in caplog.text
   mock_config.get_app_params_deprecated.assert_called_once_with(env_name, app_name)

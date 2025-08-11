@@ -13,7 +13,7 @@ from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparam import get_cli_params
 from make_argocd_fly.exception import ConfigFileError
 from make_argocd_fly.step import FindAppsStep, RenderYamlStep, RenderJinjaFromViewerStep, RenderJinjaFromMemoryStep, \
-  WriteResourcesStep, ReadSourceStep, RunKustomizeStep
+  FileNameGeneratorStep, WriteResourcesStep, ReadSourceStep, RunKustomizeStep
 from make_argocd_fly.exception import ResourceViewerIsFake
 
 log = logging.getLogger(__name__)
@@ -39,6 +39,7 @@ class AppOfAppsApplication(AbstractApplication):
     super().__init__(app_name, env_name, app_viewer)
     self.find_apps_step = FindAppsStep()
     self.render_jinja_step = RenderJinjaFromMemoryStep()
+    self.output_file_name_generator = FileNameGeneratorStep()
     self.write_resources_step = WriteResourcesStep()
 
     log.debug(f'Created application {app_name} with {__class__.__name__} for environment {env_name}')
@@ -83,7 +84,10 @@ class AppOfAppsApplication(AbstractApplication):
     if os.path.exists(app_output_dir):
       shutil.rmtree(app_output_dir)
 
-    self.write_resources_step.configure(self.config.output_dir, self.render_jinja_step.get_resources())
+    self.output_file_name_generator.configure(self.render_jinja_step.get_output_resources())
+    await self.output_file_name_generator.run()
+
+    self.write_resources_step.configure(self.config.output_dir, self.output_file_name_generator.get_output_resources())
     await self.write_resources_step.run()
     log.info(f'Updated application {self.app_name} in environment {self.env_name}')
 
@@ -93,6 +97,7 @@ class SimpleApplication(AbstractApplication):
     super().__init__(app_name, env_name, app_viewer)
     self.render_yaml_step = RenderYamlStep()
     self.render_jinja_step = RenderJinjaFromViewerStep(app_viewer)
+    self.output_file_name_generator = FileNameGeneratorStep()
     self.write_resources_step = WriteResourcesStep()
 
     log.debug(f'Created application {app_name} with {__class__.__name__} for environment {env_name}')
@@ -126,7 +131,10 @@ class SimpleApplication(AbstractApplication):
     if os.path.exists(app_output_dir):
       shutil.rmtree(app_output_dir)
 
-    self.write_resources_step.configure(self.config.output_dir, self.render_yaml_step.get_resources() + self.render_jinja_step.get_resources())
+    self.output_file_name_generator.configure(self.render_yaml_step.get_output_resources() + self.render_jinja_step.get_output_resources())
+    await self.output_file_name_generator.run()
+
+    self.write_resources_step.configure(self.config.output_dir, self.output_file_name_generator.get_output_resources())
     await self.write_resources_step.run()
 
     log.info(f'Updated application {self.app_name} in environment {self.env_name}')
@@ -137,9 +145,11 @@ class KustomizeApplication(AbstractApplication):
     super().__init__(app_name, env_name, app_viewer)
     self.render_yaml_step = RenderYamlStep()
     self.render_jinja_step = RenderJinjaFromViewerStep(app_viewer)
+    self.tmp_output_file_name_generator = FileNameGeneratorStep()
     self.tmp_write_resources_step = WriteResourcesStep()
     self.tmp_read_source_step = ReadSourceStep()
     self.run_kustomize_step = RunKustomizeStep()
+    self.output_file_name_generator = FileNameGeneratorStep()
     self.write_resources_step = WriteResourcesStep()
 
     log.debug(f'Created application {app_name} with {__class__.__name__} for environment {env_name}')
@@ -169,7 +179,10 @@ class KustomizeApplication(AbstractApplication):
     self.render_jinja_step.configure(self.env_name, self.app_name, j2_children, resolved_vars)
     await self.render_jinja_step.run()
 
-    self.tmp_write_resources_step.configure(self.config.tmp_dir, self.render_yaml_step.get_resources() + self.render_jinja_step.get_resources())
+    self.tmp_output_file_name_generator.configure(self.render_yaml_step.get_output_resources() + self.render_jinja_step.get_output_resources())
+    await self.tmp_output_file_name_generator.run()
+
+    self.tmp_write_resources_step.configure(self.config.tmp_dir, self.tmp_output_file_name_generator.get_output_resources())
     await self.tmp_write_resources_step.run()
 
     self.tmp_read_source_step.configure(os.path.join(self.config.tmp_dir, get_app_rel_path(self.env_name, self.app_name)))
@@ -185,7 +198,10 @@ class KustomizeApplication(AbstractApplication):
     if os.path.exists(app_output_dir):
       shutil.rmtree(app_output_dir)
 
-    self.write_resources_step.configure(self.config.output_dir, self.run_kustomize_step.get_resources())
+    self.output_file_name_generator.configure(self.run_kustomize_step.get_output_resources())
+    await self.output_file_name_generator.run()
+
+    self.write_resources_step.configure(self.config.output_dir, self.output_file_name_generator.get_output_resources())
     await self.write_resources_step.run()
 
     log.info(f'Updated application {self.app_name} in environment {self.env_name}')
