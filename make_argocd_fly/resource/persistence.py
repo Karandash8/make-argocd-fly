@@ -115,5 +115,11 @@ class ResourcePersistence:
     writer.write(os.path.join(self.output_dir_abs_path, resource.output_resource_path), resource)
 
   async def write_resources(self) -> None:
-    for resource in self.resources.values():
-      await self._write_resource(resource)
+    try:
+      await asyncio.gather(
+        *[asyncio.create_task(self._write_resource(resource)) for resource in self.resources.values()]
+      )
+    except Exception as e:
+      for task in asyncio.all_tasks():
+        task.cancel()
+      raise e
