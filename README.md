@@ -22,6 +22,35 @@ Think of it as a static GitOps generator for Kubernetes — rendering, organizin
 
 ---
 
+## 🧩 The Rendered Manifest Pattern
+
+The Kubernetes GitOps community recently introduced the [Rendered Manifest Pattern](https://www.youtube.com/watch?v=TonN-369Qfo) as a best practice for managing applications with ArgoCD.
+
+Instead of letting ArgoCD invoke Helm or Kustomize internally, you **pre-render manifests outside the cluster** and commit only plain YAML to Git.
+This makes your Git repo the *single source of truth* for the exact Kubernetes resources being deployed.
+
+### Why this matters
+
+When ArgoCD runs Helm or Kustomize directly, you may hit problems like:
+- **Version drift** – different clusters use different plugin versions and render inconsistently
+- **Debugging blind spots** – failures happen inside ArgoCD, with no access to the rendered YAML
+- **Unreviewable diffs** – Git diffs show template changes, not the actual manifests applied
+- **Limited portability** – CI/CD, linters, and policy tools can’t easily check resources
+- **Operational surprises** – subtle plugin/env differences lead to unexpected drift
+
+With pre-rendered manifests you gain:
+- ✅ **Single source of truth** – Git shows exactly what ArgoCD applies
+- ✅ **Deterministic builds** – no hidden differences across environments
+- ✅ **Transparent reviews** – PR diffs show actual Kubernetes changes
+- ✅ **Pluggable checks** – run linters and security scanners on YAML in CI
+- ✅ **Simpler ops** – ArgoCD only syncs plain YAML, reducing complexity
+
+**`make-argocd-fly` is a practical implementation of the Rendered Manifest Pattern.**
+It automates rendering of Helm charts, Kustomize overlays, and Jinja2 templates, organizes them by environment, and generates ArgoCD `Application` resources pointing to the rendered output.
+
+
+---
+
 ## 💡 Key Features
 
 * ✅ **Helm rendering**
