@@ -421,7 +421,7 @@ class JinjaRendererFromViewer(AbstractRenderer):
   def _get_source(self, path: str):
     child = list(self.viewer.search_subresources(resource_types=self.file_types,
                                                  search_subdirs=[os.path.normpath(os.path.dirname(path))],
-                                                 name_pattern=f'^{re.escape(os.path.basename(path))}'))
+                                                 name_pattern=f'^{re.escape(os.path.basename(path))}$'))
     if not child:
       log.error(f'No matching resource found for path {path}')
       raise MissingFileError(path)
@@ -434,7 +434,7 @@ class JinjaRendererFromViewer(AbstractRenderer):
   def _get_rendered(self, path: str):
     child = list(self.viewer.search_subresources(resource_types=self.file_types,
                                                  search_subdirs=[os.path.normpath(os.path.dirname(path))],
-                                                 name_pattern=f'^{re.escape(os.path.basename(path))}'))
+                                                 name_pattern=f'^{re.escape(os.path.basename(path))}$'))
     if not child:
       log.error(f'No matching resource found for path {path}')
       raise MissingFileError(path)
