@@ -17,6 +17,7 @@ from make_argocd_fly.util import extract_undefined_variable
 
 log = logging.getLogger(__name__)
 
+
 # TODO: this isn't needed anymore, remove
 class AbstractRenderer(ABC):
   @abstractmethod
