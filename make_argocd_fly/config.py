@@ -186,7 +186,7 @@ def populate_config(root_dir: str = const.DEFAULT_ROOT_DIR,
                     tmp_dir: str = const.DEFAULT_TMP_DIR) -> Config:
   try:
     viewer = ResourceViewer(build_path(root_dir, config_dir))
-    yml_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML]))
+    yml_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML], template=False))
 
     config_files_content = []
     for child in yml_children:

@@ -1,4 +1,6 @@
 import os
+from enum import Enum
+
 
 DEFAULT_ROOT_DIR = os.getcwd()
 DEFAULT_CONFIG_DIR = 'config'
@@ -64,6 +66,7 @@ ARGOCD_DEFAULTS = {
 }
 
 
+# TODO: should this be an Enum?
 class ParamNames:
   PARENT_APP = 'parent_app'
   PARENT_APP_ENV = 'parent_app_env'
@@ -85,3 +88,9 @@ class AppParamsNames:
   @classmethod
   def get_names(cls) -> list[str]:
     return [getattr(cls, attr) for attr in dir(cls) if not attr.startswith('__') and not callable(getattr(cls, attr))]
+
+
+class ApplicationType(Enum):
+  K8S_SIMPLE = 'k8s_simple'
+  K8S_KUSTOMIZE = 'k8s_kustomize'
+  K8S_APP_OF_APPS = 'k8s_app_of_apps'
