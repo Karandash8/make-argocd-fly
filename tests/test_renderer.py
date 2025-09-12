@@ -51,6 +51,40 @@ def test_JinjaRenderer_get_source_same_filename(tmp_path):
 
   assert renderer._get_source('dir_1/template.txt.j2') == (TEMPLATE_1, 'dir_1/template.txt.j2', None)
 
+def test_JinjaRenderer__get_source__similar_filenames(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_0 = dir_root / 'dir_0'
+  dir_0.mkdir()
+  TEMPLATE_0 = 'Template content 0'
+  template_0 = dir_0 / 'template.txt.j2'
+  template_0.write_text(TEMPLATE_0)
+  TEMPLATE_1 = 'Template content 1'
+  template_1 = dir_0 / 'extra-template.txt.j2'
+  template_1.write_text(TEMPLATE_1)
+
+  resource_viewer = ResourceViewer(str(dir_root))
+  renderer = JinjaRendererFromViewer(resource_viewer)
+
+  assert renderer._get_source('dir_0/template.txt.j2') == (TEMPLATE_0, 'dir_0/template.txt.j2', None)
+
+def test_JinjaRenderer__get_source__similar_filenames_2(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_0 = dir_root / 'dir_0'
+  dir_0.mkdir()
+  TEMPLATE_0 = 'Template content 0'
+  template_0 = dir_0 / 'template.txt.j2'
+  template_0.write_text(TEMPLATE_0)
+  TEMPLATE_1 = 'Template content 1'
+  template_1 = dir_0 / 'template.txt.j2-extra'
+  template_1.write_text(TEMPLATE_1)
+
+  resource_viewer = ResourceViewer(str(dir_root))
+  renderer = JinjaRendererFromViewer(resource_viewer)
+
+  assert renderer._get_source('dir_0/template.txt.j2') == (TEMPLATE_0, 'dir_0/template.txt.j2', None)
+
 #################
 ### _get_rendered
 #################
@@ -78,6 +112,40 @@ def test_JinjaRenderer_get_rendered_does_not_exist(tmp_path, caplog):
   with pytest.raises(MissingFileError):
     renderer._get_source('template.txt.j2')
   assert 'No matching resource found for path template.txt.j2' in caplog.text
+
+def test_JinjaRenderer__get_rendered__similar_filenames(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_0 = dir_root / 'dir_0'
+  dir_0.mkdir()
+  TEMPLATE_0 = 'Template content 0'
+  template_0 = dir_0 / 'template.txt.j2'
+  template_0.write_text(TEMPLATE_0)
+  TEMPLATE_1 = 'Template content 1'
+  template_1 = dir_0 / 'extra-template.txt.j2'
+  template_1.write_text(TEMPLATE_1)
+
+  resource_viewer = ResourceViewer(str(dir_root))
+  renderer = JinjaRendererFromViewer(resource_viewer)
+
+  assert renderer._get_rendered('dir_0/template.txt.j2') == (TEMPLATE_0, 'dir_0/template.txt.j2', None)
+
+def test_JinjaRenderer__get_rendered__similar_filenames_2(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_0 = dir_root / 'dir_0'
+  dir_0.mkdir()
+  TEMPLATE_0 = 'Template content 0'
+  template_0 = dir_0 / 'template.txt.j2'
+  template_0.write_text(TEMPLATE_0)
+  TEMPLATE_1 = 'Template content 1'
+  template_1 = dir_0 / 'template.txt.j2-extra'
+  template_1.write_text(TEMPLATE_1)
+
+  resource_viewer = ResourceViewer(str(dir_root))
+  renderer = JinjaRendererFromViewer(resource_viewer)
+
+  assert renderer._get_rendered('dir_0/template.txt.j2') == (TEMPLATE_0, 'dir_0/template.txt.j2', None)
 
 ###########
 ### Loaders
