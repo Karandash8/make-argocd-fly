@@ -1,6 +1,5 @@
 import os
 import pytest
-import yaml
 from make_argocd_fly.resource.viewer import ResourceViewer, get_resource_params
 from make_argocd_fly.resource.type import ResourceType
 from make_argocd_fly.context.data import OutputResource
@@ -18,7 +17,7 @@ def test_get_resource_type__does_not_exist(tmp_path):
   file_path = 'non_existent_file.txt'
 
   resource_type, template = get_resource_params(os.path.join(dir_root, file_path))
-  assert resource_type, template == (ResourceType.DOES_NOT_EXIST, False)
+  assert (resource_type, template) == (ResourceType.DOES_NOT_EXIST, False)
 
 def test_get_resource_type__directory(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -27,7 +26,7 @@ def test_get_resource_type__directory(tmp_path):
   dir_subdir.mkdir()
 
   resource_type, template = get_resource_params(str(dir_subdir))
-  assert resource_type, template == (ResourceType.DIRECTORY, False)
+  assert (resource_type, template) == (ResourceType.DIRECTORY, False)
 
 def test_get_resource_type__yaml(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -37,7 +36,7 @@ def test_get_resource_type__yaml(tmp_path):
   file_root.write_text('key: value')
 
   resource_type, template = get_resource_params(os.path.join(dir_root, file_path))
-  assert resource_type, template == (ResourceType.YAML, False)
+  assert (resource_type, template) == (ResourceType.YAML, False)
 
 def test_get_resource_type__yaml_2(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -47,7 +46,7 @@ def test_get_resource_type__yaml_2(tmp_path):
   file_root.write_text('key: value')
 
   resource_type, template = get_resource_params(os.path.join(dir_root, file_path))
-  assert resource_type, template == (ResourceType.YAML, False)
+  assert (resource_type, template) == (ResourceType.YAML, False)
 
 def test_get_resource_type__unknown(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -57,7 +56,7 @@ def test_get_resource_type__unknown(tmp_path):
   file_root.write_text('key: value')
 
   resource_type, template = get_resource_params(os.path.join(dir_root, file_path))
-  assert resource_type, template == (ResourceType.UNKNOWN, False)
+  assert (resource_type, template) == (ResourceType.UNKNOWN, False)
 
 def test_get_resource_type__template(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -67,7 +66,7 @@ def test_get_resource_type__template(tmp_path):
   file_root.write_text('key: {{ value }}')
 
   resource_type, template = get_resource_params(os.path.join(dir_root, file_path))
-  assert resource_type, template == (ResourceType.UNKNOWN, True)
+  assert (resource_type, template) == (ResourceType.UNKNOWN, True)
 
 def test_get_resource_type__template_yml(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -77,7 +76,7 @@ def test_get_resource_type__template_yml(tmp_path):
   file_root.write_text('key: {{ value }}')
 
   resource_type, template = get_resource_params(os.path.join(dir_root, file_path))
-  assert resource_type, template == (ResourceType.YAML, True)
+  assert (resource_type, template) == (ResourceType.YAML, True)
 
 def test_get_resource_type__template_yml_2(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -87,7 +86,7 @@ def test_get_resource_type__template_yml_2(tmp_path):
   file_root.write_text('key: {{ value }}')
 
   resource_type, template = get_resource_params(os.path.join(dir_root, file_path))
-  assert resource_type, template == (ResourceType.YAML, True)
+  assert (resource_type, template) == (ResourceType.YAML, True)
 
 def test_get_resource_type__template_unknown(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -97,7 +96,7 @@ def test_get_resource_type__template_unknown(tmp_path):
   file_root.write_text('key: {{ value }}')
 
   resource_type, template = get_resource_params(os.path.join(dir_root, file_path))
-  assert resource_type, template == (ResourceType.UNKNOWN, True)
+  assert (resource_type, template) == (ResourceType.UNKNOWN, True)
 
 ##################
 ### ResourceViewer
