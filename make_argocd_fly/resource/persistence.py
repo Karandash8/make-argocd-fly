@@ -7,6 +7,7 @@ import yaml.composer
 import yaml.parser
 import yaml.scanner
 from yaml import SafeDumper
+from typing import Any
 
 try:
   from yaml import CSafeLoader as SafeLoader
@@ -15,7 +16,7 @@ except ImportError:
 
 from make_argocd_fly.exception import InternalError, YamlError
 from make_argocd_fly.resource.type import ResourceType
-from make_argocd_fly.resource.data import OutputResource
+from make_argocd_fly.context.data import OutputResource
 
 log = logging.getLogger(__name__)
 
@@ -51,30 +52,30 @@ yaml.add_representer(str, represent_str, Dumper=YamlDumper)
 
 class AbstractWriter(ABC):
   @abstractmethod
-  def write(self, path: str, resource: OutputResource) -> None:
+  def write(self, output_path: str, data: Any, env_name: str, app_name: str, source: str) -> None:
     pass
 
 
 class GenericWriter(AbstractWriter):
-  def write(self, path: str, resource: OutputResource) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+  def write(self, output_path: str, data: Any, env_name: str, app_name: str, source: str) -> None:
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    with open(path, 'w') as f:
-      f.write(resource.data)
+    with open(output_path, 'w') as f:
+      f.write(data)
 
 
 class YamlWriter(AbstractWriter):
-  def write(self, path: str, resource: OutputResource) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+  def write(self, output_path: str, data: Any, env_name: str, app_name: str, source: str) -> None:
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     try:
-      yaml_resource = yaml.load(resource.data, Loader=YamlLoader)
+      yaml_resource = yaml.load(data, Loader=YamlLoader)
     except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError, yaml.constructor.ConstructorError):
-      log.error(f'Error building YAML from source file {resource.source_resource_path}')
-      log.debug(f'YAML content:\n{resource.data}')
-      raise YamlError(resource.app_name, resource.env_name) from None
+      log.error(f'Error building YAML from source `{source}` for resource {app_name} in environment {env_name}')
+      log.debug(f'YAML content:\n{data}')
+      raise YamlError(app_name, env_name) from None
 
-    with open(path, 'w') as f:
+    with open(output_path, 'w') as f:
       yaml.dump(yaml_resource, f, Dumper=YamlDumper,
                 default_flow_style=False,
                 sort_keys=False,
@@ -95,24 +96,26 @@ def writer_factory(type: ResourceType) -> AbstractWriter:
 
 
 class ResourcePersistence:
-  def __init__(self, output_dir_abs_path: str) -> None:
+  def __init__(self, output_dir_abs_path: str, env_name: str, app_name: str) -> None:
     self.output_dir_abs_path = output_dir_abs_path
+    self.env_name = env_name
+    self.app_name = app_name
     self.resources = {}
 
   def store_resource(self, resource: OutputResource) -> None:
-    if not resource.output_resource_path:
-      log.error('Parameter `output_resource_path` is not set for resource')
+    if not resource.output_path:
+      log.error('Parameter `output_path` is not set for resource')
       raise InternalError()
 
-    if resource.output_resource_path in self.resources:
-      log.error(f'Resource ({resource.output_resource_path}) already exists')
+    if resource.output_path in self.resources:
+      log.error(f'Resource ({resource.output_path}) already exists')
       raise InternalError()
 
-    self.resources[resource.output_resource_path] = resource
+    self.resources[resource.output_path] = resource
 
   async def _write_resource(self, resource: OutputResource) -> None:
     writer = writer_factory(resource.resource_type)
-    writer.write(os.path.join(self.output_dir_abs_path, resource.output_resource_path), resource)
+    writer.write(os.path.join(self.output_dir_abs_path, resource.output_path), resource.data, self.env_name, self.app_name, resource.source)
 
   async def write_resources(self) -> None:
     try:

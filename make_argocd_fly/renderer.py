@@ -17,7 +17,7 @@ from make_argocd_fly.util import extract_undefined_variable
 
 log = logging.getLogger(__name__)
 
-
+# TODO: this isn't needed anymore, remove
 class AbstractRenderer(ABC):
   @abstractmethod
   def render(self, content: str) -> str:
@@ -390,6 +390,7 @@ class IncludeAllAsYamlListExtension(Extension):
     return Markup(''.join(kv_as_yaml_str))
 
 
+# TODO: combine two JinjaRenderer classes
 class JinjaRendererFromViewer(AbstractRenderer):
   file_types = [resource_type for resource_type in ResourceType if
                 (resource_type != ResourceType.DIRECTORY and

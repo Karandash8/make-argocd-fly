@@ -12,8 +12,9 @@ from make_argocd_fly.warning import init_warnings
 from make_argocd_fly.cliparam import populate_cli_params, get_cli_params
 from make_argocd_fly.config import populate_config, get_config
 from make_argocd_fly.util import init_logging, latest_version_check, get_package_name, get_current_version
-from make_argocd_fly.application import application_factory
 from make_argocd_fly.exception import TemplateRenderingError, YamlError, InternalError, ConfigFileError, KustomizeError
+from make_argocd_fly.pipeline import build_pipeline
+from make_argocd_fly.context import Context
 
 
 logging.basicConfig(level=const.DEFAULT_LOGLEVEL)
@@ -40,14 +41,15 @@ async def generate() -> None:
       if apps_to_render and app_name not in apps_to_render:
         continue
 
-      application = await application_factory(env_name, app_name, os.path.join(config.source_dir, app_name))
-      apps.append(application)
+      ctx = Context(env_name, app_name)
+      application = build_pipeline(ctx, os.path.join(config.source_dir, app_name))
+      apps.append((application, ctx))
 
   # TODO: convert to TaskGroup
   # TODO: add throttling with asyncio.Semaphore
   log.info('Processing applications')
   try:
-    await asyncio.gather(*[asyncio.create_task(app.process()) for app in apps])
+    await asyncio.gather(*[asyncio.create_task(app.run(ctx)) for (app, ctx) in apps])
   except Exception as e:
     for task in asyncio.all_tasks():
       task.cancel()
