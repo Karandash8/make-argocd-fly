@@ -41,17 +41,25 @@ class DiscoverK8sSimpleApplication(Stage):
     log.debug(f'Run {self.name} stage')
     config = get_config()
     cli_params = get_cli_params()
+    app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
+
+    if not isinstance(app_params.exclude_rendering, list):
+      log.error(f'Application parameter {const.ParamNames.EXCLUDE_RENDERING} must be a list')
+      raise InternalError()
 
     ymls = []
     viewer_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML], template=False))
 
     for child in viewer_children:
-      ymls.append(Content(
+      if not any(child.element_rel_path.startswith(exclude) for exclude in app_params.exclude_rendering):
+        ymls.append(Content(
           resource_type=ResourceType.YAML,
           data=child.content,
           source=child.element_rel_path,
-      ))
+        ))
+      else:
+        log.debug(f'Excluding file {child.element_rel_path}')
     ctx_set(ctx, self.provides['content'], ymls)
 
     templates = []
@@ -68,12 +76,15 @@ class DiscoverK8sSimpleApplication(Stage):
       log.info(f'Variables for application {ctx.app_name} in environment {ctx.env_name}:\n{pformat(resolved_vars)}')
 
     for child in viewer_children:
-      templates.append(Template(
+      if not any(child.element_rel_path.startswith(exclude) for exclude in app_params.exclude_rendering):
+        templates.append(Template(
           resource_type=ResourceType.YAML,
           vars=resolved_vars,
           data=child.content,
           source=child.element_rel_path,
-      ))
+        ))
+      else:
+        log.debug(f'Excluding file {child.element_rel_path}')
     ctx_set(ctx, self.provides['template'], templates)
 
     ctx_set(ctx, self.provides['output_dir'], config.output_dir)
@@ -92,7 +103,12 @@ class DiscoverK8sKustomizeApplication(Stage):
     log.debug(f'Run {self.name} stage')
     config = get_config()
     cli_params = get_cli_params()
+    app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
+
+    if not isinstance(app_params.exclude_rendering, list):
+      log.error(f'Application parameter {const.ParamNames.EXCLUDE_RENDERING} must be a list')
+      raise InternalError()
 
     # TODO: this will not work if there is a directory named `base` in addition to the kustomize base
     search_subdirs = ['base', ctx.env_name] if list(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
@@ -103,11 +119,14 @@ class DiscoverK8sKustomizeApplication(Stage):
                                                       search_subdirs=search_subdirs))
 
     for child in viewer_children:
-      ymls.append(Content(
+      if not any(child.element_rel_path.startswith(exclude) for exclude in app_params.exclude_rendering):
+        ymls.append(Content(
           resource_type=ResourceType.YAML,
           data=child.content,
           source=child.element_rel_path,
-      ))
+        ))
+      else:
+        log.debug(f'Excluding file {child.element_rel_path}')
     ctx_set(ctx, self.provides['content'], ymls)
 
     templates = []
@@ -126,12 +145,15 @@ class DiscoverK8sKustomizeApplication(Stage):
       log.info(f'Variables for application {ctx.app_name} in environment {ctx.env_name}:\n{pformat(resolved_vars)}')
 
     for child in viewer_children:
-      templates.append(Template(
+      if not any(child.element_rel_path.startswith(exclude) for exclude in app_params.exclude_rendering):
+        templates.append(Template(
           resource_type=ResourceType.YAML,
           vars=resolved_vars,
           data=child.content,
           source=child.element_rel_path,
-      ))
+        ))
+      else:
+        log.debug(f'Excluding file {child.element_rel_path}')
     ctx_set(ctx, self.provides['template'], templates)
 
     ctx_set(ctx, self.provides['tmp_dir'], config.tmp_dir)
@@ -175,23 +197,23 @@ class DiscoverK8sAppOfAppsApplication(Stage):
 
     for env_name in config.list_envs():
       for app_name in config.list_apps(env_name):
-          app_params = config.get_app_params_deprecated(env_name, app_name)
-          if not app_params:
-            app_params = config.get_params(env_name, app_name)
+        app_params = config.get_app_params_deprecated(env_name, app_name)
+        if not app_params:
+          app_params = config.get_params(env_name, app_name)
 
-            if app_params.parent_app:
-              if (app_params.parent_app == ctx.app_name and
-                  ((app_params.parent_app_env is None and env_name == ctx.env_name) or
-                   (app_params.parent_app_env is not None and app_params.parent_app_env == ctx.env_name))):
-                discovered_apps.append((env_name, app_name))
-          else:
-            # DEPRECATED
-            if const.AppParamsNames.APP_DEPLOYER in app_params:
-              if (ctx.app_name == app_params[const.AppParamsNames.APP_DEPLOYER] and
-                  ((const.AppParamsNames.APP_DEPLOYER_ENV not in app_params and env_name == ctx.env_name) or
-                  (const.AppParamsNames.APP_DEPLOYER_ENV in app_params and
-                   ctx.env_name == app_params[const.AppParamsNames.APP_DEPLOYER_ENV]))):
-                discovered_apps.append((env_name, app_name))
+          if app_params.parent_app:
+            if (app_params.parent_app == ctx.app_name and
+                ((app_params.parent_app_env is None and env_name == ctx.env_name) or
+                  (app_params.parent_app_env is not None and app_params.parent_app_env == ctx.env_name))):
+              discovered_apps.append((env_name, app_name))
+        else:
+          # DEPRECATED
+          if const.AppParamsNames.APP_DEPLOYER in app_params:
+            if (ctx.app_name == app_params[const.AppParamsNames.APP_DEPLOYER] and
+                ((const.AppParamsNames.APP_DEPLOYER_ENV not in app_params and env_name == ctx.env_name) or
+                (const.AppParamsNames.APP_DEPLOYER_ENV in app_params and
+                  ctx.env_name == app_params[const.AppParamsNames.APP_DEPLOYER_ENV]))):
+              discovered_apps.append((env_name, app_name))
 
     templates = []
     for env_name, app_name in discovered_apps:
@@ -319,6 +341,7 @@ class GenerateManifestNames(Stage):
           ))
           continue
 
+        # TODO: exclusion logic was moved to discovery stages. Remove it from here when deprecation period is over
         if not isinstance(app_params.exclude_rendering, list):
           log.error(f'Application parameter {const.ParamNames.EXCLUDE_RENDERING} must be a list')
           raise InternalError()
