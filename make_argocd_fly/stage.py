@@ -187,7 +187,6 @@ class DiscoverK8sAppOfAppsApplication(Stage):
   provides = {'template': 'discover.template',
               'output_dir': 'discover.output_dir'}
 
-  # flake8: noqa: C901
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
     config = get_config()
@@ -197,23 +196,13 @@ class DiscoverK8sAppOfAppsApplication(Stage):
 
     for env_name in config.list_envs():
       for app_name in config.list_apps(env_name):
-        app_params = config.get_app_params_deprecated(env_name, app_name)
-        if not app_params:
-          app_params = config.get_params(env_name, app_name)
+        app_params = config.get_params(env_name, app_name)
 
-          if app_params.parent_app:
-            if (app_params.parent_app == ctx.app_name and
-                ((app_params.parent_app_env is None and env_name == ctx.env_name) or
-                  (app_params.parent_app_env is not None and app_params.parent_app_env == ctx.env_name))):
-              discovered_apps.append((env_name, app_name))
-        else:
-          # DEPRECATED
-          if const.AppParamsNames.APP_DEPLOYER in app_params:
-            if (ctx.app_name == app_params[const.AppParamsNames.APP_DEPLOYER] and
-                ((const.AppParamsNames.APP_DEPLOYER_ENV not in app_params and env_name == ctx.env_name) or
-                (const.AppParamsNames.APP_DEPLOYER_ENV in app_params and
-                  ctx.env_name == app_params[const.AppParamsNames.APP_DEPLOYER_ENV]))):
-              discovered_apps.append((env_name, app_name))
+        if app_params.parent_app:
+          if (app_params.parent_app == ctx.app_name and
+              ((app_params.parent_app_env is None and env_name == ctx.env_name) or
+                (app_params.parent_app_env is not None and app_params.parent_app_env == ctx.env_name))):
+            discovered_apps.append((env_name, app_name))
 
     templates = []
     for env_name, app_name in discovered_apps:
@@ -324,55 +313,20 @@ class GenerateManifestNames(Stage):
 
     for resource in ymls:
       generator = FilePathGenerator(resource.data, resource.source)
-      app_params = get_config().get_app_params_deprecated(ctx.env_name, ctx.app_name)
-      if not app_params:
-        app_params = get_config().get_params(ctx.env_name, ctx.app_name)
+      app_params = get_config().get_params(ctx.env_name, ctx.app_name)
 
-        if not isinstance(app_params.non_k8s_files_to_render, list):
-          log.error(f'Application parameter {const.ParamNames.NON_K8S_FILES_TO_RENDER} must be a list')
-          raise InternalError()
+      if not isinstance(app_params.non_k8s_files_to_render, list):
+        log.error(f'Application parameter {const.ParamNames.NON_K8S_FILES_TO_RENDER} must be a list')
+        raise InternalError()
 
-        if any(resource.source.startswith(element) for element in app_params.non_k8s_files_to_render):
-          files.append(OutputResource(
-              resource_type=resource.resource_type,
-              data=resource.data,
-              source=resource.source,
-              output_path=os.path.join(get_app_rel_path(ctx.env_name, ctx.app_name), generator.generate_from_source_file())
-          ))
-          continue
-
-        # TODO: exclusion logic was moved to discovery stages. Remove it from here when deprecation period is over
-        if not isinstance(app_params.exclude_rendering, list):
-          log.error(f'Application parameter {const.ParamNames.EXCLUDE_RENDERING} must be a list')
-          raise InternalError()
-
-        if any(resource.source.startswith(exclude) for exclude in app_params.exclude_rendering):
-          log.debug(f'Excluding file {resource.source}')
-          continue
-      else:
-        # DEPRECATED
-        if resource.source and const.AppParamsNames.NON_K8S_FILES_TO_RENDER in app_params:
-          if not isinstance(app_params[const.AppParamsNames.NON_K8S_FILES_TO_RENDER], list):
-            log.error(f'Application parameter {const.AppParamsNames.NON_K8S_FILES_TO_RENDER} must be a list')
-            raise InternalError()
-
-          if any(resource.source.startswith(element) for element in app_params[const.AppParamsNames.NON_K8S_FILES_TO_RENDER]):
-            files.append(OutputResource(
-              resource_type=resource.resource_type,
-              data=resource.data,
-              source=resource.source,
-              output_path=os.path.join(get_app_rel_path(ctx.env_name, ctx.app_name), generator.generate_from_source_file())
-            ))
-            continue
-
-        if resource.source and const.AppParamsNames.EXCLUDE_RENDERING in app_params:
-          if not isinstance(app_params[const.AppParamsNames.EXCLUDE_RENDERING], list):
-            log.error(f'Application parameter {const.AppParamsNames.EXCLUDE_RENDERING} must be a list')
-            raise InternalError()
-
-          if any(resource.source.startswith(exclude) for exclude in app_params[const.AppParamsNames.EXCLUDE_RENDERING]):
-            log.debug(f'Excluding file {resource.source}')
-            continue
+      if any(resource.source.startswith(element) for element in app_params.non_k8s_files_to_render):
+        files.append(OutputResource(
+            resource_type=resource.resource_type,
+            data=resource.data,
+            source=resource.source,
+            output_path=os.path.join(get_app_rel_path(ctx.env_name, ctx.app_name), generator.generate_from_source_file())
+        ))
+        continue
 
       try:
         files.append(OutputResource(
