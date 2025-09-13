@@ -1,6 +1,5 @@
 import logging
 import yaml
-from deprecated import deprecated
 
 from make_argocd_fly import const
 from make_argocd_fly.cliparam import get_cli_params
@@ -162,17 +161,6 @@ class Config:
     params = Params()
     params.populate_params(**merge_dicts_with_overrides(global_params, env_params, app_params))
 
-    return params
-
-  def get_app_params_deprecated(self, env_name: str, app_name: str) -> dict:
-    app = self.get_app(env_name, app_name)
-    app_params = {key: value for key, value in app.items() if
-                  (key != const.KEYWORK_VARS) and (key != const.KEYWORK_PARAMS)}
-
-    return self.return_app_params_deprecated(app_params) if app_params else {}
-
-  @deprecated(version='v0.2.15', reason='Application parameters under application definition are deprecated, use scoped `params` keyword instead')
-  def return_app_params_deprecated(self, params: dict) -> dict:
     return params
 
 

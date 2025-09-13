@@ -8,7 +8,6 @@ from abc import ABC, abstractmethod
 from jinja2 import Environment, BaseLoader, FunctionLoader, nodes, StrictUndefined
 from jinja2.ext import Extension
 from markupsafe import Markup
-from deprecated import deprecated
 
 from make_argocd_fly.resource.viewer import ResourceViewer
 from make_argocd_fly.resource.type import ResourceType
@@ -257,140 +256,6 @@ class RawIncludeListExtension(Extension):
     return Markup(''.join(kv_as_yaml_str))
 
 
-class IncludeRawExtension(Extension):
-  tags = {'include_raw'}
-
-  def parse(self, parser):
-    lineno = parser.stream.expect('name:include_raw').lineno
-    template = parser.parse_expression()
-    result = self.call_method('_render', [template], lineno=lineno)
-    return nodes.Output([result], lineno=lineno)
-
-  @deprecated(version='v0.2.15', reason='`include_raw` is deprecated, use `rawinclude` instead')
-  def _render(self, filename):
-    if not self.environment.loader:
-      log.error("Jinja2 environment loader is not set")
-      raise InternalError()
-
-    loaded_template = self.environment.loader.get_source(self.environment, filename)
-    content = loaded_template[0] if loaded_template else ''
-
-    return Markup(content)
-
-
-# This extension is used to output the name of the file as a yaml list
-class IncludeAllAsYamlNamesListExtension(Extension):
-  tags = {'include_all_as_yaml_names_list'}
-
-  def parse(self, parser):
-    lineno = parser.stream.expect('name:include_all_as_yaml_names_list').lineno
-    template = parser.parse_expression()
-    base_path = parser.parse_expression() if parser.stream.skip_if('comma') else None
-    result = self.call_method('_render', [template, base_path], lineno=lineno)
-    return nodes.Output([result], lineno=lineno)
-
-  @deprecated(version='v0.2.15', reason='`include_all_as_yaml_names_list` is deprecated, use `file_list` instead')
-  def _render(self, path: str, base_path: str | None = None) -> str:
-    if not self.environment.loader:
-      log.error("Jinja2 environment loader is not set")
-      raise InternalError()
-
-    base_path = base_path or ''
-    children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
-    yaml_names_as_list = []
-
-    for child in children:
-      if child.name.endswith('.j2'):
-        loaded_template = self.environment.loader.get_rendered(self.environment, child.element_rel_path)
-        child_name = child.name[:-3]
-      else:
-        loaded_template = self.environment.loader.get_source(self.environment, child.element_rel_path)
-        child_name = child.name
-
-      if loaded_template:
-        child_content = loaded_template[0]
-        # if child_content is empty, skip adding it to the yaml
-        if child_content == '':
-          log.debug('No content in ' + child_name + ', not adding to yaml')
-          continue
-
-      yaml_names_as_list.append(f'- {base_path}{child_name}\n')
-
-    return Markup(''.join(yaml_names_as_list))
-
-
-class IncludeAllAsYamlKVExtension(Extension):
-  tags = {'include_all_as_yaml_kv'}
-
-  def parse(self, parser):
-    lineno = parser.stream.expect('name:include_all_as_yaml_kv').lineno
-    template = parser.parse_expression()
-    result = self.call_method('_render', [template], lineno=lineno)
-    return nodes.Output([result], lineno=lineno)
-
-  @deprecated(version='v0.2.15', reason='`include_all_as_yaml_kv` is deprecated, use `include_map` instead')
-  def _render(self, path: str) -> str:
-    if not self.environment.loader:
-      log.error("Jinja2 environment loader is not set")
-      raise InternalError()
-
-    children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
-    kv_as_yaml_str = []
-
-    for child in children:
-      if child.name.endswith('.j2'):
-        loaded_template = self.environment.loader.get_rendered(self.environment, child.element_rel_path)
-        child_name = child.name[:-3]
-      else:
-        loaded_template = self.environment.loader.get_source(self.environment, child.element_rel_path)
-        child_name = child.name
-
-      if loaded_template:
-        child_content = loaded_template[0]
-        # if child_content is empty, skip adding it to the yaml
-        if child_content == '':
-          log.debug('No content in ' + child_name + ', not adding to yaml')
-          continue
-
-        kv_as_yaml_str.append('{}: |\n  {}\n'.format(child_name, re.sub('\n', '\n  ', child_content.strip())))
-
-    return Markup(''.join(kv_as_yaml_str))
-
-
-class IncludeAllAsYamlListExtension(Extension):
-  tags = {'include_all_as_yaml_list'}
-
-  def parse(self, parser):
-    lineno = parser.stream.expect('name:include_all_as_yaml_list').lineno
-    template = parser.parse_expression()
-    result = self.call_method('_render', [template], lineno=lineno)
-    return nodes.Output([result], lineno=lineno)
-
-  @deprecated(version='v0.2.15', reason='`include_all_as_yaml_list` is deprecated, use `include_list` instead')
-  def _render(self, path: str) -> str:
-    if not self.environment.loader:
-      log.error("Jinja2 environment loader is not set")
-      raise InternalError()
-
-    children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
-    kv_as_yaml_str = []
-
-    for child in children:
-      if child.name.endswith('.j2'):
-        loaded_template = self.environment.loader.get_rendered(self.environment, child.element_rel_path)
-      else:
-        loaded_template = self.environment.loader.get_source(self.environment, child.element_rel_path)
-
-      if loaded_template:
-        child_content = loaded_template[0]
-        # if child_content is empty, skip adding it to the yaml
-        if child_content == '':
-          continue
-      kv_as_yaml_str.append('- {}\n'.format(re.sub('\n', '\n  ', child_content.strip())))
-
-    return Markup(''.join(kv_as_yaml_str))
-
-
 # TODO: combine two JinjaRenderer classes
 class JinjaRendererFromViewer(AbstractRenderer):
   file_types = [resource_type for resource_type in ResourceType if
@@ -403,13 +268,9 @@ class JinjaRendererFromViewer(AbstractRenderer):
     self.env = Environment(extensions=[RawIncludeExtension,
                                        FileListExtension,
                                        IncludeMapExtension,
-                                       IncludeRawExtension,
                                        RawIncludeMapExtension,
                                        IncludeListExtension,
                                        RawIncludeListExtension,
-                                       IncludeAllAsYamlNamesListExtension,
-                                       IncludeAllAsYamlKVExtension,
-                                       IncludeAllAsYamlListExtension,
                                        DigExtension,
                                        'jinja2_ansible_filters.AnsibleCoreFiltersExtension'],
                            loader=self.loader,

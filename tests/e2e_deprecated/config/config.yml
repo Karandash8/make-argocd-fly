@@ -2,10 +2,11 @@ envs:
   management:
     apps:
       bootstrap: {}
-      core_deployer: {app_deployer: bootstrap, vars: {argocd: "${argocd_app_presets[default]}"}}
-      service_deployer: {app_deployer: bootstrap, vars: {argocd: {project: default, destination: {namespace: kube-system}}}}
+      core_deployer: {params: {parent_app: bootstrap}, vars: {argocd: "${argocd_app_presets[default]}"}}
+      service_deployer: {params: {parent_app: bootstrap}, vars: {argocd: {project: default, destination: {namespace: kube-system}}}}
       app_1:
-        app_deployer: core_deployer
+        params:
+          parent_app: core_deployer
         vars:
           argocd:
             project: management
@@ -15,7 +16,8 @@ envs:
             destination:
               namespace: kube-default
       app_2:
-        app_deployer: core_deployer
+        params:
+          parent_app: core_deployer
         vars:
           argocd:
             project: management
@@ -33,21 +35,21 @@ envs:
                 jqPathExpressions:
                   - .spec.seLinuxMount
             finalizers: null
-      app_3: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: "${namespace}"}}}}
-      app_4: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
-      app_5: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
-      app_6: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
-      subdirectory/app_7: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
-      subdirectory_2/app_8: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
-      app_9: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
-      app_10: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
-      app_11: {app_deployer: service_deployer, non_k8s_files_to_render: ['values.yml.j2'], vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      app_3: {params: {parent_app: service_deployer}, vars: {argocd: {project: management, destination: {namespace: "${namespace}"}}}}
+      app_4: {params: {parent_app: service_deployer}, vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
+      app_5: {params: {parent_app: service_deployer}, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      app_6: {params: {parent_app: service_deployer}, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      subdirectory/app_7: {params: {parent_app: service_deployer}, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      subdirectory_2/app_8: {params: {parent_app: service_deployer}, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      app_9: {params: {parent_app: service_deployer}, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      app_10: {params: {parent_app: service_deployer}, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      app_11: {params: {parent_app: service_deployer, non_k8s_files_to_render: ['values.yml.j2']}, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
       app_12: {vars: {version: 1.1.1, var_3: value_3, var_4: "${var_3}"}}
-      app_13: {app_deployer: service_deployer, vars: {argocd: {project: management, source: {directory: {recurse: true}}, destination: {namespace: kube-default}}}}
-      app_14: {app_deployer: service_deployer, exclude_rendering: ['testcases','cases'], vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
-      app_15: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
-      app_16: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
-      app_17: {app_deployer: service_deployer, vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
+      app_13: {params: {parent_app: service_deployer}, vars: {argocd: {project: management, source: {directory: {recurse: true}}, destination: {namespace: kube-default}}}}
+      app_14: {params: {parent_app: service_deployer, exclude_rendering: ['testcases','cases']}, vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
+      app_15: {params: {parent_app: service_deployer}, vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
+      app_16: {params: {parent_app: service_deployer}, vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
+      app_17: {params: {parent_app: service_deployer}, vars: {argocd: {project: management, destination: {namespace: kube-default}, ignoreDifferences: "${argocd_ignore_diff}"}}}
     vars:
       argocd:
         destination:
@@ -62,12 +64,12 @@ envs:
   external_1:
     apps:
       bootstrap: {}
-      unused_deployer: {app_deployer: bootstrap, vars: {argocd: {project: default, destination: {namespace: kube-system}}}}
-      app_1: {app_deployer: core_deployer, app_deployer_env: management, vars: {argocd: {project: external_1, destination: {namespace: kube-default}}}}
-      app_2: {app_deployer: core_deployer, app_deployer_env: management, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
-      app_5: {app_deployer: service_deployer, app_deployer_env: management, vars: {argocd: {project: external_1, destination: {namespace: kube-default}}}}
-      subdirectory/app_7: {app_deployer: service_deployer, app_deployer_env: management, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
-      app_9: {app_deployer: service_deployer, app_deployer_env: management, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      unused_deployer: {params: {parent_app: bootstrap}, vars: {argocd: {project: default, destination: {namespace: kube-system}}}}
+      app_1: {params: {parent_app: core_deployer, parent_app_env: management}, vars: {argocd: {project: external_1, destination: {namespace: kube-default}}}}
+      app_2: {params: {parent_app: core_deployer, parent_app_env: management}, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      app_5: {params: {parent_app: service_deployer, parent_app_env: management}, vars: {argocd: {project: external_1, destination: {namespace: kube-default}}}}
+      subdirectory/app_7: {params: {parent_app: service_deployer, parent_app_env: management}, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
+      app_9: {params: {parent_app: service_deployer, parent_app_env: management}, vars: {argocd: {project: management, destination: {namespace: kube-default}}}}
     vars:
       argocd:
         destination:
