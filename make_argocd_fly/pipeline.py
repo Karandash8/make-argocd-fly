@@ -82,7 +82,7 @@ def build_pipeline(ctx: Context, source_path: str) -> Pipeline:
   viewer = ResourceViewer(source_path)
   ctx_set(ctx, 'source.viewer', viewer)
 
-  if params.app_type and params.app_type == ApplicationTypes.K8S:
+  if params.app_type == ApplicationTypes.K8S.value:
     try:
       kustomize_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML],
                                                            name_pattern='kustomization|Kustomization'))
