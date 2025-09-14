@@ -24,7 +24,7 @@ def test_build_pipeline__unknown_app_type(caplog, mocker):
     build_pipeline(ctx, 'non_existing_dir')
 
   assert str(excinfo.value) == 'Config file error'
-  assert f'Unknown application type \'{mock_params.app_type}\' in application {ctx.app_name} in environment {ctx.env_name}' in caplog.text
+  assert f'Unknown application type \'{mock_params.app_type}\' in application {ctx.app_name} in environment {ctx.env_name}. Valid types are: [\'k8s\']' in caplog.text
 
 def test_build_pipeline__create_SimpleApplication(tmp_path, mocker):
   mock_get_config = MagicMock()

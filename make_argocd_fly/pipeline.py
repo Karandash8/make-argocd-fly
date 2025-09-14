@@ -94,5 +94,6 @@ def build_pipeline(ctx: Context, source_path: str) -> Pipeline:
     except ResourceViewerIsFake:
       return build_pipeline_app_of_apps()
   else:
-    log.error(f'Unknown application type \'{params.app_type}\' in application {ctx.app_name} in environment {ctx.env_name}')
+    log.error(f'Unknown application type \'{params.app_type}\' in application {ctx.app_name} in environment {ctx.env_name}.'
+              f' Valid types are: {[t.value for t in ApplicationTypes]}')
     raise ConfigFileError()
