@@ -1,20 +1,14 @@
 import os
-from enum import Enum
 
 
-DEFAULT_ROOT_DIR = os.getcwd()
-DEFAULT_CONFIG_DIR = 'config'
-DEFAULT_SOURCE_DIR = 'source'
-DEFAULT_OUTPUT_DIR = 'output'
-DEFAULT_TMP_DIR = '.tmp'
-DEFAULT_LOG_CONFIG_FILE = 'log_config.yml'
-DEFAULT_VAR_IDENTIFIER = '$'
-DEFAULT_LOGLEVEL = 'INFO'
-
-KEYWORK_ENVS = 'envs'
-KEYWORK_APPS = 'apps'
-KEYWORK_VARS = 'vars'
-KEYWORK_PARAMS = 'params'
+ROOT_DIR = os.getcwd()
+CONFIG_DIR = 'config'
+SOURCE_DIR = 'source'
+OUTPUT_DIR = 'output'
+TMP_DIR = '.tmp'
+LOG_CONFIG_FILE = 'log_config.yml'
+VAR_IDENTIFIER = '$'
+LOGLEVEL = 'INFO'
 
 ARGOCD_APPLICATION_CR_TEMPLATE = '''\
   apiVersion: argoproj.io/v1alpha1
@@ -64,21 +58,3 @@ ARGOCD_DEFAULTS = {
     'namespace': 'argocd',
   },
 }
-
-
-# TODO: should this be an Enum?
-class ParamNames:
-  PARENT_APP = 'parent_app'
-  PARENT_APP_ENV = 'parent_app_env'
-  NON_K8S_FILES_TO_RENDER = 'non_k8s_files_to_render'
-  EXCLUDE_RENDERING = 'exclude_rendering'
-
-  @classmethod
-  def get_names(cls) -> list[str]:
-    return [getattr(cls, attr) for attr in dir(cls) if not attr.startswith('__') and not callable(getattr(cls, attr))]
-
-
-class ApplicationType(Enum):
-  K8S_SIMPLE = 'k8s_simple'
-  K8S_KUSTOMIZE = 'k8s_kustomize'
-  K8S_APP_OF_APPS = 'k8s_app_of_apps'

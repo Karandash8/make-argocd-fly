@@ -3,7 +3,7 @@ import pytest
 import textwrap
 from unittest.mock import MagicMock
 
-from make_argocd_fly.const import ParamNames
+from make_argocd_fly.param import ParamNames
 from make_argocd_fly.stage import GenerateManifestNames, DiscoverK8sAppOfAppsApplication
 from make_argocd_fly.context import Context, ctx_set, ctx_get
 from make_argocd_fly.context.data import Content, Template, OutputResource

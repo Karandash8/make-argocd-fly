@@ -595,11 +595,11 @@ def test_writer_factory__generic():
 def test_writer_factory__unsupported(caplog):
   with pytest.raises(InternalError):
     writer_factory(ResourceType.DIRECTORY)
-  assert 'Cannot write resource of type ResourceType.DIRECTORY' in caplog.text
+  assert 'Cannot write resource of type DIRECTORY' in caplog.text
 
   with pytest.raises(InternalError):
     writer_factory(ResourceType.DOES_NOT_EXIST)
-  assert 'Cannot write resource of type ResourceType.DOES_NOT_EXIST' in caplog.text
+  assert 'Cannot write resource of type DOES_NOT_EXIST' in caplog.text
 
 ##################
 ### GenericWriter
