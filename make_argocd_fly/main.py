@@ -7,7 +7,7 @@ import asyncio
 import subprocess
 import yamllint
 
-from make_argocd_fly import const
+from make_argocd_fly import default
 from make_argocd_fly.warning import init_warnings
 from make_argocd_fly.cliparam import populate_cli_params, get_cli_params
 from make_argocd_fly.config import populate_config, get_config
@@ -17,7 +17,7 @@ from make_argocd_fly.pipeline import build_pipeline
 from make_argocd_fly.context import Context
 
 
-logging.basicConfig(level=const.DEFAULT_LOGLEVEL)
+logging.basicConfig(level=default.LOGLEVEL)
 
 log = logging.getLogger(__name__)
 
@@ -127,22 +127,22 @@ def main(**kwargs) -> None:
 
 def cli_entry_point() -> None:
   parser = argparse.ArgumentParser(prog='make-argocd-fly', description='Render ArgoCD Applications.')
-  parser.add_argument('--root-dir', type=str, default=const.DEFAULT_ROOT_DIR, help='Root directory (default: current directory)')
-  parser.add_argument('--config-dir', type=str, default=const.DEFAULT_CONFIG_DIR, help='Configuration files directory (default: config)')
-  parser.add_argument('--source-dir', type=str, default=const.DEFAULT_SOURCE_DIR, help='Source files directory (default: source)')
-  parser.add_argument('--output-dir', type=str, default=const.DEFAULT_OUTPUT_DIR, help='Output files directory (default: output)')
-  parser.add_argument('--tmp-dir', type=str, default=const.DEFAULT_TMP_DIR, help='Temporary files directory (default: .tmp)')
+  parser.add_argument('--root-dir', type=str, default=default.ROOT_DIR, help='Root directory (default: current directory)')
+  parser.add_argument('--config-dir', type=str, default=default.CONFIG_DIR, help='Configuration files directory (default: config)')
+  parser.add_argument('--source-dir', type=str, default=default.SOURCE_DIR, help='Source files directory (default: source)')
+  parser.add_argument('--output-dir', type=str, default=default.OUTPUT_DIR, help='Output files directory (default: output)')
+  parser.add_argument('--tmp-dir', type=str, default=default.TMP_DIR, help='Temporary files directory (default: .tmp)')
   parser.add_argument('--render-apps', type=str, default=None, help='Comma separate list of applications to render')
   parser.add_argument('--render-envs', type=str, default=None, help='Comma separate list of environments to render')
   parser.add_argument('--skip-generate', action='store_true', help='Skip resource generation')
   parser.add_argument('--preserve-tmp-dir', action='store_true', help='Preserve temporary directory')
   parser.add_argument('--remove-output-dir', action='store_true', help='Remove output directory')
   parser.add_argument('--print-vars', action='store_true', help='Print variables for each application')
-  parser.add_argument('--var-identifier', type=str, default=const.DEFAULT_VAR_IDENTIFIER, help='Variable prefix in configuration files (default: $)')
+  parser.add_argument('--var-identifier', type=str, default=default.VAR_IDENTIFIER, help='Variable prefix in configuration files (default: $)')
   parser.add_argument('--skip-latest-version-check', action='store_true', help='Skip latest version check')
   parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
   parser.add_argument('--kube-linter', action='store_true', help='Run kube-linter against output directory (https://github.com/stackrox/kube-linter)')
-  parser.add_argument('--loglevel', type=str, default=const.DEFAULT_LOGLEVEL, help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
+  parser.add_argument('--loglevel', type=str, default=default.LOGLEVEL, help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
   parser.add_argument('--version', action='version', version=f'{get_package_name()} {get_current_version()}', help='Show version')
   args = parser.parse_args()
 

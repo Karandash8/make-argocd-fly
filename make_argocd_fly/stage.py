@@ -9,7 +9,8 @@ from typing import Protocol
 from make_argocd_fly.context import Context, ctx_get, ctx_set, resolve_expr
 from make_argocd_fly.context.data import Content, Template, OutputResource
 from make_argocd_fly.resource.type import ResourceType
-from make_argocd_fly import const
+from make_argocd_fly import default
+from make_argocd_fly.param import ParamNames
 from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparam import get_cli_params
 from make_argocd_fly.renderer import JinjaRendererFromViewer
@@ -45,7 +46,7 @@ class DiscoverK8sSimpleApplication(Stage):
     viewer = ctx_get(ctx, self.requires['viewer'])
 
     if not isinstance(app_params.exclude_rendering, list):
-      log.error(f'Application parameter {const.ParamNames.EXCLUDE_RENDERING} must be a list')
+      log.error(f'Application parameter {ParamNames.EXCLUDE_RENDERING} must be a list')
       raise InternalError()
 
     ymls = []
@@ -66,8 +67,8 @@ class DiscoverK8sSimpleApplication(Stage):
     viewer_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML], template=True))
 
     extra_vars = {
-      'argocd_application_cr_template': const.ARGOCD_APPLICATION_CR_TEMPLATE,
-      'argocd': const.ARGOCD_DEFAULTS,
+      'argocd_application_cr_template': default.ARGOCD_APPLICATION_CR_TEMPLATE,
+      'argocd': default.ARGOCD_DEFAULTS,
       'env_name': ctx.env_name,
       'app_name': ctx.app_name
     }
@@ -107,7 +108,7 @@ class DiscoverK8sKustomizeApplication(Stage):
     viewer = ctx_get(ctx, self.requires['viewer'])
 
     if not isinstance(app_params.exclude_rendering, list):
-      log.error(f'Application parameter {const.ParamNames.EXCLUDE_RENDERING} must be a list')
+      log.error(f'Application parameter {ParamNames.EXCLUDE_RENDERING} must be a list')
       raise InternalError()
 
     # TODO: this will not work if there is a directory named `base` in addition to the kustomize base
@@ -134,8 +135,8 @@ class DiscoverK8sKustomizeApplication(Stage):
                                                       search_subdirs=search_subdirs))
 
     extra_vars = {
-      'argocd_application_cr_template': const.ARGOCD_APPLICATION_CR_TEMPLATE,
-      'argocd': const.ARGOCD_DEFAULTS,
+      'argocd_application_cr_template': default.ARGOCD_APPLICATION_CR_TEMPLATE,
+      'argocd': default.ARGOCD_DEFAULTS,
       'env_name': ctx.env_name,
       'app_name': ctx.app_name
     }
@@ -208,12 +209,12 @@ class DiscoverK8sAppOfAppsApplication(Stage):
     for env_name, app_name in discovered_apps:
 
       extra_vars = {
-        'argocd_application_cr_template': const.ARGOCD_APPLICATION_CR_TEMPLATE,
+        'argocd_application_cr_template': default.ARGOCD_APPLICATION_CR_TEMPLATE,
         '__application': {
           'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
           'path': os.path.join(os.path.basename(config.output_dir), env_name, app_name)
         },
-        'argocd': const.ARGOCD_DEFAULTS,
+        'argocd': default.ARGOCD_DEFAULTS,
         'env_name': env_name,
         'app_name': app_name
       }
@@ -316,7 +317,7 @@ class GenerateManifestNames(Stage):
       app_params = get_config().get_params(ctx.env_name, ctx.app_name)
 
       if not isinstance(app_params.non_k8s_files_to_render, list):
-        log.error(f'Application parameter {const.ParamNames.NON_K8S_FILES_TO_RENDER} must be a list')
+        log.error(f'Application parameter {ParamNames.NON_K8S_FILES_TO_RENDER} must be a list')
         raise InternalError()
 
       if any(resource.source.startswith(element) for element in app_params.non_k8s_files_to_render):

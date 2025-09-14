@@ -86,7 +86,7 @@ class YamlWriter(AbstractWriter):
 
 def writer_factory(type: ResourceType) -> AbstractWriter:
   if type == ResourceType.DIRECTORY or type == ResourceType.DOES_NOT_EXIST:
-    log.error(f'Cannot write resource of type {type}')
+    log.error(f'Cannot write resource of type {type.name}')
     raise InternalError()
 
   if type == ResourceType.YAML:

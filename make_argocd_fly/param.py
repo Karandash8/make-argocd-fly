@@ -1,13 +1,30 @@
 import logging
+from enum import StrEnum, auto
 
 from make_argocd_fly.exception import ConfigFileError
-from make_argocd_fly.const import ParamNames
 
 log = logging.getLogger(__name__)
 
 
+class ApplicationTypes(StrEnum):
+  K8S = auto()
+
+
+class ParamNames(StrEnum):
+  APP_TYPE = auto()
+  PARENT_APP = auto()
+  PARENT_APP_ENV = auto()
+  NON_K8S_FILES_TO_RENDER = auto()
+  EXCLUDE_RENDERING = auto()
+
+  @classmethod
+  def get_values(cls):
+      return list(map(lambda c: c.value, cls))
+
+
 class Params:
   def __init__(self) -> None:
+    self.app_type = ApplicationTypes.K8S.value
     self.parent_app = None
     self.parent_app_env = None
     self.non_k8s_files_to_render = []
@@ -15,7 +32,7 @@ class Params:
 
   def populate_params(self, **kwargs) -> None:
     for param in kwargs:
-      if param not in ParamNames.get_names():
+      if param not in ParamNames.get_values():
         log.error(f'Unknown parameter "{param}" in Params')
         raise ConfigFileError()
 

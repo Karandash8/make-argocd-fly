@@ -1,8 +1,8 @@
-from enum import Enum
+from enum import StrEnum, auto
 
 
-class ResourceType(Enum):
-  YAML = "yaml"
-  UNKNOWN = "unknown"
-  DIRECTORY = "directory"
-  DOES_NOT_EXIST = "does_not_exist"
+class ResourceType(StrEnum):
+  YAML = auto()
+  UNKNOWN = auto()
+  DIRECTORY = auto()
+  DOES_NOT_EXIST = auto()

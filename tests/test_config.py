@@ -2,7 +2,7 @@ import pytest
 import textwrap
 from unittest.mock import MagicMock
 
-from make_argocd_fly.config import populate_config, get_config, Config
+from make_argocd_fly.config import populate_config, get_config, Config, ConfigKeywords
 from make_argocd_fly.exception import ConfigFileError, InternalError
 from make_argocd_fly.util import check_lists_equal
 
@@ -335,12 +335,12 @@ def test_Config___get_global_scope__config_not_populated(tmp_path, caplog):
   config = Config()
 
   with pytest.raises(InternalError):
-    config._get_global_scope('scope')
+    config._get_global_scope(ConfigKeywords.VARS)
   assert 'Config is not populated' in caplog.text
 
 def test_Config___get_global_scope__valid_config(tmp_path):
   CONFIG = '''\
-    scope:
+    vars:
       test: var
       test2: var
     '''
@@ -357,11 +357,11 @@ def test_Config___get_global_scope__valid_config(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config._get_global_scope('scope') == {'test': 'var', 'test2': 'var'}
+  assert config._get_global_scope(ConfigKeywords.VARS) == {'test': 'var', 'test2': 'var'}
 
 def test_Config___get_global_scope__not_valid_config(tmp_path):
   CONFIG = '''\
-    not_scope:
+    not_vars:
       test: var
       test2: var
     '''
@@ -378,7 +378,7 @@ def test_Config___get_global_scope__not_valid_config(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config._get_global_scope('scope') == {}
+  assert config._get_global_scope(ConfigKeywords.VARS) == {}
 
 ##################
 ### Config._get_env_scope
@@ -388,11 +388,11 @@ def test_Config___get_env_scope__valid_config(tmp_path):
   CONFIG = '''\
     envs:
       test_env:
-        scope:
+        vars:
           test: var
           test2: var
       test_env2:
-        scope:
+        vars:
           test3: var
           test4: var
     '''
@@ -409,8 +409,8 @@ def test_Config___get_env_scope__valid_config(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config._get_env_scope('scope', 'test_env') == {'test': 'var', 'test2': 'var'}
-  assert config._get_env_scope('scope', 'test_env2') == {'test3': 'var', 'test4': 'var'}
+  assert config._get_env_scope(ConfigKeywords.VARS, 'test_env') == {'test': 'var', 'test2': 'var'}
+  assert config._get_env_scope(ConfigKeywords.VARS, 'test_env2') == {'test3': 'var', 'test4': 'var'}
 
 def test_Config___get_env_scope__undefined_scope(tmp_path):
   CONFIG = '''\
@@ -430,7 +430,7 @@ def test_Config___get_env_scope__undefined_scope(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config._get_env_scope('scope', 'test_env') == {}
+  assert config._get_env_scope(ConfigKeywords.VARS, 'test_env') == {}
 
 def test_Config___get_env_scope__missing_env(tmp_path):
   CONFIG = '''\
@@ -451,7 +451,7 @@ def test_Config___get_env_scope__missing_env(tmp_path):
   config = populate_config(root_dir=root_dir)
 
   with pytest.raises(ConfigFileError):
-    config._get_env_scope('scope', 'test_env2')
+    config._get_env_scope(ConfigKeywords.VARS, 'test_env2')
 
 ##################
 ### Config._get_app_scope
@@ -463,7 +463,7 @@ def test_Config___get_app_scope__valid_config(tmp_path):
       test_env:
         apps:
           test_app:
-            scope:
+            vars:
               test: var
               test2: var
     '''
@@ -480,7 +480,7 @@ def test_Config___get_app_scope__valid_config(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config._get_app_scope('scope', 'test_env', 'test_app') == {'test': 'var', 'test2': 'var'}
+  assert config._get_app_scope(ConfigKeywords.VARS, 'test_env', 'test_app') == {'test': 'var', 'test2': 'var'}
 
 def test_Config___get_app_scope__missing_env(tmp_path):
   CONFIG = '''\
@@ -501,7 +501,7 @@ def test_Config___get_app_scope__missing_env(tmp_path):
   config = populate_config(root_dir=root_dir)
 
   with pytest.raises(ConfigFileError):
-    config._get_app_scope('scope', 'test_env2', 'test_app')
+    config._get_app_scope(ConfigKeywords.VARS, 'test_env2', 'test_app')
 
 def test_Config___get_app_scope__undefined_apps(tmp_path):
   CONFIG = '''\
@@ -522,7 +522,7 @@ def test_Config___get_app_scope__undefined_apps(tmp_path):
   config = populate_config(root_dir=root_dir)
 
   with pytest.raises(ConfigFileError):
-    config._get_app_scope('scope', 'test_env', 'test_app')
+    config._get_app_scope(ConfigKeywords.VARS, 'test_env', 'test_app')
 
 def test_Config___get_app_scope__missing_app(tmp_path, caplog):
   CONFIG = '''\
@@ -545,7 +545,7 @@ def test_Config___get_app_scope__missing_app(tmp_path, caplog):
   config = populate_config(root_dir=root_dir)
 
   with pytest.raises(ConfigFileError):
-    config._get_app_scope('scope', 'test_env', 'test_app2')
+    config._get_app_scope(ConfigKeywords.VARS, 'test_env', 'test_app2')
   assert 'Application test_app2 is not defined in environment test_env' in caplog.text
 
 def test_Config___get_app_scope__undefined_vars(tmp_path):
@@ -568,7 +568,7 @@ def test_Config___get_app_scope__undefined_vars(tmp_path):
 
   config = populate_config(root_dir=root_dir)
 
-  assert config._get_app_scope('scope', 'test_env', 'test_app') == {}
+  assert config._get_app_scope(ConfigKeywords.VARS, 'test_env', 'test_app') == {}
 
 ##################
 ### Config.get_vars

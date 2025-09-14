@@ -1,6 +1,6 @@
 import logging
 
-from make_argocd_fly import const
+from make_argocd_fly import default
 
 
 log = logging.getLogger(__name__)
@@ -8,22 +8,22 @@ log = logging.getLogger(__name__)
 
 class CLIParams:
   def __init__(self) -> None:
-    self.root_dir = const.DEFAULT_ROOT_DIR
-    self.config_dir = const.DEFAULT_CONFIG_DIR
-    self.source_dir = const.DEFAULT_SOURCE_DIR
-    self.output_dir = const.DEFAULT_OUTPUT_DIR
-    self.tmp_dir = const.DEFAULT_TMP_DIR
+    self.root_dir = default.ROOT_DIR
+    self.config_dir = default.CONFIG_DIR
+    self.source_dir = default.SOURCE_DIR
+    self.output_dir = default.OUTPUT_DIR
+    self.tmp_dir = default.TMP_DIR
     self.render_apps = None
     self.render_envs = None
     self.skip_generate = False
     self.preserve_tmp_dir = False
     self.remove_output_dir = False
     self.print_vars = False
-    self.var_identifier = const.DEFAULT_VAR_IDENTIFIER
+    self.var_identifier = default.VAR_IDENTIFIER
     self.skip_latest_version_check = False
     self.yaml_linter = False
     self.kube_linter = False
-    self.loglevel = const.DEFAULT_LOGLEVEL
+    self.loglevel = default.LOGLEVEL
 
   def populate_cli_params(self, **kwargs) -> None:
     self.__dict__.update(kwargs)

@@ -1,10 +1,12 @@
 import logging
 import time
+from enum import StrEnum, auto
 
 from make_argocd_fly.context import Context, ctx_set
-from make_argocd_fly.const import ApplicationType
 from make_argocd_fly.stage import Stage
-from make_argocd_fly.exception import ResourceViewerIsFake
+from make_argocd_fly.config import get_config
+from make_argocd_fly.param import ApplicationTypes
+from make_argocd_fly.exception import ResourceViewerIsFake, ConfigFileError
 from make_argocd_fly.resource.type import ResourceType
 from make_argocd_fly.resource.viewer import ResourceViewer
 from make_argocd_fly.stage import (DiscoverK8sSimpleApplication, DiscoverK8sKustomizeApplication, DiscoverK8sAppOfAppsApplication, RenderTemplates,
@@ -13,8 +15,14 @@ from make_argocd_fly.stage import (DiscoverK8sSimpleApplication, DiscoverK8sKust
 log = logging.getLogger(__name__)
 
 
+class PipelineType(StrEnum):
+  K8S_SIMPLE = auto()
+  K8S_KUSTOMIZE = auto()
+  K8S_APP_OF_APPS = auto()
+
+
 class Pipeline:
-  def __init__(self, type: ApplicationType, stages: list[Stage]):
+  def __init__(self, type: PipelineType, stages: list[Stage]):
     self.type = type
     self.stages = stages
 
@@ -40,7 +48,7 @@ def build_pipeline_k8s_simple() -> Pipeline:
             GenerateManifestNames(requires={'content': 'manifest.content'}, provides={'files': 'output.files'}),
             WriteYamls(requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
 
-  return Pipeline(ApplicationType.K8S_SIMPLE, stages)
+  return Pipeline(PipelineType.K8S_SIMPLE, stages)
 
 
 def build_pipeline_k8s_kustomize() -> Pipeline:
@@ -54,7 +62,7 @@ def build_pipeline_k8s_kustomize() -> Pipeline:
             GenerateManifestNames(requires={'content': 'manifest.content'}, provides={'files': 'output.files'}),
             WriteYamls(requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
 
-  return Pipeline(ApplicationType.K8S_KUSTOMIZE, stages)
+  return Pipeline(PipelineType.K8S_KUSTOMIZE, stages)
 
 
 def build_pipeline_app_of_apps() -> Pipeline:
@@ -64,20 +72,27 @@ def build_pipeline_app_of_apps() -> Pipeline:
             GenerateManifestNames(requires={'content': 'manifest.content'}, provides={'files': 'output.files'}),
             WriteYamls(requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
 
-  return Pipeline(ApplicationType.K8S_APP_OF_APPS, stages)
+  return Pipeline(PipelineType.K8S_APP_OF_APPS, stages)
 
 
 def build_pipeline(ctx: Context, source_path: str) -> Pipeline:
+  config = get_config()
+  params = config.get_params(ctx.env_name, ctx.app_name)
+
   viewer = ResourceViewer(source_path)
   ctx_set(ctx, 'source.viewer', viewer)
 
-  try:
-    kustomize_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML],
-                                                         name_pattern='kustomization|Kustomization'))
+  if params.app_type and params.app_type == ApplicationTypes.K8S:
+    try:
+      kustomize_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML],
+                                                           name_pattern='kustomization|Kustomization'))
 
-    if kustomize_children:
-      return build_pipeline_k8s_kustomize()
-    else:
-      return build_pipeline_k8s_simple()
-  except ResourceViewerIsFake:
-    return build_pipeline_app_of_apps()
+      if kustomize_children:
+        return build_pipeline_k8s_kustomize()
+      else:
+        return build_pipeline_k8s_simple()
+    except ResourceViewerIsFake:
+      return build_pipeline_app_of_apps()
+  else:
+    log.error(f'Unknown application type \'{params.app_type}\' in application {ctx.app_name} in environment {ctx.env_name}')
+    raise ConfigFileError()
