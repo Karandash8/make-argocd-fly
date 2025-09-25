@@ -1,0 +1,15 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: unused-deployer-external-1-override
+  namespace: argocd-override
+spec:
+  project: default-override
+  source:
+    repoURL: url-override
+    targetRevision: revision-override
+    path: output/external_1/unused_deployer-override
+  destination:
+    server: external_1-api-server-override
+    namespace: kube-system-override

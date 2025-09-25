@@ -1,9 +1,7 @@
 import os
 import pytest
-from make_argocd_fly.resource.viewer import ResourceViewer, get_resource_params
-from make_argocd_fly.resource.type import ResourceType
-from make_argocd_fly.context.data import OutputResource
-from make_argocd_fly.resource.persistence import ResourcePersistence, writer_factory, GenericWriter, YamlWriter
+from make_argocd_fly.resource.viewer import ResourceViewer, get_resource_params, ResourceType
+from make_argocd_fly.resource.writer import resources_based_writer_factory, GenericWriter, YamlWriter
 from make_argocd_fly.exception import InternalError
 from make_argocd_fly.util import check_lists_equal
 
@@ -495,110 +493,22 @@ def test_ResourceViewer__search_subresources__by_depth(tmp_path):
   assert check_lists_equal([(res.name, res.content, res.resource_type, res.template) for res in depth_resources], [])
 
 ##################
-### ResourcePersistence
+### resources_based_writer_factory
 ##################
 
-def test_ResourceWriter__with_default_values(tmp_path):
-  dir_output = tmp_path / 'dir_output'
-  dir_output.mkdir()
-  resource_writer = ResourcePersistence(str(dir_output), 'env', 'app')
+def test_resources_based_writer_factory__yaml():
+  assert isinstance(resources_based_writer_factory(ResourceType.YAML), YamlWriter)
 
-  assert resource_writer.output_dir_abs_path == str(dir_output)
-  assert resource_writer.resources == {}
+def test_resources_based_writer_factory__generic():
+  assert isinstance(resources_based_writer_factory(ResourceType.UNKNOWN), GenericWriter)
 
-##################
-### ResourcePersistence.store_resource()
-##################
-
-def test_ResourceWriter__store_resource__multiple(tmp_path):
-  dir_output = tmp_path / 'dir_output'
-  dir_output.mkdir()
-  env_name = 'env'
-  app_name = 'app'
-  resource_writer = ResourcePersistence(str(dir_output), env_name, app_name)
-
-  resource_1 = OutputResource(
-      resource_type=ResourceType.YAML,
-      data='resource body 1',
-      source='/a/b/c',
-      output_path='/a/b/c'
-  )
-  resource_2 = OutputResource(
-      resource_type=ResourceType.YAML,
-      data='resource body 2',
-      source='/a/b/d',
-      output_path='/a/b/d'
-  )
-  resource_3 = OutputResource(
-      resource_type=ResourceType.YAML,
-      data='resource body 3',
-      source='/a/b/e',
-      output_path='/a/b/e'
-  )
-  resource_writer.store_resource(resource_1)
-  resource_writer.store_resource(resource_2)
-  resource_writer.store_resource(resource_3)
-
-  assert resource_writer.resources == {'/a/b/c': resource_1,
-                                        '/a/b/d': resource_2,
-                                        '/a/b/e': resource_3}
-
-def test_ResourceWriter__store_resource__duplicate(tmp_path, caplog):
-  dir_output = tmp_path / 'dir_output'
-  dir_output.mkdir()
-  env_name = 'env'
-  app_name = 'app'
-  resource_writer = ResourcePersistence(str(dir_output), env_name, app_name)
-
-  resource_writer.store_resource(OutputResource(
-      resource_type=ResourceType.YAML,
-      data='resource body 1',
-      source='/a/b/c',
-      output_path='/a/b/c'
-  ))
+def test_resources_based_writer_factory__unsupported(caplog):
   with pytest.raises(InternalError):
-      resource_writer.store_resource(OutputResource(
-          resource_type=ResourceType.YAML,
-          data='resource body 1',
-          source='/a/b/c',
-          output_path='/a/b/c'
-      ))
-  assert 'Resource (/a/b/c) already exists' in caplog.text
-
-def test_ResourceWriter__store_resource__undefined_dir_rel_path(tmp_path, caplog):
-  dir_output = tmp_path / 'dir_output'
-  dir_output.mkdir()
-  env_name = 'env'
-  app_name = 'app'
-  resource_writer = ResourcePersistence(str(dir_output), env_name, app_name)
-
-  with pytest.raises(InternalError):
-    resource_writer.store_resource(OutputResource(
-        resource_type=ResourceType.YAML,
-        data='resource body 1',
-        source='/a/b/c',
-        output_path=''
-    ))
-  assert 'Parameter `output_path` is not set for resource' in caplog.text
-
-
-##################
-### writer_factory
-##################
-
-def test_writer_factory__yaml():
-  assert isinstance(writer_factory(ResourceType.YAML), YamlWriter)
-
-def test_writer_factory__generic():
-  assert isinstance(writer_factory(ResourceType.UNKNOWN), GenericWriter)
-
-def test_writer_factory__unsupported(caplog):
-  with pytest.raises(InternalError):
-    writer_factory(ResourceType.DIRECTORY)
+    resources_based_writer_factory(ResourceType.DIRECTORY)
   assert 'Cannot write resource of type DIRECTORY' in caplog.text
 
   with pytest.raises(InternalError):
-    writer_factory(ResourceType.DOES_NOT_EXIST)
+    resources_based_writer_factory(ResourceType.DOES_NOT_EXIST)
   assert 'Cannot write resource of type DOES_NOT_EXIST' in caplog.text
 
 ##################

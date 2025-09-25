@@ -1,0 +1,10 @@
+envs:
+  infra:
+    apps:
+      infra/random_app:
+        params:
+          app_type: generic
+        vars:
+          content: infrastructure
+    vars:
+      env_var: infra_var

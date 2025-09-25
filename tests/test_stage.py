@@ -1,16 +1,48 @@
 import logging
 import pytest
 import textwrap
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, PropertyMock
 
 from make_argocd_fly.param import ParamNames
-from make_argocd_fly.stage import GenerateManifestNames, DiscoverK8sAppOfAppsApplication
+from make_argocd_fly import default
+from make_argocd_fly.stage import GenerateManifestNames, DiscoverK8sAppOfAppsApplication, WriteOnDisk, \
+  _resolve_template_vars
 from make_argocd_fly.context import Context, ctx_set, ctx_get
 from make_argocd_fly.context.data import Content, Template, OutputResource
-from make_argocd_fly.resource.type import ResourceType
+from make_argocd_fly.resource.viewer import ResourceType
 from make_argocd_fly.config import populate_config
 from make_argocd_fly.util import check_lists_equal
 from make_argocd_fly.exception import InternalError
+
+###################
+### _resolve_template_vars
+###################
+
+def test__resolve_template_vars__no_vars(mocker):
+  output_dir = '/output/dir'
+  global_vars_return_value = {}
+  env_vars_return_value = {}
+  app_vars_return_value = {}
+  env_name = 'env1'
+  app_name = 'app1'
+
+  expected_vars = {
+    'argocd_application_cr_template': default.ARGOCD_APPLICATION_CR_TEMPLATE,
+    '__application': {
+      'application_name': 'app1-env1',
+      'path': 'dir/env1/app1',
+    },
+    'argocd': default.ARGOCD_DEFAULTS,
+    'env_name': env_name,
+    'app_name': app_name,
+  }
+
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config.output_dir', new_callable=PropertyMock, return_value=output_dir)
+
+  assert _resolve_template_vars(env_name, app_name) == expected_vars
 
 ###################
 ### DiscoverK8sAppOfAppsApplication
@@ -160,14 +192,14 @@ async def test_DiscoverK8sAppOfAppsApplication__run__multiple_apps_different_env
 ###################
 
 @pytest.fixture
-def stage():
+def stage_generate_manifest_names():
   requires = {'content': 'ns1.content'}
   provides = {'files': 'ns2.files'}
 
   return GenerateManifestNames(requires=requires, provides=provides)
 
 @pytest.mark.asyncio
-async def test_GenerateManifestNames__from_yaml_simple(stage, mocker):
+async def test_GenerateManifestNames__from_yaml_simple(stage_generate_manifest_names, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_params = MagicMock()
@@ -194,7 +226,7 @@ async def test_GenerateManifestNames__from_yaml_simple(stage, mocker):
   )
 
   ctx_set(ctx, 'ns1.content', [output_resource])
-  await stage.run(ctx)
+  await stage_generate_manifest_names.run(ctx)
   output_resources = ctx_get(ctx, 'ns2.files')
 
   assert isinstance(output_resources, list)
@@ -204,7 +236,7 @@ async def test_GenerateManifestNames__from_yaml_simple(stage, mocker):
   mock_config.get_params.assert_called_once_with(env_name, app_name)
 
 @pytest.mark.asyncio
-async def test_GenerateManifestNames__non_k8s_files_to_render(stage, mocker):
+async def test_GenerateManifestNames__non_k8s_files_to_render(stage_generate_manifest_names, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_params = MagicMock()
@@ -227,7 +259,7 @@ async def test_GenerateManifestNames__non_k8s_files_to_render(stage, mocker):
   )
 
   ctx_set(ctx, 'ns1.content', [output_resource])
-  await stage.run(ctx)
+  await stage_generate_manifest_names.run(ctx)
   output_resources = ctx_get(ctx, 'ns2.files')
 
   assert isinstance(output_resources, list)
@@ -237,7 +269,7 @@ async def test_GenerateManifestNames__non_k8s_files_to_render(stage, mocker):
   mock_config.get_params.assert_called_once_with(env_name, app_name)
 
 @pytest.mark.asyncio
-async def test_GenerateManifestNames__non_k8s_files_to_render_as_j2(stage, mocker):
+async def test_GenerateManifestNames__non_k8s_files_to_render_as_j2(stage_generate_manifest_names, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_params = MagicMock()
@@ -260,7 +292,7 @@ async def test_GenerateManifestNames__non_k8s_files_to_render_as_j2(stage, mocke
   )
 
   ctx_set(ctx, 'ns1.content', [output_resource])
-  await stage.run(ctx)
+  await stage_generate_manifest_names.run(ctx)
   output_resources = ctx_get(ctx, 'ns2.files')
 
   assert isinstance(output_resources, list)
@@ -270,7 +302,7 @@ async def test_GenerateManifestNames__non_k8s_files_to_render_as_j2(stage, mocke
   mock_config.get_params.assert_called_once_with(env_name, app_name)
 
 @pytest.mark.asyncio
-async def test_GenerateManifestNames__non_k8s_files_to_render_not_in_the_list(stage, mocker, caplog):
+async def test_GenerateManifestNames__non_k8s_files_to_render_not_in_the_list(stage_generate_manifest_names, mocker, caplog):
   caplog.set_level(logging.DEBUG)
   mock_get_config = MagicMock()
   mock_config = MagicMock()
@@ -294,7 +326,7 @@ async def test_GenerateManifestNames__non_k8s_files_to_render_not_in_the_list(st
   )
 
   ctx_set(ctx, 'ns1.content', [output_resource])
-  await stage.run(ctx)
+  await stage_generate_manifest_names.run(ctx)
   output_resources = ctx_get(ctx, 'ns2.files')
 
   assert isinstance(output_resources, list)
@@ -303,7 +335,7 @@ async def test_GenerateManifestNames__non_k8s_files_to_render_not_in_the_list(st
   mock_config.get_params.assert_called_once_with(env_name, app_name)
 
 @pytest.mark.asyncio
-async def test_GenerateManifestNames__non_k8s_files_to_render_as_dir(stage, mocker):
+async def test_GenerateManifestNames__non_k8s_files_to_render_as_dir(stage_generate_manifest_names, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_params = MagicMock()
@@ -329,7 +361,7 @@ async def test_GenerateManifestNames__non_k8s_files_to_render_as_dir(stage, mock
   )
 
   ctx_set(ctx, 'ns1.content', [output_resource])
-  await stage.run(ctx)
+  await stage_generate_manifest_names.run(ctx)
   output_resources = ctx_get(ctx, 'ns2.files')
 
   assert isinstance(output_resources, list)
@@ -339,7 +371,7 @@ async def test_GenerateManifestNames__non_k8s_files_to_render_as_dir(stage, mock
   mock_config.get_params.assert_called_once_with(env_name, app_name)
 
 @pytest.mark.asyncio
-async def test_GenerateManifestNames__non_k8s_files_to_render_as_dir_2(stage, mocker):
+async def test_GenerateManifestNames__non_k8s_files_to_render_as_dir_2(stage_generate_manifest_names, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_params = MagicMock()
@@ -362,7 +394,7 @@ async def test_GenerateManifestNames__non_k8s_files_to_render_as_dir_2(stage, mo
   )
 
   ctx_set(ctx, 'ns1.content', [output_resource])
-  await stage.run(ctx)
+  await stage_generate_manifest_names.run(ctx)
   output_resources = ctx_get(ctx, 'ns2.files')
 
   assert isinstance(output_resources, list)
@@ -372,7 +404,7 @@ async def test_GenerateManifestNames__non_k8s_files_to_render_as_dir_2(stage, mo
   mock_config.get_params.assert_called_once_with(env_name, app_name)
 
 @pytest.mark.asyncio
-async def test_GenerateManifestNames__non_k8s_files_to_render_as_str(stage, mocker, caplog):
+async def test_GenerateManifestNames__non_k8s_files_to_render_as_str(stage_generate_manifest_names, mocker, caplog):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
   mock_params = MagicMock()
@@ -396,7 +428,37 @@ async def test_GenerateManifestNames__non_k8s_files_to_render_as_str(stage, mock
 
   ctx_set(ctx, 'ns1.content', [output_resource])
   with pytest.raises(InternalError):
-    await stage.run(ctx)
+    await stage_generate_manifest_names.run(ctx)
 
   assert f'Application parameter {ParamNames.NON_K8S_FILES_TO_RENDER} must be a list' in caplog.text
   mock_config.get_params.assert_called_once_with(env_name, app_name)
+
+###################
+### WriteOnDisk
+###################
+
+@pytest.fixture
+def stage_write_on_disk():
+  requires = {'files': 'ns1.files', 'output_dir': 'ns2.output_dir'}
+  return WriteOnDisk(requires=requires)
+
+@pytest.mark.asyncio
+async def test_WriteOnDisk___write_no_duplicates(stage_write_on_disk):
+  writer = MagicMock()
+
+  await stage_write_on_disk._write(writer, '/output/dir', 'my_env', 'my_app', OutputResource(ResourceType.YAML, 'data', 'source', 'path/file1.txt'))
+  await stage_write_on_disk._write(writer, '/output/dir', 'my_env', 'my_app', OutputResource(ResourceType.YAML, 'data', 'source', 'path/file2.txt'))
+  await stage_write_on_disk._write(writer, '/output/dir', 'my_env', 'my_app', OutputResource(ResourceType.YAML, 'data', 'source', 'path/file3.txt'))
+
+  assert writer.write.call_count == 3
+
+@pytest.mark.asyncio
+async def test_WriteOnDisk___write_with_duplicates(stage_write_on_disk):
+  writer = MagicMock()
+
+  await stage_write_on_disk._write(writer, '/output/dir', 'my_env', 'my_app', OutputResource(ResourceType.YAML, 'data', 'source', 'path/file1.txt'))
+  await stage_write_on_disk._write(writer, '/output/dir', 'my_env', 'my_app', OutputResource(ResourceType.YAML, 'data', 'source', 'path/file2.txt'))
+  with pytest.raises(InternalError):
+    await stage_write_on_disk._write(writer, '/output/dir', 'my_env', 'my_app', OutputResource(ResourceType.YAML, 'data', 'source', 'path/file1.txt'))
+
+  assert writer.write.call_count == 2
