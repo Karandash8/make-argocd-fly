@@ -2,8 +2,6 @@ import pytest
 import textwrap
 from unittest.mock import MagicMock
 
-from pytest_mock import mocker
-
 from make_argocd_fly.config import populate_config, get_config, Config, ConfigKeywords
 from make_argocd_fly.exception import ConfigFileError, InternalError
 from make_argocd_fly.util import check_lists_equal
