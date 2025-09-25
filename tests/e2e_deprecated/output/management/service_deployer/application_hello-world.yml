@@ -1,0 +1,17 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hello-world
+  namespace: argocd
+spec:
+  project: default
+  source:
+    chart: hello-world
+    repoURL: https://helm.github.io/examples
+    targetRevision: 0.1.0
+    helm:
+      releaseName: hello-world
+  destination:
+    server: external_1-api-server
+    namespace: argocd

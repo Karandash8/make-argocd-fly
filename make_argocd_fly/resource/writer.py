@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 import logging
 import os
-import asyncio
 import yaml
 import yaml.composer
 import yaml.parser
@@ -15,8 +14,8 @@ except ImportError:
   from yaml import SafeLoader
 
 from make_argocd_fly.exception import InternalError, YamlError
-from make_argocd_fly.resource.type import ResourceType
-from make_argocd_fly.context.data import OutputResource
+from make_argocd_fly.resource.viewer import ResourceType
+from make_argocd_fly.param import ApplicationTypes
 
 log = logging.getLogger(__name__)
 
@@ -84,7 +83,7 @@ class YamlWriter(AbstractWriter):
                 explicit_start=True)
 
 
-def writer_factory(type: ResourceType) -> AbstractWriter:
+def resources_based_writer_factory(type: ResourceType) -> AbstractWriter:
   if type == ResourceType.DIRECTORY or type == ResourceType.DOES_NOT_EXIST:
     log.error(f'Cannot write resource of type {type.name}')
     raise InternalError()
@@ -95,34 +94,8 @@ def writer_factory(type: ResourceType) -> AbstractWriter:
     return GenericWriter()
 
 
-class ResourcePersistence:
-  def __init__(self, output_dir_abs_path: str, env_name: str, app_name: str) -> None:
-    self.output_dir_abs_path = output_dir_abs_path
-    self.env_name = env_name
-    self.app_name = app_name
-    self.resources = {}
-
-  def store_resource(self, resource: OutputResource) -> None:
-    if not resource.output_path:
-      log.error('Parameter `output_path` is not set for resource')
-      raise InternalError()
-
-    if resource.output_path in self.resources:
-      log.error(f'Resource ({resource.output_path}) already exists')
-      raise InternalError()
-
-    self.resources[resource.output_path] = resource
-
-  async def _write_resource(self, resource: OutputResource) -> None:
-    writer = writer_factory(resource.resource_type)
-    writer.write(os.path.join(self.output_dir_abs_path, resource.output_path), resource.data, self.env_name, self.app_name, resource.source)
-
-  async def write_resources(self) -> None:
-    try:
-      await asyncio.gather(
-        *[asyncio.create_task(self._write_resource(resource)) for resource in self.resources.values()]
-      )
-    except Exception as e:
-      for task in asyncio.all_tasks():
-        task.cancel()
-      raise e
+def application_based_writer_factory(app_type: str) -> AbstractWriter:
+  if app_type == ApplicationTypes.K8S.value:
+    return YamlWriter()
+  else:
+    return GenericWriter()

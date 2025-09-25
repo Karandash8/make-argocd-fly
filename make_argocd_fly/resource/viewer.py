@@ -2,11 +2,18 @@ import logging
 import os
 import re
 from typing import Generator
+from enum import StrEnum, auto
 
 from make_argocd_fly.exception import ResourceViewerIsFake
-from make_argocd_fly.resource.type import ResourceType
 
 log = logging.getLogger(__name__)
+
+
+class ResourceType(StrEnum):
+  YAML = auto()
+  UNKNOWN = auto()
+  DIRECTORY = auto()
+  DOES_NOT_EXIST = auto()
 
 
 EXTENSION_MAP = {

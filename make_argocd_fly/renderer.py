@@ -9,8 +9,7 @@ from jinja2 import Environment, BaseLoader, FunctionLoader, nodes, StrictUndefin
 from jinja2.ext import Extension
 from markupsafe import Markup
 
-from make_argocd_fly.resource.viewer import ResourceViewer
-from make_argocd_fly.resource.type import ResourceType
+from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
 from make_argocd_fly.exception import UndefinedTemplateVariableError, MissingFileError, InternalError
 from make_argocd_fly.util import extract_undefined_variable
 
@@ -109,6 +108,7 @@ class FileListExtension(Extension):
     yaml_names_as_list = []
 
     for child in children:
+      # TODO: test for template here instead of checking suffix
       if child.name.endswith('.j2'):
         (source, _, _) = self.environment.loader.get_rendered(self.environment, child.element_rel_path)
         child_name = child.name[:-3]

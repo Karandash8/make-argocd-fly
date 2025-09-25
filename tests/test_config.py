@@ -2,6 +2,8 @@ import pytest
 import textwrap
 from unittest.mock import MagicMock
 
+from pytest_mock import mocker
+
 from make_argocd_fly.config import populate_config, get_config, Config, ConfigKeywords
 from make_argocd_fly.exception import ConfigFileError, InternalError
 from make_argocd_fly.util import check_lists_equal
@@ -579,39 +581,39 @@ def test_Config__get_vars__empty_up_to_global(mocker):
   env_vars_return_value = {}
   app_vars_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
 
-    expected_vars = {}
-    vars = get_config().get_vars()
-    assert vars == expected_vars
+  expected_vars = {}
+  vars = get_config().get_vars()
+  assert vars == expected_vars
 
 def test_Config__get_vars__empty_up_to_env(mocker):
   global_vars_return_value = {}
   env_vars_return_value = {}
   app_vars_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
 
-    expected_vars = {}
-    vars = get_config().get_vars(env_name='test_env')
-    assert vars == expected_vars
+  expected_vars = {}
+  vars = get_config().get_vars(env_name='test_env')
+  assert vars == expected_vars
 
 def test_Config__get_vars__empty_up_to_app(mocker):
   global_vars_return_value = {}
   env_vars_return_value = {}
   app_vars_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
 
-    expected_vars = {}
-    vars = get_config().get_vars(env_name='test_env', app_name='test_app')
-    assert vars == expected_vars
+  expected_vars = {}
+  vars = get_config().get_vars(env_name='test_env', app_name='test_app')
+  assert vars == expected_vars
 
 def test_Config__get_vars__extra_vars(mocker):
   extra_vars = {
@@ -622,16 +624,16 @@ def test_Config__get_vars__extra_vars(mocker):
   env_vars_return_value = {}
   app_vars_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
 
-    expected_vars = {
-      'var1': 'value_extra1',
-      'var2': 'value_extra2'
-    }
-    vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
-    assert vars == expected_vars
+  expected_vars = {
+    'var1': 'value_extra1',
+    'var2': 'value_extra2'
+  }
+  vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+  assert vars == expected_vars
 
 def test_Config__get_vars__global_only(mocker):
   extra_vars = {}
@@ -642,16 +644,16 @@ def test_Config__get_vars__global_only(mocker):
   env_vars_return_value = {}
   app_vars_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
 
-    expected_vars = {
-      'var1': 'value_global1',
-      'var2': 'value_global2'
-    }
-    vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
-    assert vars == expected_vars
+  expected_vars = {
+    'var1': 'value_global1',
+    'var2': 'value_global2'
+  }
+  vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+  assert vars == expected_vars
 
 def test_Config__get_vars__extra_with_global_override(mocker):
   extra_vars = {
@@ -664,16 +666,16 @@ def test_Config__get_vars__extra_with_global_override(mocker):
   env_vars_return_value = {}
   app_vars_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
 
-    expected_vars = {
-      'var1': 'value_global1',
-      'var2': 'value_global2'
-    }
-    vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
-    assert vars == expected_vars
+  expected_vars = {
+    'var1': 'value_global1',
+    'var2': 'value_global2'
+  }
+  vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+  assert vars == expected_vars
 
 def test_Config__get_vars__global_with_env_override(mocker):
   extra_vars = {}
@@ -686,16 +688,16 @@ def test_Config__get_vars__global_with_env_override(mocker):
   }
   app_vars_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
 
-    expected_vars = {
-      'var1': 'value_env1',
-      'var2': 'value_global2'
-    }
-    vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
-    assert vars == expected_vars
+  expected_vars = {
+    'var1': 'value_env1',
+    'var2': 'value_global2'
+  }
+  vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+  assert vars == expected_vars
 
 def test_Config__get_vars__env_with_app_override(mocker):
   extra_vars = {}
@@ -710,16 +712,16 @@ def test_Config__get_vars__env_with_app_override(mocker):
     'var1': 'value_app1'
   }
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
 
-    expected_vars = {
-      'var1': 'value_app1',
-      'var2': 'value_global2'
-    }
-    vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
-    assert vars == expected_vars
+  expected_vars = {
+    'var1': 'value_app1',
+    'var2': 'value_global2'
+  }
+  vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+  assert vars == expected_vars
 
 def test_Config__get_vars__everything(mocker):
   extra_vars = {
@@ -735,18 +737,18 @@ def test_Config__get_vars__everything(mocker):
     'var4': 'value_app4'
   }
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
 
-    expected_vars = {
-      'var1': 'value_extra1',
-      'var2': 'value_global2',
-      'var3': 'value_env3',
-      'var4': 'value_app4'
-    }
-    vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
-    assert vars == expected_vars
+  expected_vars = {
+    'var1': 'value_extra1',
+    'var2': 'value_global2',
+    'var3': 'value_env3',
+    'var4': 'value_app4'
+  }
+  vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+  assert vars == expected_vars
 
 ##################
 ### Config.get_params
@@ -757,45 +759,45 @@ def test_Config__get_params__empty_up_to_global(mocker):
   env_params_return_value = {}
   app_params_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value)
 
-    params = get_config().get_params()
-    assert params.parent_app is None
-    assert params.parent_app_env is None
-    assert check_lists_equal(params.non_k8s_files_to_render, [])
-    assert check_lists_equal(params.exclude_rendering, [])
+  params = get_config().get_params()
+  assert params.parent_app is None
+  assert params.parent_app_env is None
+  assert check_lists_equal(params.non_k8s_files_to_render, [])
+  assert check_lists_equal(params.exclude_rendering, [])
 
 def test_Config__get_params__empty_up_to_env(mocker):
   global_params_return_value = {}
   env_params_return_value = {}
   app_params_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value)
 
-    params = get_config().get_params(env_name='test_env')
-    assert params.parent_app is None
-    assert params.parent_app_env is None
-    assert check_lists_equal(params.non_k8s_files_to_render, [])
-    assert check_lists_equal(params.exclude_rendering, [])
+  params = get_config().get_params(env_name='test_env')
+  assert params.parent_app is None
+  assert params.parent_app_env is None
+  assert check_lists_equal(params.non_k8s_files_to_render, [])
+  assert check_lists_equal(params.exclude_rendering, [])
 
 def test_Config__get_params__empty_up_to_app(mocker):
   global_params_return_value = {}
   env_params_return_value = {}
   app_params_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value)
 
-    params = get_config().get_params(env_name='test_env', app_name='test_app')
-    assert params.parent_app is None
-    assert params.parent_app_env is None
-    assert check_lists_equal(params.non_k8s_files_to_render, [])
-    assert check_lists_equal(params.exclude_rendering, [])
+  params = get_config().get_params(env_name='test_env', app_name='test_app')
+  assert params.parent_app is None
+  assert params.parent_app_env is None
+  assert check_lists_equal(params.non_k8s_files_to_render, [])
+  assert check_lists_equal(params.exclude_rendering, [])
 
 def test_Config__get_params__global_only(mocker):
   global_params_return_value = {'parent_app': 'parent_app_value',
@@ -805,15 +807,15 @@ def test_Config__get_params__global_only(mocker):
   env_params_return_value = {}
   app_params_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value)
 
-    params = get_config().get_params(env_name='test_env', app_name='test_app')
-    assert params.parent_app == 'parent_app_value'
-    assert params.parent_app_env == 'parent_app_env_value'
-    assert check_lists_equal(params.non_k8s_files_to_render, ['file1', 'file2'])
-    assert check_lists_equal(params.exclude_rendering, ['exclude1', 'exclude2'])
+  params = get_config().get_params(env_name='test_env', app_name='test_app')
+  assert params.parent_app == 'parent_app_value'
+  assert params.parent_app_env == 'parent_app_env_value'
+  assert check_lists_equal(params.non_k8s_files_to_render, ['file1', 'file2'])
+  assert check_lists_equal(params.exclude_rendering, ['exclude1', 'exclude2'])
 
 def test_Config__get_params__env_override(mocker):
   global_params_return_value = {'parent_app': 'parent_app_value',
@@ -826,15 +828,15 @@ def test_Config__get_params__env_override(mocker):
                              'exclude_rendering': ['env_exclude1', 'env_exclude2']}
   app_params_return_value = {}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value)
 
-    params = get_config().get_params(env_name='test_env', app_name='test_app')
-    assert params.parent_app == 'env_parent_app_value'
-    assert params.parent_app_env == 'env_parent_app_env_value'
-    assert check_lists_equal(params.non_k8s_files_to_render, ['env_file1', 'env_file2'])
-    assert check_lists_equal(params.exclude_rendering, ['env_exclude1', 'env_exclude2'])
+  params = get_config().get_params(env_name='test_env', app_name='test_app')
+  assert params.parent_app == 'env_parent_app_value'
+  assert params.parent_app_env == 'env_parent_app_env_value'
+  assert check_lists_equal(params.non_k8s_files_to_render, ['env_file1', 'env_file2'])
+  assert check_lists_equal(params.exclude_rendering, ['env_exclude1', 'env_exclude2'])
 
 def test_Config__get_params__app_override(mocker):
   global_params_return_value = {'parent_app': 'parent_app_value',
@@ -850,15 +852,15 @@ def test_Config__get_params__app_override(mocker):
                              'non_k8s_files_to_render': ['app_file1', 'app_file2'],
                              'exclude_rendering': ['app_exclude1', 'app_exclude2']}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value)
 
-    params = get_config().get_params(env_name='test_env', app_name='test_app')
-    assert params.parent_app == 'app_parent_app_value'
-    assert params.parent_app_env == 'app_parent_app_env_value'
-    assert check_lists_equal(params.non_k8s_files_to_render, ['app_file1', 'app_file2'])
-    assert check_lists_equal(params.exclude_rendering, ['app_exclude1', 'app_exclude2'])
+  params = get_config().get_params(env_name='test_env', app_name='test_app')
+  assert params.parent_app == 'app_parent_app_value'
+  assert params.parent_app_env == 'app_parent_app_env_value'
+  assert check_lists_equal(params.non_k8s_files_to_render, ['app_file1', 'app_file2'])
+  assert check_lists_equal(params.exclude_rendering, ['app_exclude1', 'app_exclude2'])
 
 def test_Config__get_params__random(mocker):
   global_params_return_value = {'parent_app': 'parent_app_value',
@@ -868,12 +870,12 @@ def test_Config__get_params__random(mocker):
                              'exclude_rendering': ['env_exclude1', 'env_exclude2']}
   app_params_return_value = {'exclude_rendering': ['app_exclude1', 'app_exclude2']}
 
-  with mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value), \
-       mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value):
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_params_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_params_return_value)
 
-    params = get_config().get_params(env_name='test_env', app_name='test_app')
-    assert params.parent_app == 'parent_app_value'
-    assert params.parent_app_env is None
-    assert check_lists_equal(params.non_k8s_files_to_render, ['env_file1', 'env_file2'])
-    assert check_lists_equal(params.exclude_rendering, ['app_exclude1', 'app_exclude2'])
+  params = get_config().get_params(env_name='test_env', app_name='test_app')
+  assert params.parent_app == 'parent_app_value'
+  assert params.parent_app_env is None
+  assert check_lists_equal(params.non_k8s_files_to_render, ['env_file1', 'env_file2'])
+  assert check_lists_equal(params.exclude_rendering, ['app_exclude1', 'app_exclude2'])

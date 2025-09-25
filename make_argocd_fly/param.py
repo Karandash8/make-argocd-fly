@@ -8,6 +8,7 @@ log = logging.getLogger(__name__)
 
 class ApplicationTypes(StrEnum):
   K8S = auto()
+  GENERIC = auto()
 
 
 class ParamNames(StrEnum):

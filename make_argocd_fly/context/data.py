@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from make_argocd_fly.resource.type import ResourceType
+from make_argocd_fly.resource.viewer import ResourceType
 
 
 @dataclass

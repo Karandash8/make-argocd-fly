@@ -7,10 +7,10 @@ from make_argocd_fly.stage import Stage
 from make_argocd_fly.config import get_config
 from make_argocd_fly.param import ApplicationTypes
 from make_argocd_fly.exception import ResourceViewerIsFake, ConfigFileError
-from make_argocd_fly.resource.type import ResourceType
-from make_argocd_fly.resource.viewer import ResourceViewer
-from make_argocd_fly.stage import (DiscoverK8sSimpleApplication, DiscoverK8sKustomizeApplication, DiscoverK8sAppOfAppsApplication, RenderTemplates,
-                                   SplitManifests, GenerateManifestNames, WriteYamls, KustomizeBuild)
+from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
+from make_argocd_fly.stage import (DiscoverK8sSimpleApplication, DiscoverK8sKustomizeApplication, DiscoverK8sAppOfAppsApplication,
+                                   DiscoverGenericApplication, RenderTemplates, SplitManifests, GenerateManifestNames, GenerateOutputNames,
+                                   WriteOnDisk, KustomizeBuild)
 
 log = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ class PipelineType(StrEnum):
   K8S_SIMPLE = auto()
   K8S_KUSTOMIZE = auto()
   K8S_APP_OF_APPS = auto()
+  GENERIC = auto()
 
 
 class Pipeline:
@@ -46,7 +47,7 @@ def build_pipeline_k8s_simple() -> Pipeline:
             RenderTemplates(),
             SplitManifests(requires={'content': 'discover.content&template.content'}, provides={'content': 'manifest.content'}),
             GenerateManifestNames(requires={'content': 'manifest.content'}, provides={'files': 'output.files'}),
-            WriteYamls(requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
+            WriteOnDisk(requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
 
   return Pipeline(PipelineType.K8S_SIMPLE, stages)
 
@@ -56,11 +57,11 @@ def build_pipeline_k8s_kustomize() -> Pipeline:
             RenderTemplates(),
             SplitManifests(requires={'content': 'discover.content&template.content'}, provides={'content': 'tmp_manifest.content'}),
             GenerateManifestNames(requires={'content': 'tmp_manifest.content'}, provides={'files': 'tmp_output.files'}),
-            WriteYamls(requires={'files': 'tmp_output.files', 'output_dir': 'discover.tmp_dir'}),
+            WriteOnDisk(requires={'files': 'tmp_output.files', 'output_dir': 'discover.tmp_dir'}),
             KustomizeBuild(),
             SplitManifests(requires={'content': 'kustomize.content'}, provides={'content': 'manifest.content'}),
             GenerateManifestNames(requires={'content': 'manifest.content'}, provides={'files': 'output.files'}),
-            WriteYamls(requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
+            WriteOnDisk(requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
 
   return Pipeline(PipelineType.K8S_KUSTOMIZE, stages)
 
@@ -70,9 +71,18 @@ def build_pipeline_app_of_apps() -> Pipeline:
             RenderTemplates(),
             SplitManifests(requires={'content': 'template.content'}, provides={'content': 'manifest.content'}),
             GenerateManifestNames(requires={'content': 'manifest.content'}, provides={'files': 'output.files'}),
-            WriteYamls(requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
+            WriteOnDisk(requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
 
   return Pipeline(PipelineType.K8S_APP_OF_APPS, stages)
+
+
+def build_pipeline_generic() -> Pipeline:
+  stages = [DiscoverGenericApplication(),
+            RenderTemplates(),
+            GenerateOutputNames(requires={'content': 'discover.content&template.content'}, provides={'files': 'output.files'}),
+            WriteOnDisk(requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
+
+  return Pipeline(PipelineType.GENERIC, stages)
 
 
 def build_pipeline(ctx: Context, source_path: str) -> Pipeline:
@@ -93,6 +103,8 @@ def build_pipeline(ctx: Context, source_path: str) -> Pipeline:
         return build_pipeline_k8s_simple()
     except ResourceViewerIsFake:
       return build_pipeline_app_of_apps()
+  if params.app_type == ApplicationTypes.GENERIC.value:
+    return build_pipeline_generic()
   else:
     log.error(f'Unknown application type \'{params.app_type}\' in application {ctx.app_name} in environment {ctx.env_name}.'
               f' Valid types are: {[t.value for t in ApplicationTypes]}')
