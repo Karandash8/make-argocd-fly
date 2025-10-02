@@ -15,11 +15,17 @@ from make_argocd_fly.util import init_logging, latest_version_check, get_package
 from make_argocd_fly.exception import TemplateRenderingError, YamlError, InternalError, ConfigFileError, KustomizeError
 from make_argocd_fly.pipeline import build_pipeline
 from make_argocd_fly.context import Context
+from make_argocd_fly.limits import RuntimeLimits
 
 
 logging.basicConfig(level=default.LOGLEVEL)
 
 log = logging.getLogger(__name__)
+
+
+async def run_one_app(pipeline, ctx, limits: RuntimeLimits):
+  async with limits.app_sem:
+    await pipeline.run(ctx)
 
 
 async def generate() -> None:
@@ -30,6 +36,11 @@ async def generate() -> None:
 
   apps_to_render = render_apps.split(',') if render_apps is not None else []
   envs_to_render = render_envs.split(',') if render_envs is not None else []
+  limits = RuntimeLimits(
+    app_sem=asyncio.Semaphore(cli_params.max_concurrent_apps),
+    subproc_sem=asyncio.Semaphore(cli_params.max_subproc),
+    io_sem=asyncio.Semaphore(cli_params.max_io),
+  )
   apps = []
 
   log.info('Creating applications')
@@ -42,18 +53,12 @@ async def generate() -> None:
         continue
 
       ctx = Context(env_name, app_name)
-      application = build_pipeline(ctx, os.path.join(config.source_dir, app_name))
-      apps.append((application, ctx))
+      pipeline = build_pipeline(ctx, limits, os.path.join(config.source_dir, app_name))
+      apps.append((pipeline, ctx))
 
-  # TODO: convert to TaskGroup
-  # TODO: add throttling with asyncio.Semaphore
-  log.info('Processing applications')
-  try:
-    await asyncio.gather(*[asyncio.create_task(app.run(ctx)) for (app, ctx) in apps])
-  except Exception as e:
-    for task in asyncio.all_tasks():
-      task.cancel()
-    raise e
+  async with asyncio.TaskGroup() as tg:
+    for (pipeline, ctx) in apps:
+      tg.create_task(run_one_app(pipeline, ctx, limits))
 
 
 def run_yamllint() -> None:
@@ -142,6 +147,11 @@ def cli_entry_point() -> None:
   parser.add_argument('--skip-latest-version-check', action='store_true', help='Skip latest version check')
   parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
   parser.add_argument('--kube-linter', action='store_true', help='Run kube-linter against output directory (https://github.com/stackrox/kube-linter)')
+  parser.add_argument('--max-concurrent-apps', type=int, default=default.MAX_CONCURRENT_APPS,
+                      help='Maximum number of applications to render concurrently (default: 8)')
+  parser.add_argument('--max-subproc', type=int, default=default.MAX_SUBPROC,
+                      help='Maximum number of subprocesses to run concurrently (default: number of CPU cores)')
+  parser.add_argument('--max-io', type=int, default=default.MAX_IO, help='Maximum number of I/O operations to run concurrently (default: 32)')
   parser.add_argument('--loglevel', type=str, default=default.LOGLEVEL, help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
   parser.add_argument('--version', action='version', version=f'{get_package_name()} {get_current_version()}', help='Show version')
   args = parser.parse_args()

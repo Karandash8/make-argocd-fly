@@ -9,6 +9,9 @@ TMP_DIR = '.tmp'
 LOG_CONFIG_FILE = 'log_config.yml'
 VAR_IDENTIFIER = '$'
 LOGLEVEL = 'INFO'
+MAX_CONCURRENT_APPS = 8
+MAX_SUBPROC = os.cpu_count() or 4
+MAX_IO = 32
 
 ARGOCD_APPLICATION_CR_TEMPLATE = '''\
   apiVersion: argoproj.io/v1alpha1

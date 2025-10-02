@@ -10,7 +10,7 @@ from make_argocd_fly.context import Context, ctx_get, ctx_set, resolve_expr
 from make_argocd_fly.context.data import Content, Template, OutputResource
 from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
 from make_argocd_fly import default
-from make_argocd_fly.resource.writer import application_based_writer_factory, AbstractWriter
+from make_argocd_fly.resource.writer import AsyncWriterProto, get_async_app_writer
 from make_argocd_fly.param import ParamNames
 from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparam import get_cli_params
@@ -18,6 +18,7 @@ from make_argocd_fly.renderer import JinjaRendererFromViewer
 from make_argocd_fly.exception import UndefinedTemplateVariableError, TemplateRenderingError, InternalError, KustomizeError, \
   MissingFileError, ConfigFileError
 from make_argocd_fly.util import extract_single_resource, FilePathGenerator, get_app_rel_path
+from make_argocd_fly.limits import RuntimeLimits
 
 
 log = logging.getLogger(__name__)
@@ -387,44 +388,44 @@ class WriteOnDisk(Stage):
   name = 'WriteOnDisk'
   provides = {}
 
-  def __init__(self, requires: dict[str, str]) -> None:
+  def __init__(self, limits: RuntimeLimits, requires: dict[str, str]) -> None:
+    self.limits = limits
     self.requires = requires
-    self.written = set()
+    self._written = set()
 
-  async def _write(self, writer: AbstractWriter, output_dir: str, env_name: str, app_name: str, resource: OutputResource) -> None:
-    if resource.output_path in self.written:
-      log.error(f'Resource ({resource.output_path}) already exists')
-      raise InternalError()
-    self.written.add(resource.output_path)
+  async def _write_one(self, writer: AsyncWriterProto, output_dir: str, ctx: Context, resource: OutputResource) -> None:
+    async with self.limits.io_sem:
+      path = os.path.join(output_dir, resource.output_path)
+      if path in self._written:
+        log.error(f"Duplicate output: {path}")
+        raise InternalError()
+      self._written.add(path)
 
-    writer.write(os.path.join(output_dir, resource.output_path), resource.data, env_name, app_name, resource.source)
+      await writer.write_async(path, resource.data, ctx.env_name, ctx.app_name, resource.source)
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
     files = ctx_get(ctx, self.requires['files'])
     output_dir = ctx_get(ctx, self.requires['output_dir'])
-    self.written = set()
-
-    app_params = get_config().get_params(ctx.env_name, ctx.app_name)
-    writer = application_based_writer_factory(app_params.app_type)
+    self._written = set()
+    writer = get_async_app_writer(get_config().get_params(ctx.env_name, ctx.app_name).app_type)
 
     app_output_dir = os.path.join(output_dir, get_app_rel_path(ctx.env_name, ctx.app_name))
     if os.path.exists(app_output_dir):
       shutil.rmtree(app_output_dir)
 
-    tasks = [asyncio.create_task(self._write(writer, output_dir, ctx.env_name, ctx.app_name, resource)) for resource in files]
-    try:
-      await asyncio.gather(*tasks)
-    except Exception:
-      for t in tasks:
-        t.cancel()
-      raise
+    async with asyncio.TaskGroup() as tg:
+      for res in files:
+        tg.create_task(self._write_one(writer, output_dir, ctx, res))
 
 
 class KustomizeBuild(Stage):
   name = 'KustomizeBuild'
   requires = {'kustomize_exec_dir': 'discover.kustomize_exec_dir', 'tmp_dir': 'discover.tmp_dir'}
   provides = {'content': 'kustomize.content'}
+
+  def __init__(self, limits: RuntimeLimits) -> None:
+    self.limits = limits
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
@@ -435,18 +436,19 @@ class KustomizeBuild(Stage):
     retries = 3
 
     for attempt in range(retries):
-      proc = await asyncio.create_subprocess_exec(
-        'kustomize', 'build', '--enable-helm', '.',
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        cwd=dir_path)
+      async with self.limits.subproc_sem:
+        proc = await asyncio.create_subprocess_exec(
+          'kustomize', 'build', '--enable-helm', '.',
+          stdout=asyncio.subprocess.PIPE,
+          stderr=asyncio.subprocess.PIPE,
+          cwd=dir_path)
 
-      stdout, stderr = await proc.communicate()
-      if proc.returncode != 0:
-        log.error(f'Kustomize error: {stderr.decode("utf-8", "ignore")}')
-        log.info(f'Retrying {attempt + 1}/{retries}')
-        continue
-      break
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+          log.error(f'Kustomize error: {stderr.decode("utf-8", "ignore")}')
+          log.info(f'Retrying {attempt + 1}/{retries}')
+          continue
+        break
     else:
       raise KustomizeError(ctx.app_name, ctx.env_name)
 
