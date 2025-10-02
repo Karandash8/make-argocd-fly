@@ -84,10 +84,11 @@ class YamlWriter(AbstractWriter):
       log.debug(f'YAML content:\n{data}')
       raise YamlError(app_name, env_name) from None
 
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, 'w') as f:
       yaml.dump(yaml_resource, f, Dumper=YamlDumper,
                 default_flow_style=False,
                 sort_keys=False,
+                width=4096,
                 allow_unicode=True,
                 explicit_start=True)
 
