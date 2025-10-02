@@ -5,8 +5,10 @@ import yaml
 import yaml.composer
 import yaml.parser
 import yaml.scanner
+import asyncio
 from yaml import SafeDumper
-from typing import Any
+from typing import Protocol, Any
+from dataclasses import dataclass
 
 try:
   from yaml import CSafeLoader as SafeLoader
@@ -49,6 +51,10 @@ def represent_str(dumper, data):
 yaml.add_representer(str, represent_str, Dumper=YamlDumper)
 
 
+class AsyncWriterProto(Protocol):
+  async def write_async(self, output_path: str, data: Any, env_name: str, app_name: str, source: str) -> None: ...
+
+
 class AbstractWriter(ABC):
   @abstractmethod
   def write(self, output_path: str, data: Any, env_name: str, app_name: str, source: str) -> None:
@@ -59,8 +65,12 @@ class GenericWriter(AbstractWriter):
   def write(self, output_path: str, data: Any, env_name: str, app_name: str, source: str) -> None:
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    with open(output_path, 'w') as f:
-      f.write(data)
+    if isinstance(data, (bytes, bytearray, memoryview)):
+      with open(output_path, 'wb') as f:
+        f.write(data)
+    else:
+      with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(str(data))
 
 
 class YamlWriter(AbstractWriter):
@@ -78,9 +88,18 @@ class YamlWriter(AbstractWriter):
       yaml.dump(yaml_resource, f, Dumper=YamlDumper,
                 default_flow_style=False,
                 sort_keys=False,
+                width=4096,
                 allow_unicode=True,
                 encoding='utf-8',
                 explicit_start=True)
+
+
+@dataclass
+class SyncToAsyncWriter(AsyncWriterProto):
+  sync_writer: AbstractWriter
+
+  async def write_async(self, output_path: str, data: Any, env_name: str, app_name: str, source: str) -> None:
+    await asyncio.to_thread(self.sync_writer.write, output_path, data, env_name, app_name, source)
 
 
 def resources_based_writer_factory(type: ResourceType) -> AbstractWriter:
@@ -99,3 +118,7 @@ def application_based_writer_factory(app_type: str) -> AbstractWriter:
     return YamlWriter()
   else:
     return GenericWriter()
+
+
+def get_async_app_writer(app_type: str) -> AsyncWriterProto:
+  return SyncToAsyncWriter(application_based_writer_factory(app_type))

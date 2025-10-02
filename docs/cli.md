@@ -56,3 +56,6 @@ make-argocd-fly -h
 |-----------------|---------------------------------|
 | `-h`, `--help`  | Show CLI help                   |
 | `--version`     | Show current version and exit   |
+| `--max-concurrent-apps` | Max number of apps to render concurrently (default: 8) |
+| `--max-subproc` | Max number of subprocesses to run concurrently (default: number of CPU cores) |
+| `--max-io`      | Max number of I/O operations to run concurrently (default: 32) |
