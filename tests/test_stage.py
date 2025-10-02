@@ -463,7 +463,7 @@ async def test_WriteOnDisk___write_no_duplicates(stage_write_on_disk):
   assert getattr(writer.sync_writer.write, 'call_count', 0) == 3
 
 @pytest.mark.asyncio
-async def test_WriteOnDisk___write_with_duplicates(stage_write_on_disk):
+async def test_WriteOnDisk___write_with_duplicates(stage_write_on_disk, caplog):
   writer = SyncToAsyncWriter(MagicMock())
   ctx = Context('my_env', 'my_app')
 
@@ -471,5 +471,6 @@ async def test_WriteOnDisk___write_with_duplicates(stage_write_on_disk):
   await stage_write_on_disk._write_one(writer, '/output/dir', ctx, OutputResource(ResourceType.YAML, 'data', 'source', 'path/file2.txt'))
   with pytest.raises(InternalError):
     await stage_write_on_disk._write_one(writer, '/output/dir', ctx, OutputResource(ResourceType.YAML, 'data', 'source', 'path/file1.txt'))
+  assert 'Duplicate output: /output/dir/path/file1.txt' in caplog.text
 
   assert getattr(writer.sync_writer.write, 'call_count', 0) == 2
