@@ -90,6 +90,7 @@ class YamlWriter(AbstractWriter):
                 sort_keys=False,
                 width=4096,
                 allow_unicode=True,
+                encoding='utf-8',
                 explicit_start=True)
 
 
