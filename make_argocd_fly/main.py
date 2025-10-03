@@ -61,7 +61,10 @@ async def generate() -> None:
       for (pipeline, ctx) in apps:
         tg.create_task(run_one_app(pipeline, ctx, limits))
   except ExceptionGroup as e:
-    raise e.exceptions[0]
+    if e.exceptions:
+      raise e.exceptions[0]
+    else:
+      raise e
 
 
 def run_yamllint() -> None:
