@@ -168,7 +168,7 @@ class Config:
     params = Params()
     try:
       params.populate_params(**merge_dicts_with_overrides(global_params, env_params, app_params))
-    except Exception as e:
+    except ConfigFileError as e:
       log.error(f'Error populating params for application {app_name} in environment {env_name}')
       raise e
 

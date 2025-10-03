@@ -1,8 +1,9 @@
 import os
 import pytest
 from make_argocd_fly.resource.viewer import ResourceViewer, get_resource_params, ResourceType
-from make_argocd_fly.resource.writer import resources_based_writer_factory, GenericWriter, YamlWriter
+from make_argocd_fly.resource.writer import writer_factory, GenericWriter, YamlWriter
 from make_argocd_fly.exception import InternalError
+from make_argocd_fly.param import ApplicationTypes
 from make_argocd_fly.util import check_lists_equal
 
 ##################
@@ -493,22 +494,28 @@ def test_ResourceViewer__search_subresources__by_depth(tmp_path):
   assert check_lists_equal([(res.name, res.content, res.resource_type, res.template) for res in depth_resources], [])
 
 ##################
-### resources_based_writer_factory
+### writer_factory
 ##################
 
-def test_resources_based_writer_factory__yaml():
-  assert isinstance(resources_based_writer_factory(ResourceType.YAML), YamlWriter)
+def test_writer_factory__k8s_yaml():
+  assert isinstance(writer_factory(ApplicationTypes.K8S, ResourceType.YAML), YamlWriter)
 
-def test_resources_based_writer_factory__generic():
-  assert isinstance(resources_based_writer_factory(ResourceType.UNKNOWN), GenericWriter)
+def test_writer_factory__k8s_unknown():
+  assert isinstance(writer_factory(ApplicationTypes.K8S, ResourceType.UNKNOWN), GenericWriter)
 
-def test_resources_based_writer_factory__unsupported(caplog):
+def test_writer_factory__generic_yaml():
+  assert isinstance(writer_factory(ApplicationTypes.GENERIC, ResourceType.YAML), GenericWriter)
+
+def test_writer_factory__generic_unknown():
+  assert isinstance(writer_factory(ApplicationTypes.GENERIC, ResourceType.UNKNOWN), GenericWriter)
+
+def test_writer_factory__k8s_unsupported(caplog):
   with pytest.raises(InternalError):
-    resources_based_writer_factory(ResourceType.DIRECTORY)
+    writer_factory(ApplicationTypes.K8S, ResourceType.DIRECTORY)
   assert 'Cannot write resource of type DIRECTORY' in caplog.text
 
   with pytest.raises(InternalError):
-    resources_based_writer_factory(ResourceType.DOES_NOT_EXIST)
+    writer_factory(ApplicationTypes.K8S, ResourceType.DOES_NOT_EXIST)
   assert 'Cannot write resource of type DOES_NOT_EXIST' in caplog.text
 
 ##################
