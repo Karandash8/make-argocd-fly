@@ -94,7 +94,7 @@ def build_pipeline(ctx: Context, limits: RuntimeLimits, source_path: str) -> Pip
   viewer = ResourceViewer(source_path)
   ctx_set(ctx, 'source.viewer', viewer)
 
-  if params.app_type == ApplicationTypes.K8S.value:
+  if params.app_type == ApplicationTypes.K8S:
     try:
       kustomize_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML],
                                                            name_pattern='kustomization|Kustomization'))
@@ -105,7 +105,7 @@ def build_pipeline(ctx: Context, limits: RuntimeLimits, source_path: str) -> Pip
         return build_pipeline_k8s_simple(limits)
     except ResourceViewerIsFake:
       return build_pipeline_app_of_apps(limits)
-  if params.app_type == ApplicationTypes.GENERIC.value:
+  elif params.app_type == ApplicationTypes.GENERIC:
     return build_pipeline_generic(limits)
   else:
     log.error(f'Unknown application type \'{params.app_type}\' in application {ctx.app_name} in environment {ctx.env_name}.'

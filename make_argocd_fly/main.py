@@ -56,9 +56,12 @@ async def generate() -> None:
       pipeline = build_pipeline(ctx, limits, os.path.join(config.source_dir, app_name))
       apps.append((pipeline, ctx))
 
-  async with asyncio.TaskGroup() as tg:
-    for (pipeline, ctx) in apps:
-      tg.create_task(run_one_app(pipeline, ctx, limits))
+  try:
+    async with asyncio.TaskGroup() as tg:
+      for (pipeline, ctx) in apps:
+        tg.create_task(run_one_app(pipeline, ctx, limits))
+  except ExceptionGroup as e:
+    raise e.exceptions[0]
 
 
 def run_yamllint() -> None:

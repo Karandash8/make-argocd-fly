@@ -3,6 +3,7 @@ import os
 import shutil
 import asyncio
 import textwrap
+from typing import Any
 from pprint import pformat
 from typing import Protocol
 
@@ -10,7 +11,8 @@ from make_argocd_fly.context import Context, ctx_get, ctx_set, resolve_expr
 from make_argocd_fly.context.data import Content, Template, OutputResource
 from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
 from make_argocd_fly import default
-from make_argocd_fly.resource.writer import AsyncWriterProto, get_async_app_writer
+from make_argocd_fly.resource.writer import AsyncWriterProto, writer_factory, \
+  SyncToAsyncWriter
 from make_argocd_fly.param import ParamNames
 from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparam import get_cli_params
@@ -67,6 +69,12 @@ def _scan_viewer(viewer: ResourceViewer,
   return out
 
 
+def _ensure_list(value: Any, param_name: str) -> None:
+  if not isinstance(value, list):
+    log.error(f'Application parameter {param_name} must be a list')
+    raise InternalError()
+
+
 class DiscoverK8sSimpleApplication(Stage):
   name = 'DiscoverK8sSimpleApplication'
   requires = {'viewer': 'source.viewer'}
@@ -80,9 +88,7 @@ class DiscoverK8sSimpleApplication(Stage):
     app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
 
-    if not isinstance(app_params.exclude_rendering, list):
-      log.error(f'Application parameter {ParamNames.EXCLUDE_RENDERING} must be a list')
-      raise InternalError()
+    _ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
 
     content = []
     for child in _scan_viewer(viewer,
@@ -119,9 +125,7 @@ class DiscoverK8sKustomizeApplication(Stage):
     app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
 
-    if not isinstance(app_params.exclude_rendering, list):
-      log.error(f'Application parameter {ParamNames.EXCLUDE_RENDERING} must be a list')
-      raise InternalError()
+    _ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
 
     # TODO: this will not work if there is a directory named `base` in addition to the kustomize base
     search_subdirs = ['base', ctx.env_name] if list(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
@@ -226,9 +230,7 @@ class DiscoverGenericApplication(Stage):
     app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
 
-    if not isinstance(app_params.exclude_rendering, list):
-      log.error(f'Application parameter {ParamNames.EXCLUDE_RENDERING} must be a list')
-      raise InternalError()
+    _ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
 
     file_types = [resource_type for resource_type in ResourceType if
                   (resource_type != ResourceType.DIRECTORY and
@@ -333,9 +335,7 @@ class GenerateManifestNames(Stage):
       generator = FilePathGenerator(resource.data, resource.source)
       app_params = get_config().get_params(ctx.env_name, ctx.app_name)
 
-      if not isinstance(app_params.non_k8s_files_to_render, list):
-        log.error(f'Application parameter {ParamNames.NON_K8S_FILES_TO_RENDER} must be a list')
-        raise InternalError()
+      _ensure_list(app_params.non_k8s_files_to_render, ParamNames.NON_K8S_FILES_TO_RENDER)
 
       if any(resource.source.startswith(element) for element in app_params.non_k8s_files_to_render):
         files.append(OutputResource(
@@ -372,7 +372,7 @@ class GenerateOutputNames(Stage):
 
     files = []
 
-    for resource in input:
+    for resource in sorted(input, key=lambda r: r.source):
       files.append(OutputResource(
         resource_type=resource.resource_type,
         data=resource.data,
@@ -408,15 +408,16 @@ class WriteOnDisk(Stage):
     files = ctx_get(ctx, self.requires['files'])
     output_dir = ctx_get(ctx, self.requires['output_dir'])
     self._written = set()
-    writer = get_async_app_writer(get_config().get_params(ctx.env_name, ctx.app_name).app_type)
 
     app_output_dir = os.path.join(output_dir, get_app_rel_path(ctx.env_name, ctx.app_name))
     if os.path.exists(app_output_dir):
       shutil.rmtree(app_output_dir)
 
     async with asyncio.TaskGroup() as tg:
-      for res in files:
-        tg.create_task(self._write_one(writer, output_dir, ctx, res))
+      for res in sorted(files, key=lambda r: r.output_path):
+        async_writer = SyncToAsyncWriter(writer_factory(get_config().get_params(ctx.env_name, ctx.app_name).app_type,
+                                                        res.resource_type))
+        tg.create_task(self._write_one(async_writer, output_dir, ctx, res))
 
 
 class KustomizeBuild(Stage):
@@ -446,7 +447,10 @@ class KustomizeBuild(Stage):
         stdout, stderr = await proc.communicate()
         if proc.returncode != 0:
           log.error(f'Kustomize error: {stderr.decode("utf-8", "ignore")}')
-          log.info(f'Retrying {attempt + 1}/{retries}')
+
+          delay = min(2 ** attempt, 4) + (attempt * 0.1)
+          log.info(f'Retrying {attempt + 1}/{retries} after {delay:.1f}s')
+          await asyncio.sleep(delay)
           continue
         break
     else:

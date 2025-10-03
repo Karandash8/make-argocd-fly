@@ -88,7 +88,6 @@ class YamlWriter(AbstractWriter):
       yaml.dump(yaml_resource, f, Dumper=YamlDumper,
                 default_flow_style=False,
                 sort_keys=False,
-                width=4096,
                 allow_unicode=True,
                 encoding='utf-8',
                 explicit_start=True)
@@ -102,23 +101,15 @@ class SyncToAsyncWriter(AsyncWriterProto):
     await asyncio.to_thread(self.sync_writer.write, output_path, data, env_name, app_name, source)
 
 
-def resources_based_writer_factory(type: ResourceType) -> AbstractWriter:
-  if type == ResourceType.DIRECTORY or type == ResourceType.DOES_NOT_EXIST:
-    log.error(f'Cannot write resource of type {type.name}')
-    raise InternalError()
-
-  if type == ResourceType.YAML:
-    return YamlWriter()
-  else:
+def writer_factory(app_type: ApplicationTypes, res_type: ResourceType) -> AbstractWriter:
+  if app_type == ApplicationTypes.GENERIC:
     return GenericWriter()
-
-
-def application_based_writer_factory(app_type: str) -> AbstractWriter:
-  if app_type == ApplicationTypes.K8S.value:
-    return YamlWriter()
   else:
-    return GenericWriter()
+    if res_type == ResourceType.DIRECTORY or res_type == ResourceType.DOES_NOT_EXIST:
+      log.error(f'Cannot write resource of type {res_type.name}')
+      raise InternalError()
 
-
-def get_async_app_writer(app_type: str) -> AsyncWriterProto:
-  return SyncToAsyncWriter(application_based_writer_factory(app_type))
+    if res_type == ResourceType.YAML:
+      return YamlWriter()
+    else:
+      return GenericWriter()
