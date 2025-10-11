@@ -33,6 +33,23 @@ vars:  ## key for global variables
 
 Application names must correspond to the relative paths from the source, e.g., ```grafana```, ```path/to/grafana``` .
 
+## Application Type
+
+Application type defines what source files are taken into account and how output files are generated for each application. Application type is specified using the `app_type` parameter in the configuration:
+
+```yaml
+envs:
+  <environment_name_1>:
+    apps:
+      <application_name_1>:
+        params:
+          app_type: <application_type>
+```
+
+Available application types:
+- `k8s` (default): Renders only Kubernetes related files and outputs YAML files with `kind` and `name` fields.
+- `generic`: Renders all files in the application directory as-is, using Jinja2 templating.
+
 ## ⚖️ Variable Precedence
 The scope of parameters and variables determines their visibility and accessibility within the configuration.
 - **Global**: Accessible across all environments and applications.
@@ -81,3 +98,16 @@ Variable references can also be embedded within strings:
 - ```prefix-${var_name}-suffix```
 
 ---
+
+## Schema Overview
+```yaml
+envs:
+  <env_name>:
+    apps:
+      <app_name>:
+        params: {...}
+        vars:   {...}
+    vars: {...}
+vars: {...}
+```
+_Precedence_: `global < environment < application`.

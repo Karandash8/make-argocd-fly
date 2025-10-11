@@ -1,0 +1,12 @@
+envs:
+  local:
+    apps:
+      infra/kind:
+        params:
+          app_type: generic
+        vars:
+          k8s_version: v1.33.4
+vars:
+  grafana_node_port: 30000
+  prometheus_node_port: 30001
+  alertmanager_node_port: 30002

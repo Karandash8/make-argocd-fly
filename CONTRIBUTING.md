@@ -45,3 +45,9 @@ python -m tox
 ```
 
 ---
+
+## Development Workflow
+```bash
+python -m tox
+pytest -q
+```

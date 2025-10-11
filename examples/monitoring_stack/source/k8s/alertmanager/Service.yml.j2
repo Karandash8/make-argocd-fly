@@ -1,0 +1,45 @@
+{%- for i in range(monitoring.alertmanager_n_replicas) %}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/path: '/metrics'
+    prometheus.io/port: '9093'
+  labels:
+    k8s-app: alertmanager
+  name: alertmanager-{{ i }}
+  namespace: {{ monitoring.namespace }}
+spec:
+  selector:
+    statefulset.kubernetes.io/pod-name: alertmanager-{{ i }}
+  ports:
+    - name: web
+      protocol: TCP
+      port: 9093
+      targetPort: 9093
+    - name: cluster
+      protocol: TCP
+      port: 9094
+      targetPort: 9094
+{%- endfor %}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: {{ monitoring.namespace }}
+  labels:
+    k8s-app: alertmanager
+spec:
+  ports:
+    - name: web
+      protocol: TCP
+      port: 9093
+      targetPort: 9093
+      nodePort: {{ alertmanager_node_port }}
+  selector:
+    k8s-app: alertmanager
+  type: NodePort
+

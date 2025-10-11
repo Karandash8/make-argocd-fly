@@ -1,0 +1,20 @@
+---
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    image: kindest/node:{{ k8s_version }}
+    extraPortMappings:
+      - containerPort: {{ grafana_node_port }}
+        hostPort: {{ grafana_node_port }}
+        protocol: TCP
+      - containerPort: {{ prometheus_node_port }}
+        hostPort: {{ prometheus_node_port }}
+        protocol: TCP
+      - containerPort: {{ alertmanager_node_port }}
+        hostPort: {{ alertmanager_node_port }}
+        protocol: TCP
+  - role: worker
+    image: kindest/node:{{ k8s_version }}
+  - role: worker
+    image: kindest/node:{{ k8s_version }}
