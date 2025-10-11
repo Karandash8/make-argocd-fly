@@ -1,0 +1,164 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: prometheus-config
+  namespace: kube-monitoring
+data:
+  prometheus.yml: |-
+    global:
+      scrape_interval: 20s
+      scrape_timeout: 15s
+      evaluation_interval: 20s
+      external_labels:
+        cluster: home-use
+        replica: $(POD_NAME)
+
+    rule_files:
+      - /etc/prometheus/rules/*.yml
+
+    alerting:
+      alert_relabel_configs:
+        - regex: replica
+          action: labeldrop
+
+      alertmanagers:
+        - scheme: http
+          path_prefix: /
+          static_configs:
+            - targets:
+                - 'alertmanager-0:9093'
+                - 'alertmanager-1:9093'
+
+    scrape_configs:
+      - job_name: k8s-apiserver
+        kubernetes_sd_configs:
+          - role: endpoints
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        authorization:
+          credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels:
+              [
+                __meta_kubernetes_namespace,
+                __meta_kubernetes_service_name,
+                __meta_kubernetes_endpoint_port_name,
+              ]
+            action: keep
+            regex: default;kubernetes;https
+
+      - job_name: k8s-node
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        authorization:
+          credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        metrics_path: /metrics
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_node_name]
+            action: replace
+            target_label: node
+
+      - job_name: k8s-node-cadvisor
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        authorization:
+          credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        metrics_path: /metrics/cadvisor
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_node_name]
+            action: replace
+            target_label: node
+        metric_relabel_configs:
+          - action: replace
+            source_labels: [id]
+            regex: '^/machine\.slice/machine-rkt\\x2d([^\\]+)\\.+/([^/]+)\.service$'
+            target_label: rkt_container_name
+            replacement: '${2}-${1}'
+          - action: replace
+            source_labels: [id]
+            regex: '^/podruntime\.slice/(.+)\.service$'
+            target_label: systemd_service_name
+            replacement: '${1}'
+
+      - job_name: k8s-service-endpoint
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+            action: replace
+            target_label: __scheme__
+            regex: (https?)
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: ${1}:${2}
+            target_label: __address__
+          # Specific k8s labels to keep as prometheus labels
+          - source_labels: [__meta_kubernetes_service_label_k8s_app]
+            target_label: k8s_app
+            regex: (.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            action: replace
+            target_label: node
+
+      - job_name: kube-state-metrics
+        static_configs:
+          - targets:
+              - 'kube-state-metrics.kube-monitoring.svc:8080'
+
+      - job_name: k8s-pod
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scheme]
+            action: replace
+            target_label: __scheme__
+            regex: (https?)
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: ${1}:${2}
+            target_label: __address__
+          # Specific k8s labels to keep as prometheus labels
+          - source_labels: [__meta_kubernetes_pod_label_k8s_app]
+            target_label: k8s_app
+            regex: (.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            action: replace
+            target_label: node

@@ -55,5 +55,3 @@ helmCharts:
     version: 1.0.0
     valuesFile: values.yml
 ```
-
----

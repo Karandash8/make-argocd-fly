@@ -66,3 +66,18 @@ The [Rendered Manifest Pattern](https://www.youtube.com/watch?v=TonN-369Qfo) add
 - Ensures that what you review in Git is exactly what gets deployed
 
 By adopting this pattern with `make-argocd-fly`, you get a workflow that is **deterministic, auditable, and CI/CD friendly**, while keeping ArgoCD focused purely on syncing Kubernetes manifests.
+
+## Local vs ArgoCD
+
+| Capability | Local (kubectl) | ArgoCD |
+|-----------|------------------|--------|
+| Render manifests | ✅ | ✅ |
+| Auto-sync/reconcile | ❌ | ✅ |
+| App-of-Apps hierarchy | ❌ | ✅ |
+| Works offline | ✅ | ❌ |
+| Best for | quick local testing | managed GitOps in clusters |
+
+For real environments (`dev`, `staging`, `prod`), define separate environments and (optionally) `parent_app` relations to generate ArgoCD `Application` CRs. For `local`, deploy the rendered YAML via `kubectl`.
+
+## Rendered Manifest Pattern
+A best practice where manifests are pre-rendered and committed to Git before ArgoCD syncs them.

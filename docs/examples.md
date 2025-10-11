@@ -1,81 +1,115 @@
-# Real-World Example: Monitoring Stack
+# Example: Monitoring Stack on a Local Kind Cluster
 
-This example demonstrates how to use `make-argocd-fly` to render and manage a monitoring stack in Kubernetes using ArgoCD, following the App-of-Apps pattern.
-> **Note:**
-> To use this example, copy the [examples/monitoring_stack](https://github.com/Karandash8/make-argocd-fly/tree/main/examples/monitoring_stack) directory into your own repository.
-> Make sure to set your repository URL in the `repo_url` variable inside `config/config.yml` so ArgoCD can reference the correct source location.
-## 📦 Components
+This example demonstrates an end-to-end workflow using **`make-argocd-fly`** to render and deploy a monitoring stack **locally with `kubectl`**.
 
-The monitoring stack includes:
+It shows how to:
+- Render **infrastructure** configuration for a local Kind cluster (Generic application type),
+- Generate fully rendered **Kubernetes manifests** for applications (Prometheus, Grafana, Alertmanager, etc.),
+- And deploy everything end-to-end using `kubectl`.
 
-- **Prometheus** – core monitoring and alerting engine
-- **Alertmanager** – routes alerts triggered by Prometheus
-- **Grafana** – for dashboards and visualization
-- **Node Exporter** – collects node-level system metrics
-- **Kube-State-Metrics** – exposes Kubernetes resource metrics
+> 📁 Folder: [`examples/monitoring_stack`](https://github.com/Karandash8/make-argocd-fly/tree/main/examples/monitoring_stack)
 
-Each component is defined as an independent application, allowing you to manage, update, and scale them individually while maintaining centralized control.
+---
 
-## 🗂 Directory Structure
+## 🧩 Architecture Overview
 
-```text
-examples/
-└── monitoring_stack/
-    ├── config/
-    │   └── config.yml              # environment, apps, and variables
-    └── source/
-        ├── alertmanager/
-        ├── grafana/
-        ├── kube-state-metrics/
-        ├── node-exporter/
-        └── prometheus/
-```
+The example contains two layers:
 
-## ⚙️ Configuration Overview
-The `config/config.yml` file defines:
+### Infrastructure Layer
+- Produces the Kind cluster configuration file (`cluster.yml`) via Jinja2 templates.
+- Output is placed under `output/local/infra/kind/`.
 
-- A single environment
+### Application Layer
+- Renders Kubernetes manifests for the monitoring stack:
+  - Alertmanager
+  - Grafana
+  - kube-state-metrics
+  - node-exporter
+  - Prometheus
+- Output is placed under `output/local/k8s/`.
 
-- Applications listed under that environment
+---
 
-- Global and app-level variables
+## ⚙️ Workflow: Render → Deploy → Verify
 
-- ArgoCD deployment parameters (repository URL, target revision, destination cluster, etc.)
+### Step 1. Render all manifests
 
-- `sync_wave` and `parent_app` to control render order and nesting
-
-## 🚀 How It Works
-1. The `bootstrap_parent` application is treated specially:
-
-   - It includes an ArgoCD Application manifest that references other applications.
-
-   - This application is not deployed by ArgoCD initially.
-
-2. To kick off the deployment, you apply the bootstrap app manually using `kubectl`:
-
-```bash
-kubectl apply -f output/local/bootstrap_parent/application_bootstrap-local.yml
-```
-
-1. ArgoCD picks up the `bootstrap` Application, which in turn deploys all other applications (prometheus, grafana, etc.) defined under it.
-
-2. From that point onward, ArgoCD manages the sync and lifecycle of all the rendered applications.
-
-## 💡 Benefits
-- Clear separation between bootstrapping and runtime apps
-
-- GitOps-native workflow using ArgoCD’s App-of-Apps pattern
-
-- Scalable and reproducible observability stack for Kubernetes environments
-
-- Extensible configuration using Jinja2, Helm, and Kustomize
-
-## 🔁 To Regenerate Output
-Make changes to the `config/config.yml` or any source files, then run:
+Run `make-argocd-fly` from the example root:
 
 ```bash
 make-argocd-fly
 ```
-This will render the updated manifests into the `output/` directory, maintaining the structure defined in your configuration.
 
- Then ArgoCD will automatically deploy the changes to the cluster after you commit and push the regenerated manifests to your Git repository.
+This command:
+- Renders the **Kind cluster config** under `output/local/infra/kind/`
+- Renders all **application manifests** under `output/local/k8s/`
+
+### Step 2. Create the local Kind cluster
+
+Use the rendered cluster configuration to create your Kind cluster:
+
+```bash
+kind create cluster --config output/local/infra/kind/cluster.yml --name local-kind
+```
+
+### Step 3. Deploy the stack
+
+Apply all rendered manifests directly with `kubectl`:
+
+```bash
+kubectl apply -f output/local/k8s/common --recursive --server-side
+kubectl apply -f output/local/k8s --recursive --server-side
+```
+
+Check resources:
+
+```bash
+kubectl get pods -A
+```
+
+### Step 4. Access UIs
+
+To access Grafana, open a browser and go to [`http://localhost:30000`](http://localhost:30000).
+
+To access Prometheus, go to [`http://localhost:30001`](http://localhost:30001).
+
+To access Alertmanager, go to [`http://localhost:30002`](http://localhost:30002).
+
+
+### Step 5. Cleanup
+
+When you’re done:
+
+```bash
+kind delete cluster --name local-kind
+```
+
+---
+
+## 🧠 Why This Example Matters
+
+### 🧩 Rendered Manifest Pattern
+This example demonstrates the **Rendered Manifest Pattern**, where manifests are **fully generated and version-controlled** before deployment.
+You can inspect, lint, and diff them — ensuring clarity about what gets deployed.
+
+### 🧰 Flexible Deployment Model
+`make-argocd-fly` supports **both** deployment models:
+- **Local flows:** render + deploy with `kubectl` — no ArgoCD needed.
+- **GitOps flows:** render + commit + let ArgoCD deploy from the repository.
+
+### 🏗 Same Configuration, Multiple Environments
+The exact same configuration can target multiple environments:
+- For `local`, no ArgoCD CRs are generated; manifests are applied manually.
+- For `dev`, `staging`, or `prod`, you define separate environments in `config/*.yml` and optionally use `parent_app` relations to generate ArgoCD `Application` CRs automatically.
+
+That means:
+- Local testing and production share the same templating and structure.
+- ArgoCD just becomes another layer of automation — not a requirement.
+
+---
+
+## 🧭 Summary
+
+This example shows that **`make-argocd-fly` is not tied to ArgoCD** —
+it’s a **manifest factory** that integrates naturally into any workflow:
+from lightweight local clusters to large-scale GitOps setups.

@@ -61,3 +61,12 @@ All standard Jinja2 features are supported. For example, to render a Jinja2 temp
 - [Ansible filters](https://pypi.org/project/jinja2-ansible-filters/) are supported as well
 
 ---
+
+## Application Types Overview
+
+| Type | Source | Engine | Typical use |
+|------|--------|--------|-------------|
+| `generic` | any text / Jinja2 | Jinja2 | infra files (e.g., kind config), passthrough assets |
+| `k8s` | YAML/Jinja2 | Jinja2 + Kustomize + Helm | plain Kubernetes manifests |
+
+> See also: [kustomize.md](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/kustomize.md) and [Examples](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/examples.md)

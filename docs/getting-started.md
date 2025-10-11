@@ -60,3 +60,15 @@ To render your applications, run the following command:
 ```bash
 make-argocd-fly [OPTIONS]
 ```
+
+## 5-Minute Quick Start
+```bash
+pip install make-argocd-fly
+make-argocd-fly --config-dir config --source-dir source --output-dir output
+```
+> See also: [Examples](examples.md)
+
+### Project layout recap
+- `config/` — one or more `.yml` files that define environments, applications, and variables. All files are **merged** at runtime.
+- `source/` — application sources in YAML/Jinja/Kustomize/Helm; Generic apps can contain any text assets.
+- `output/` — fully rendered manifests, organized per environment.

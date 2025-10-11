@@ -1,0 +1,19 @@
+envs:
+  local:
+    apps:
+      k8s/common: {}
+      k8s/prometheus: {}
+      k8s/kube_state_metrics: {}
+      k8s/node_exporter: {}
+      k8s/grafana: {}
+      k8s/alertmanager: {}
+vars:
+  monitoring:
+    namespace: kube-monitoring
+    prometheus_n_replicas: 2
+    prometheus_version: 3.4.1
+    alertmanager_n_replicas: 2
+    alertmanager_version: 0.28.1
+    kube_state_metrics_version: 2.15.0
+    node_exporter_version: 4.47.3
+    grafana_version: 12.0.2

@@ -39,11 +39,11 @@ When ArgoCD runs Helm or Kustomize directly, you may hit problems like:
 - **Operational surprises** – subtle plugin/env differences lead to unexpected drift
 
 With pre-rendered manifests you gain:
-- ✅ **Single source of truth** – Git shows exactly what ArgoCD applies
-- ✅ **Deterministic builds** – no hidden differences across environments
-- ✅ **Transparent reviews** – PR diffs show actual Kubernetes changes
-- ✅ **Pluggable checks** – run linters and security scanners on YAML in CI
-- ✅ **Simpler ops** – ArgoCD only syncs plain YAML, reducing complexity
+- **Single source of truth** – Git shows exactly what ArgoCD applies
+- **Deterministic builds** – no hidden differences across environments
+- **Transparent reviews** – PR diffs show actual Kubernetes changes
+- **Pluggable checks** – run linters and security scanners on YAML in CI
+- **Simpler ops** – ArgoCD only syncs plain YAML, reducing complexity
 
 **`make-argocd-fly` is a practical implementation of the Rendered Manifest Pattern.**
 It automates rendering of Helm charts, Kustomize overlays, and Jinja2 templates, organizes them by environment, and generates ArgoCD `Application` resources pointing to the rendered output.
@@ -119,13 +119,13 @@ What it does:
 ## 📘 Documentation
 
 - [Getting Started](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/getting-started.md)
-- [Configuration](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/configuration.md)
-- [Argocd Application Generation](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/argocd.md)
+- [Configuration Reference](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/configuration.md)
+- [Application Templates](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/templates.md)
 - [Kustomize & Helm Integration](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/kustomize.md)
-- [Using Jinja2 Templates](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/templates.md)
+- [ArgoCD Integration](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/argocd.md)
 - [CLI Reference](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/cli.md)
-- [Caveats & Limitations](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/caveats.md)
-- [EXAMPLES: Monitoring Stack](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/examples.md)
+- [Examples](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/examples.md)
+- [Troubleshooting & Limitations](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/caveats.md)
 
 ---
 

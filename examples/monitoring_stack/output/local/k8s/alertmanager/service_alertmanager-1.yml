@@ -1,0 +1,24 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/path: /metrics
+    prometheus.io/port: '9093'
+  labels:
+    k8s-app: alertmanager
+  name: alertmanager-1
+  namespace: kube-monitoring
+spec:
+  selector:
+    statefulset.kubernetes.io/pod-name: alertmanager-1
+  ports:
+    - name: web
+      protocol: TCP
+      port: 9093
+      targetPort: 9093
+    - name: cluster
+      protocol: TCP
+      port: 9094
+      targetPort: 9094

@@ -1,0 +1,57 @@
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: alertmanager
+  namespace: kube-monitoring
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      k8s-app: alertmanager
+  template:
+    metadata:
+      name: alertmanager
+      labels:
+        k8s-app: alertmanager
+      annotations:
+        checksum/config: 6623df72d1b5eae280691d6b506b07eda8e09607
+    spec:
+      containers:
+        - name: alertmanager
+          image: docker.io/prom/alertmanager:v0.28.1
+          args:
+            - --config.file=/etc/alertmanager/config.yml
+            - --storage.path=/alertmanager
+            - --cluster.peer=alertmanager-0:9094
+            - --cluster.peer=alertmanager-1:9094
+          ports:
+            - name: web
+              containerPort: 9093
+            - name: cluster
+              containerPort: 9094
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/alertmanager
+            - name: alertmanager
+              mountPath: /alertmanager
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: k8s-app
+                    operator: In
+                    values:
+                      - alertmanager
+              topologyKey: kubernetes.io/hostname
+      volumes:
+        - name: config-volume
+          configMap:
+            name: alertmanager
+        - name: alertmanager
+          emptyDir: {}
