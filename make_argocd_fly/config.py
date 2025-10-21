@@ -154,9 +154,9 @@ class Config:
       )
 
     resolved_vars = VarsResolver.resolve_all(resolved_vars,
-                                              resolved_vars,
-                                              var_identifier=self.cli_params.var_identifier,
-                                              allow_unresolved=True)
+                                             resolved_vars,
+                                             var_identifier=self.cli_params.var_identifier,
+                                             allow_unresolved=True)
 
     return resolved_vars
 
