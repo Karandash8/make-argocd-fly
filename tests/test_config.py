@@ -748,6 +748,209 @@ def test_Config__get_vars__everything(mocker):
   vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
   assert vars == expected_vars
 
+def test_Config__get_vars__resolve_var_simple(mocker):
+  extra_vars = {
+  }
+  global_vars_return_value = {
+    'var1': 'value_global1',
+    'var2': '${var1}'
+  }
+  env_vars_return_value = {
+  }
+  app_vars_return_value = {
+  }
+
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
+  mocker.patch('make_argocd_fly.config.get_cli_params', return_value={'var_identifier': '$'})
+
+  expected_vars = {
+    'var1': 'value_global1',
+    'var2': 'value_global1'
+  }
+  vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+  assert vars == expected_vars
+
+def test_Config__get_vars__resolve_var_env_from_global_simple(mocker):
+  extra_vars = {
+  }
+  global_vars_return_value = {
+    'var1': 'value_global1',
+  }
+  env_vars_return_value = {
+    'var2': '${var1}'
+  }
+  app_vars_return_value = {
+  }
+
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
+
+  expected_vars = {
+    'var1': 'value_global1',
+    'var2': 'value_global1'
+  }
+  vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+  assert vars == expected_vars
+
+def test_Config__get_vars__resolve_var_env_from_env(mocker):
+  extra_vars = {
+  }
+  global_vars_return_value = {
+    'dict': {
+      'subdict': {
+        'key1': 'value1'
+      },
+      'key_global': 'value_global1'
+    }
+  }
+  env_vars_return_value = {
+    'dict': {
+      'subdict': {
+        'key2': 'value2'
+      },
+      'key_env': '${dict[subdict][key2]}'
+    }
+  }
+  app_vars_return_value = {
+  }
+
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
+
+  expected_vars = {
+    'dict': {
+      'subdict': {
+        'key1': 'value1',
+        'key2': 'value2'
+      },
+      'key_global': 'value_global1',
+      'key_env': 'value2'
+    }
+  }
+  vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+  assert vars == expected_vars
+
+def test_Config__get_vars__resolve_var_env_from_global(mocker):
+  extra_vars = {
+  }
+  global_vars_return_value = {
+    'dict': {
+      'subdict': {
+        'key1': 'value1'
+      },
+      'key_global': 'value_global1'
+    }
+  }
+  env_vars_return_value = {
+    'dict': {
+      'subdict': {
+        'key2': 'value2'
+      },
+      'key_env': '${dict[subdict][key1]}'
+    }
+  }
+  app_vars_return_value = {
+  }
+
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
+
+  expected_vars = {
+    'dict': {
+      'subdict': {
+        'key1': 'value1',
+        'key2': 'value2'
+      },
+      'key_global': 'value_global1',
+      'key_env': 'value1'
+    }
+  }
+  vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+  assert vars == expected_vars
+
+def test_Config__get_vars__resolve_var_global_from_env(mocker):
+  extra_vars = {
+  }
+  global_vars_return_value = {
+    'dict': {
+      'subdict': {
+        'key1': 'value1'
+      },
+      'key_global': '${dict[subdict][key2]}'
+    }
+  }
+  env_vars_return_value = {
+    'dict': {
+      'subdict': {
+        'key2': 'value2'
+      },
+      'key_env': 'value_env1'
+    }
+  }
+  app_vars_return_value = {
+  }
+
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
+
+  expected_vars = {
+    'dict': {
+      'subdict': {
+        'key1': 'value1',
+        'key2': 'value2'
+      },
+      'key_global': 'value2',
+      'key_env': 'value_env1'
+    }
+  }
+  vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+  assert vars == expected_vars
+
+def test_Config__get_vars__resolve_var_global_and_env(mocker):
+  extra_vars = {
+  }
+  global_vars_return_value = {
+    'dict': {
+      'subdict': {
+        'key1': 'value1'
+      },
+      'key_global': '${dict[subdict][key2]}'
+    }
+  }
+  env_vars_return_value = {
+    'dict': {
+      'subdict': {
+        'key2': 'value2'
+      },
+      'key_env': '${dict[subdict][key1]}'
+    }
+  }
+  app_vars_return_value = {
+  }
+
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
+
+  expected_vars = {
+    'dict': {
+      'subdict': {
+        'key1': 'value1',
+        'key2': 'value2'
+      },
+      'key_global': 'value2',
+      'key_env': 'value1'
+    }
+  }
+  vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
+  assert vars == expected_vars
+
 ##################
 ### Config.get_params
 ##################

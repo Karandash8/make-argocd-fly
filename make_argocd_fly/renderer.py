@@ -3,12 +3,13 @@ import os
 import re
 import socket
 import jinja2
-from typing import Tuple, Callable, Union, List
+from typing import Tuple, Callable, Union, List, Any
 from abc import ABC, abstractmethod
 from jinja2 import Environment, BaseLoader, FunctionLoader, nodes, StrictUndefined
 from jinja2.ext import Extension
 from markupsafe import Markup
 
+from make_argocd_fly.config import get_config
 from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
 from make_argocd_fly.exception import UndefinedTemplateVariableError, MissingFileError, InternalError
 from make_argocd_fly.util import extract_undefined_variable
@@ -263,6 +264,8 @@ class JinjaRendererFromViewer(AbstractRenderer):
                  resource_type != ResourceType.DOES_NOT_EXIST)]
 
   def __init__(self, viewer: ResourceViewer) -> None:
+    self.config = get_config()
+
     self.viewer = viewer
     self.loader = CustomFunctionLoader(self._get_source, self._get_rendered, self._list_templates)
     self.env = Environment(extensions=[RawIncludeExtension,
@@ -274,10 +277,18 @@ class JinjaRendererFromViewer(AbstractRenderer):
                                        DigExtension,
                                        'jinja2_ansible_filters.AnsibleCoreFiltersExtension'],
                            loader=self.loader,
-                           undefined=StrictUndefined)
+                           undefined=StrictUndefined,
+                           finalize=self._finalize)
 
     self.template_vars = {}
     self.filename = '<template>'
+
+  def _finalize(self, value: Any):
+    if isinstance(value, str) and value.startswith(self.config.cli_params.var_identifier + '{') and value.endswith('}'):
+      log.error(f'Unresolved variable reference: {value}')
+      raise UndefinedTemplateVariableError(value)
+
+    return value
 
   def _get_source(self, path: str):
     child = list(self.viewer.search_subresources(resource_types=self.file_types,
