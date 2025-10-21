@@ -285,7 +285,7 @@ class JinjaRendererFromViewer(AbstractRenderer):
 
   def _finalize(self, value: Any):
     if isinstance(value, str) and value.startswith(self.config.cli_params.var_identifier + '{') and value.endswith('}'):
-      log.error(f'Variable {value} not found in vars')
+      log.error(f'Unresolved variable reference: {value}')
       raise UndefinedTemplateVariableError(value)
 
     return value

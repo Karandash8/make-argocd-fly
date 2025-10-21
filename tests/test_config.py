@@ -772,7 +772,7 @@ def test_Config__get_vars__resolve_var_simple(mocker):
   vars = get_config().get_vars(env_name='test_env', app_name='test_app', extra_vars=extra_vars)
   assert vars == expected_vars
 
-def test_Config__get_vars__resolve_var_env_from_global_simle(mocker):
+def test_Config__get_vars__resolve_var_env_from_global_simple(mocker):
   extra_vars = {
   }
   global_vars_return_value = {
