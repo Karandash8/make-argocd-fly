@@ -62,6 +62,10 @@ envs:
         destination:
           server: ${env_name}-api-server
       env_var: external_1_var
+      directory:
+        subdictionary:
+          key_local: value_local
+        key_local: ${directory[subdictionary][key_global]}
 
 vars:
   argocd:
@@ -99,6 +103,10 @@ vars:
     resource: ${resource}
     version: 0.1.0
   json_var: json
+  directory:
+    subdictionary:
+      key_global: value_global
+    key_global: ${directory[subdictionary][key_local]}
   argocd_ignore_diff:
     - group: apps
       kind: Deployment

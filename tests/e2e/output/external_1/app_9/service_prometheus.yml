@@ -6,3 +6,4 @@ metadata:
   namespace: monitoring
 spec:
   var: test
+  var_2: value_local
