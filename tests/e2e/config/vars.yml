@@ -106,7 +106,7 @@ vars:
   directory:
     subdictionary:
       key_global: value_global
-    key_global: ${directory[subdictionary][key_local]}
+    key_global: test_${directory[subdictionary][key_local]}_test
   argocd_ignore_diff:
     - group: apps
       kind: Deployment
