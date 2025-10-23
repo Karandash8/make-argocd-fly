@@ -3,7 +3,7 @@ import jinja2
 import textwrap
 from make_argocd_fly.resource.viewer import ResourceViewer
 from make_argocd_fly.renderer import JinjaRenderer
-from make_argocd_fly.exception import UndefinedTemplateVariableError, MissingFileError, InternalError, MissingFileError
+from make_argocd_fly.exception import UndefinedTemplateVariableError, MissingFileError, InternalError
 
 ###############
 ### _get_source
