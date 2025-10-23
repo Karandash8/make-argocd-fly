@@ -16,7 +16,7 @@ from make_argocd_fly.resource.writer import AsyncWriterProto, writer_factory, \
 from make_argocd_fly.param import ParamNames
 from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparam import get_cli_params
-from make_argocd_fly.renderer import JinjaRendererFromViewer
+from make_argocd_fly.renderer import JinjaRenderer
 from make_argocd_fly.exception import UndefinedTemplateVariableError, TemplateRenderingError, InternalError, KustomizeError, \
   MissingFileError, ConfigFileError
 from make_argocd_fly.util import extract_single_resource, FilePathGenerator, get_app_rel_path
@@ -266,15 +266,13 @@ class RenderTemplates(Stage):
     templates = ctx_get(ctx, self.requires['template'])
     viewer = ctx_get(ctx, self.requires['viewer'])
 
-    # TODO: maybe do set_viewer instead
-    renderer = JinjaRendererFromViewer(viewer)
+    renderer = JinjaRenderer()
+    renderer.set_resource_viewer(viewer)
     content = []
 
     for template in templates:
       renderer.set_template_vars(template.vars)
-
-      # TODO: rename to set_source
-      renderer.set_filename(template.source)
+      renderer.set_template_source(template.source)
 
       try:
         result = renderer.render(template.data)
@@ -413,11 +411,17 @@ class WriteOnDisk(Stage):
     if os.path.exists(app_output_dir):
       shutil.rmtree(app_output_dir)
 
-    async with asyncio.TaskGroup() as tg:
-      for res in sorted(files, key=lambda r: r.output_path):
-        async_writer = SyncToAsyncWriter(writer_factory(get_config().get_params(ctx.env_name, ctx.app_name).app_type,
-                                                        res.resource_type))
-        tg.create_task(self._write_one(async_writer, output_dir, ctx, res))
+    try:
+      async with asyncio.TaskGroup() as tg:
+        for res in sorted(files, key=lambda r: r.output_path):
+          async_writer = SyncToAsyncWriter(writer_factory(get_config().get_params(ctx.env_name, ctx.app_name).app_type,
+                                                          res.resource_type))
+          tg.create_task(self._write_one(async_writer, output_dir, ctx, res))
+    except ExceptionGroup as e:
+      if e.exceptions:
+        raise e.exceptions[0]
+      else:
+        raise e
 
 
 class KustomizeBuild(Stage):

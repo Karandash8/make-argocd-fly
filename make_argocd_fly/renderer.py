@@ -4,8 +4,7 @@ import re
 import socket
 import jinja2
 from typing import Tuple, Callable, Union, List, Any
-from abc import ABC, abstractmethod
-from jinja2 import Environment, BaseLoader, FunctionLoader, nodes, StrictUndefined
+from jinja2 import Environment, FunctionLoader, nodes, StrictUndefined
 from jinja2.ext import Extension
 from markupsafe import Markup
 
@@ -15,21 +14,6 @@ from make_argocd_fly.exception import UndefinedTemplateVariableError, MissingFil
 from make_argocd_fly.util import extract_undefined_variable
 
 log = logging.getLogger(__name__)
-
-
-# TODO: this isn't needed anymore, remove
-class AbstractRenderer(ABC):
-  @abstractmethod
-  def render(self, content: str) -> str:
-    pass
-
-
-class YamlRenderer(AbstractRenderer):
-  def __init__(self) -> None:
-    pass
-
-  def render(self, content: str | None) -> str | None:
-    return content
 
 
 class DigExtension(Extension):
@@ -257,16 +241,14 @@ class RawIncludeListExtension(Extension):
     return Markup(''.join(kv_as_yaml_str))
 
 
-# TODO: combine two JinjaRenderer classes
-class JinjaRendererFromViewer(AbstractRenderer):
+class JinjaRenderer():
   file_types = [resource_type for resource_type in ResourceType if
                 (resource_type != ResourceType.DIRECTORY and
                  resource_type != ResourceType.DOES_NOT_EXIST)]
 
-  def __init__(self, viewer: ResourceViewer) -> None:
+  def __init__(self) -> None:
     self.config = get_config()
 
-    self.viewer = viewer
     self.loader = CustomFunctionLoader(self._get_source, self._get_rendered, self._list_templates)
     self.env = Environment(extensions=[RawIncludeExtension,
                                        FileListExtension,
@@ -280,17 +262,26 @@ class JinjaRendererFromViewer(AbstractRenderer):
                            undefined=StrictUndefined,
                            finalize=self._finalize)
 
+    self.viewer = None
     self.template_vars = {}
-    self.filename = '<template>'
+    self.template_source = 'Unknown'
 
   def _finalize(self, value: Any):
-    if isinstance(value, str) and value.startswith(self.config.cli_params.var_identifier + '{') and value.endswith('}'):
-      log.error(f'Unresolved variable reference: {value}')
-      raise UndefinedTemplateVariableError(value)
+    if isinstance(value, str):
+      pattern = re.escape(self.config.cli_params.var_identifier) + r'\{[^}]+\}'
+      match = re.search(pattern, value)
+      if match:
+        unresolved = match.group(0)
+        log.error(f'Unresolved variable reference: {unresolved}')
+        raise UndefinedTemplateVariableError(unresolved)
 
     return value
 
   def _get_source(self, path: str):
+    if not self.viewer:
+      log.error("Resource viewer is not set")
+      raise InternalError()
+
     child = list(self.viewer.search_subresources(resource_types=self.file_types,
                                                  search_subdirs=[os.path.normpath(os.path.dirname(path))],
                                                  name_pattern=f'^{re.escape(os.path.basename(path))}$'))
@@ -304,6 +295,10 @@ class JinjaRendererFromViewer(AbstractRenderer):
     return (child[0].content, path, None)
 
   def _get_rendered(self, path: str):
+    if not self.viewer:
+      log.error("Resource viewer is not set")
+      raise InternalError()
+
     child = list(self.viewer.search_subresources(resource_types=self.file_types,
                                                  search_subdirs=[os.path.normpath(os.path.dirname(path))],
                                                  name_pattern=f'^{re.escape(os.path.basename(path))}$'))
@@ -317,18 +312,25 @@ class JinjaRendererFromViewer(AbstractRenderer):
     return (self.render(child[0].content), path, None)
 
   def _list_templates(self, path: str) -> List[ResourceViewer]:
+    if not self.viewer:
+      log.error("Resource viewer is not set")
+      raise InternalError()
+
     return list(self.viewer.search_subresources(resource_types=self.file_types,
                                                 search_subdirs=[os.path.normpath(path)]))
 
   def set_template_vars(self, template_vars: dict) -> None:
     self.template_vars = template_vars
 
-  def set_filename(self, filename: str) -> None:
-    self.filename = filename
+  def set_template_source(self, source: str) -> None:
+    self.template_source = source
+
+  def set_resource_viewer(self, viewer: ResourceViewer) -> None:
+    self.viewer = viewer
 
   def render(self, content: str) -> str:
     template = self.env.from_string(content)
-    template.filename = self.filename
+    template.filename = self.template_source
 
     try:
       rendered = template.render(self.template_vars)
@@ -338,37 +340,7 @@ class JinjaRendererFromViewer(AbstractRenderer):
       log.error(f'Variable "{variable_name}" is undefined')
       raise UndefinedTemplateVariableError(variable_name) from None
     except TypeError:
-      log.error(f'Likely a missing variable in template {self.filename}')
-      raise UndefinedTemplateVariableError('Unknown variable in template') from None
-
-    return rendered
-
-
-class JinjaRenderer(AbstractRenderer):
-  def __init__(self) -> None:
-    self.loader = BaseLoader()
-    self.env = Environment(extensions=[DigExtension,
-                                       'jinja2_ansible_filters.AnsibleCoreFiltersExtension'],
-                           loader=self.loader,
-                           undefined=StrictUndefined)
-
-    self.template_vars = {}
-
-  def set_template_vars(self, template_vars: dict) -> None:
-    self.template_vars = template_vars
-
-  def render(self, content: str) -> str:
-    template = self.env.from_string(content)
-
-    try:
-      rendered = template.render(self.template_vars)
-    except jinja2.exceptions.UndefinedError as e:
-      variable_name = extract_undefined_variable(str(e))
-
-      log.error(f'Variable "{variable_name}" is undefined')
-      raise UndefinedTemplateVariableError(variable_name) from None
-    except TypeError:
-      log.error('Likely a missing variable in ArgoCD Application CustomResource template')
+      log.error(f'Likely a missing variable in template {self.template_source}')
       raise UndefinedTemplateVariableError('Unknown variable in template') from None
 
     return rendered
