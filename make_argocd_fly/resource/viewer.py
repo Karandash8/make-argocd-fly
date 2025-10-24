@@ -79,9 +79,7 @@ class ResourceViewer:
                         template: bool | None = None,
                         depth: int = -1) -> dict[str, 'ResourceViewer']:
     if self.resource_type == ResourceType.DOES_NOT_EXIST:
-      path = os.path.join(self.root_element_abs_path, self.element_rel_path)
-      log.error(f'Path does not exist: {path}')
-      raise ResourceViewerIsFake(path)
+      raise ResourceViewerIsFake(os.path.join(self.root_element_abs_path, self.element_rel_path))
 
     subresources = {}
     for rel_path, subresource in self.subresources.items():
@@ -102,9 +100,7 @@ class ResourceViewer:
                           search_subdirs: list[str] | None = None,
                           depth: int = -1) -> Generator['ResourceViewer', None, None]:
     if self.resource_type == ResourceType.DOES_NOT_EXIST:
-      path = os.path.join(self.root_element_abs_path, self.element_rel_path)
-      log.error(f'Path does not exist: {path}')
-      raise ResourceViewerIsFake(path)
+      raise ResourceViewerIsFake(os.path.join(self.root_element_abs_path, self.element_rel_path))
 
     if search_subdirs is not None:
       all_subdirs = self._get_subresources(resource_types=[ResourceType.DIRECTORY]) | {'.': self}

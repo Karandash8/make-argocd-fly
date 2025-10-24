@@ -264,7 +264,8 @@ class JinjaRenderer():
 
     self.viewer = None
     self.template_vars = {}
-    self.template_source = 'Unknown'
+    # Use a non-path sentinel so coverage doesn't think this is a file on disk
+    self.template_source = '<Unknown>'
 
   def _finalize(self, value: Any):
     if isinstance(value, str):
