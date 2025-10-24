@@ -130,9 +130,11 @@ def main(**kwargs) -> None:
   except InternalError:
     log.critical('Internal error')
     exit(1)
-  except (ConfigFileError, ResourceViewerIsFake):
+  except ConfigFileError:
     log.critical('Config file error')
     exit(1)
+  except ResourceViewerIsFake as e:
+    log.critical(f'Missing application directory: {e.path}')
   except Exception as e:
     raise e
 

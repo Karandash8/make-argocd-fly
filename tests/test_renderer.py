@@ -170,7 +170,7 @@ def test_JinjaRenderer__get_rendered__similar_filenames_2(tmp_path):
   assert renderer._get_rendered('dir_0/template.txt.j2') == (TEMPLATE_0, 'dir_0/template.txt.j2', None)
 
 ###########
-### JinjaRenderer.render()
+### JinjaRenderer.render
 ###########
 
 def test_JinjaRenderer__render_simple():
@@ -244,7 +244,7 @@ def test_JinjaRenderer__render_missing_template(tmp_path):
   dir_root.mkdir()
 
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(ResourceViewer(dir_root))
+  renderer.set_resource_viewer(ResourceViewer(str(dir_root)))
 
   TEMPLATE = '''\
   Template content line 1

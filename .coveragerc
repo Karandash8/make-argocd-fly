@@ -1,2 +1,2 @@
 [run]
-omit = make_argocd_fly/main.py,tests/*,*.j2
+omit = make_argocd_fly/main.py,tests/*,*.j2,*.yml
