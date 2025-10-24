@@ -135,6 +135,7 @@ def main(**kwargs) -> None:
     exit(1)
   except ResourceViewerIsFake as e:
     log.critical(f'Missing application directory: {e.path}')
+    exit(1)
   except Exception as e:
     raise e
 
