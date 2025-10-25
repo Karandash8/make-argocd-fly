@@ -4,7 +4,7 @@ import re
 from typing import Generator
 from enum import StrEnum, auto
 
-from make_argocd_fly.exception import ResourceViewerIsFake
+from make_argocd_fly.exception import PathDoesNotExistError
 
 log = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ EXTENSION_MAP = {
 TEMPLATE_EXTENSIONS = {'.j2'}
 
 
-def get_resource_params(path: str) -> tuple[ResourceType, bool]:
+def _get_resource_params(path: str) -> tuple[ResourceType, bool]:
   template = False
 
   if not os.path.exists(path):
@@ -41,89 +41,184 @@ def get_resource_params(path: str) -> tuple[ResourceType, bool]:
 
 
 class ResourceViewer:
-  def __init__(self, root_element_abs_path: str, element_rel_path: str = '.') -> None:
-    self.root_element_abs_path = root_element_abs_path
-    self.element_rel_path = os.path.normpath(element_rel_path)
-
-    if self.element_rel_path == '.':
-      self.name = os.path.basename(self.root_element_abs_path)
-    else:
-      self.name = os.path.basename(self.element_rel_path)
+  def __init__(self, path: str) -> None:
+    self.path = os.path.normpath(path)
+    self.name = os.path.basename(path)
 
     self.resource_type = ResourceType.DOES_NOT_EXIST
     self.template = False
     self.content = ''
-    self.subresources = {}
+    self.children = {}
 
     self._build()
 
   def _build(self) -> None:
-    path = os.path.join(self.root_element_abs_path, self.element_rel_path)
-    self.resource_type, self.template = get_resource_params(path)
-
+    self.resource_type, self.template = _get_resource_params(self.path)
     if self.resource_type == ResourceType.DIRECTORY:
-      for child_name in os.listdir(path):
-        child_rel_path = os.path.join(self.element_rel_path, child_name)
-        self.subresources[os.path.normpath(child_rel_path)] = ResourceViewer(self.root_element_abs_path, child_rel_path)
+      for child_name in os.listdir(self.path):
+        self.children[child_name] = ResourceViewer(os.path.join(self.path, child_name))
+        self.children[child_name].children['..'] = self
     elif self.resource_type != ResourceType.DOES_NOT_EXIST:
       try:
-        with open(path) as f:
+        with open(self.path) as f:
           self.content = ''.join(f.readlines())
       except UnicodeDecodeError:
-        log.warning(f'File {path} is not a text file, cannot read content')
+        log.warning(f'File {self.path} is not a text file, cannot read content')
 
     log.debug(f'Created element ({self})')
 
-  def _get_subresources(self,
-                        resource_types: list[ResourceType] | None = None,
-                        template: bool | None = None,
-                        depth: int = -1) -> dict[str, 'ResourceViewer']:
+  def _go_to(self, path: str) -> 'ResourceViewer':
+    parts = os.path.normpath(path).split(os.sep)
+    current = self
+
+    for part in parts:
+      if part not in current.children:
+        raise PathDoesNotExistError(path)
+
+      current = current.children[part]
+
+    return current
+
+  def _iter_children(self):
+    """Yield (name, node) for children excluding the parent backlink '..'."""
+    for name, node in self.children.items():
+      if name == '..':
+        continue
+      yield name, node
+
+  def _search_subresources(self,
+                           resource_types: list[ResourceType] | None = None,
+                           template: bool | None = None,
+                           name_pattern: str = r'.*',
+                           search_subdirs: list[str] | None = None,
+                           depth: int = -1) -> Generator['ResourceViewer', None, None]:
+    """
+    Yield children matching filters. If search_subdirs is provided, treat each
+    item as a path relative to `self` ('.' allowed). Depth: -1 means unlimited.
+    """
     if self.resource_type == ResourceType.DOES_NOT_EXIST:
-      raise ResourceViewerIsFake(os.path.join(self.root_element_abs_path, self.element_rel_path))
+      raise PathDoesNotExistError(self.path)
 
-    subresources = {}
-    for rel_path, subresource in self.subresources.items():
-      if ((resource_types is None or subresource.resource_type in resource_types) and
-          (template is None or subresource.template == template) and
-          (depth == -1 or depth > 0)):
-        subresources[rel_path] = subresource
+    # If specific subdirs requested, delegate to each target and stop here.
+    if search_subdirs is not None:
+      for subdir in search_subdirs:
+        try:
+          target = self if subdir == '.' else self._go_to(subdir)
+        except PathDoesNotExistError:
+          continue
+        # Recurse from that subdir with the same filters, but without search_subdirs
+        yield from target._search_subresources(resource_types=resource_types,
+                                               template=template,
+                                               name_pattern=name_pattern,
+                                               search_subdirs=None,
+                                               depth=depth)
+      return
 
-      if subresource.resource_type == ResourceType.DIRECTORY and (depth == -1 or depth > 0):
-        subresources |= subresource._get_subresources(resource_types, template, depth - 1 if depth > 0 else -1)
+    regex = re.compile(name_pattern)
 
-    return subresources
+    for _, child in self._iter_children():
+        # Apply filters for the child itself
+        if ((resource_types is None or child.resource_type in resource_types) and
+            (template is None or child.template == template) and
+            regex.search(child.name) and
+            (depth == -1 or depth > 0)):
+          yield child
+
+        # Recurse into directories if depth allows
+        if child.resource_type == ResourceType.DIRECTORY and (depth == -1 or depth > 0):
+          next_depth = (depth - 1) if depth > 0 else -1
+          yield from child._search_subresources(resource_types=resource_types,
+                                                template=template,
+                                                name_pattern=name_pattern,
+                                                search_subdirs=None,
+                                                depth=next_depth)
+
+  def scoped(self) -> "ScopedViewer":
+    return ScopedViewer(self, base_path=self.path)
+
+  def __str__(self) -> str:
+    return f'{self.__class__.__name__}({self.path}) of type {self.resource_type}'
+
+
+class ScopedViewer:
+  """
+  Immutable, lightweight view over a ResourceViewer subtree.
+  rel_path is computed relative to base_path, not the global source root.
+  """
+  __slots__ = ("_node", "_base_path")
+
+  def __init__(self, node: "ResourceViewer", base_path: str | None = None) -> None:
+    self._node = node
+    self._base_path = os.path.normpath(base_path or node.path)
+
+  @property
+  def path(self) -> str:
+    return self._node.path
+
+  @property
+  def name(self) -> str:
+    return self._node.name
+
+  @property
+  def resource_type(self) -> ResourceType:
+    return self._node.resource_type
+
+  @property
+  def template(self) -> bool:
+    return self._node.template
+
+  @property
+  def content(self) -> str:
+    return self._node.content
+
+  @property
+  def rel_path(self) -> str:
+    rel = os.path.relpath(self._node.path, self._base_path)
+    return "." if rel == "." else os.path.normpath(rel)
+
+  def go_to(self, path: str, rebase: bool = True) -> "ScopedViewer":
+    nxt = self._node._go_to(path)
+    if rebase:
+      # Navigate and make the target the new '.'
+      return ScopedViewer(nxt, base_path=nxt.path)
+    else:
+      # Keep the original base path
+      return ScopedViewer(nxt, base_path=self._base_path)
 
   def search_subresources(self,
-                          resource_types: list[ResourceType] | None = None,
+                          resource_types: list["ResourceType"] | None = None,
                           template: bool | None = None,
                           name_pattern: str = r'.*',
                           search_subdirs: list[str] | None = None,
-                          depth: int = -1) -> Generator['ResourceViewer', None, None]:
-    if self.resource_type == ResourceType.DOES_NOT_EXIST:
-      raise ResourceViewerIsFake(os.path.join(self.root_element_abs_path, self.element_rel_path))
+                          depth: int = -1):
+    """
+    Delegate to the underlying node but re-wrap yielded children in this scope.
+    `search_subdirs` remain relative to this scope (same as underlying semantics).
+    """
+    for child in self._node._search_subresources(resource_types=resource_types,
+                                                 template=template,
+                                                 name_pattern=name_pattern,
+                                                 search_subdirs=search_subdirs,
+                                                 depth=depth):
+      yield ScopedViewer(child, base_path=self._base_path)
 
-    if search_subdirs is not None:
-      all_subdirs = self._get_subresources(resource_types=[ResourceType.DIRECTORY]) | {'.': self}
+  def iter_children(self):
+    for _, child in self._node._iter_children():
+      yield ScopedViewer(child, base_path=self._base_path)
 
-      for subdir in search_subdirs:
-        if subdir in all_subdirs:
-          yield from all_subdirs[subdir].search_subresources(resource_types=resource_types,
-                                                             template=template,
-                                                             name_pattern=name_pattern,
-                                                             depth=depth)
-    else:
-      for subresource in self.subresources.values():
-        if ((resource_types is None or subresource.resource_type in resource_types) and
-            (template is None or subresource.template == template) and
-            re.search(name_pattern, subresource.name) and
-            (depth == -1 or depth > 0)):
-          yield subresource
+  def child(self, name: str) -> "ScopedViewer":
+    return ScopedViewer(self._node._go_to(name), base_path=self._base_path)
 
-        if subresource.resource_type == ResourceType.DIRECTORY and (depth == -1 or depth > 0):
-          yield from subresource.search_subresources(resource_types=resource_types,
-                                                     template=template,
-                                                     name_pattern=name_pattern,
-                                                     depth=depth - 1 if depth > 0 else -1)
+  def exists(self, path: str) -> bool:
+    try:
+      _ = self._node._go_to(os.path.normpath(path))
+      return True
+    except PathDoesNotExistError:
+      return False
 
   def __str__(self) -> str:
-    return f'root_path: {self.root_element_abs_path}, element_rel_path: {self.element_rel_path}, resource_type: {self.resource_type}'
+    return f"{self.__class__.__name__}({self.path}, base={self._base_path})"
+
+
+def build_scoped_viewer(path: str) -> ScopedViewer:
+    return ResourceViewer(path).scoped()

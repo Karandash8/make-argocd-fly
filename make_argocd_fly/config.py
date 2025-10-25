@@ -7,7 +7,7 @@ from make_argocd_fly.cliparam import get_cli_params
 from make_argocd_fly.param import Params
 from make_argocd_fly.util import build_path, merge_dicts_without_duplicates, merge_dicts_with_overrides, VarsResolver
 from make_argocd_fly.exception import InternalError, ConfigFileError, MergeError
-from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
+from make_argocd_fly.resource.viewer import build_scoped_viewer, ResourceType
 
 
 log = logging.getLogger(__name__)
@@ -184,16 +184,16 @@ def populate_config(root_dir: str = default.ROOT_DIR,
                     output_dir: str = default.OUTPUT_DIR,
                     tmp_dir: str = default.TMP_DIR) -> Config:
   try:
-    viewer = ResourceViewer(build_path(root_dir, config_dir))
+    viewer = build_scoped_viewer(build_path(root_dir, config_dir))
     yml_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML], template=False))
 
     config_files_content = []
     for child in yml_children:
-      log.debug(f'Found config file: {child.element_rel_path}')
+      log.debug(f'Found config file: {child.rel_path}')
       try:
         config_files_content.append(yaml.safe_load(child.content))
       except yaml.YAMLError:
-        log.error(f'Invalid YAML in config file {child.element_rel_path}')
+        log.error(f'Invalid YAML in config file {child.rel_path}')
         raise ConfigFileError
 
     merged_config = merge_dicts_without_duplicates(*config_files_content)
