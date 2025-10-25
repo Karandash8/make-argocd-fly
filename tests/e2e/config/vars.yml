@@ -114,3 +114,5 @@ vars:
       namespace: default
       jsonPointers:
         - /spec/replicas
+  test_app:
+    namespace: test-namespace

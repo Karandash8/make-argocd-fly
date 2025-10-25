@@ -1,9 +1,9 @@
 import pytest
 import jinja2
 import textwrap
-from make_argocd_fly.resource.viewer import ResourceViewer
+from make_argocd_fly.resource.viewer import build_scoped_viewer
 from make_argocd_fly.renderer import JinjaRenderer
-from make_argocd_fly.exception import UndefinedTemplateVariableError, MissingFileError, InternalError
+from make_argocd_fly.exception import UndefinedTemplateVariableError, InternalError, PathDoesNotExistError
 
 ###############
 ### _get_source
@@ -22,9 +22,9 @@ def test_JinjaRenderer_get_source_simple(tmp_path):
   template = dir_root / 'template.txt.j2'
   template.write_text(TEMPLATE)
 
-  resource_viewer = ResourceViewer(str(dir_root))
+  viewer = build_scoped_viewer(str(dir_root))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   assert renderer._get_source('template.txt.j2') == (TEMPLATE, 'template.txt.j2', None)
 
@@ -32,13 +32,13 @@ def test_JinjaRenderer_get_source_does_not_exist(tmp_path, caplog):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
 
-  resource_viewer = ResourceViewer(str(dir_root))
+  viewer = build_scoped_viewer(str(dir_root))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
-  with pytest.raises(MissingFileError):
+  with pytest.raises(PathDoesNotExistError):
     renderer._get_source('template.txt.j2')
-  assert 'No matching resource found for path template.txt.j2' in caplog.text
+  assert 'Path does not exist template.txt.j2' in caplog.text
 
 def test_JinjaRenderer_get_source_same_filename(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -54,9 +54,9 @@ def test_JinjaRenderer_get_source_same_filename(tmp_path):
   template_1 = dir_1 / 'template.txt.j2'
   template_1.write_text(TEMPLATE_1)
 
-  resource_viewer = ResourceViewer(str(dir_root))
+  viewer = build_scoped_viewer(str(dir_root))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   assert renderer._get_source('dir_1/template.txt.j2') == (TEMPLATE_1, 'dir_1/template.txt.j2', None)
 
@@ -72,9 +72,9 @@ def test_JinjaRenderer__get_source__similar_filenames(tmp_path):
   template_1 = dir_0 / 'extra-template.txt.j2'
   template_1.write_text(TEMPLATE_1)
 
-  resource_viewer = ResourceViewer(str(dir_root))
+  viewer = build_scoped_viewer(str(dir_root))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   assert renderer._get_source('dir_0/template.txt.j2') == (TEMPLATE_0, 'dir_0/template.txt.j2', None)
 
@@ -90,9 +90,9 @@ def test_JinjaRenderer__get_source__similar_filenames_2(tmp_path):
   template_1 = dir_0 / 'template.txt.j2-extra'
   template_1.write_text(TEMPLATE_1)
 
-  resource_viewer = ResourceViewer(str(dir_root))
+  viewer = build_scoped_viewer(str(dir_root))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   assert renderer._get_source('dir_0/template.txt.j2') == (TEMPLATE_0, 'dir_0/template.txt.j2', None)
 
@@ -113,9 +113,9 @@ def test_JinjaRenderer_get_rendered_simple(tmp_path):
   template = dir_root / 'template.txt.j2'
   template.write_text(TEMPLATE)
 
-  resource_viewer = ResourceViewer(str(dir_root))
+  viewer = build_scoped_viewer(str(dir_root))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   renderer.set_template_vars({'var': 'content'})
 
@@ -125,13 +125,13 @@ def test_JinjaRenderer_get_rendered_does_not_exist(tmp_path, caplog):
   dir_root = tmp_path / 'dir_root'
   dir_root.mkdir()
 
-  resource_viewer = ResourceViewer(str(dir_root))
+  viewer = build_scoped_viewer(str(dir_root))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
-  with pytest.raises(MissingFileError):
-    renderer._get_source('template.txt.j2')
-  assert 'No matching resource found for path template.txt.j2' in caplog.text
+  with pytest.raises(PathDoesNotExistError):
+    renderer._get_rendered('template.txt.j2')
+  assert 'Path does not exist template.txt.j2' in caplog.text
 
 def test_JinjaRenderer__get_rendered__similar_filenames(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -145,9 +145,9 @@ def test_JinjaRenderer__get_rendered__similar_filenames(tmp_path):
   template_1 = dir_0 / 'extra-template.txt.j2'
   template_1.write_text(TEMPLATE_1)
 
-  resource_viewer = ResourceViewer(str(dir_root))
+  viewer = build_scoped_viewer(str(dir_root))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   assert renderer._get_rendered('dir_0/template.txt.j2') == (TEMPLATE_0, 'dir_0/template.txt.j2', None)
 
@@ -163,9 +163,9 @@ def test_JinjaRenderer__get_rendered__similar_filenames_2(tmp_path):
   template_1 = dir_0 / 'template.txt.j2-extra'
   template_1.write_text(TEMPLATE_1)
 
-  resource_viewer = ResourceViewer(str(dir_root))
+  viewer = build_scoped_viewer(str(dir_root))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   assert renderer._get_rendered('dir_0/template.txt.j2') == (TEMPLATE_0, 'dir_0/template.txt.j2', None)
 
@@ -244,14 +244,14 @@ def test_JinjaRenderer__render_missing_template(tmp_path):
   dir_root.mkdir()
 
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(ResourceViewer(str(dir_root)))
+  renderer.set_resource_viewer(build_scoped_viewer(str(dir_root)))
 
   TEMPLATE = '''\
   Template content line 1
   {% include 'template.txt.j2' %}
   '''
 
-  with pytest.raises(MissingFileError):
+  with pytest.raises(PathDoesNotExistError):
     renderer.render(TEMPLATE)
 
 def test_JinjaRenderer__render_with_rawinclude(tmp_path):
@@ -263,9 +263,9 @@ def test_JinjaRenderer__render_with_rawinclude(tmp_path):
   template_0 = dir_0 / 'template.txt.j2'
   template_0.write_text(TEMPLATE_0)
 
-  resource_viewer = ResourceViewer(str(dir_0))
+  viewer = build_scoped_viewer(str(dir_0))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   TEMPLATE = '''\
   Template content line 1
@@ -287,13 +287,41 @@ def test_JinjaRenderer__render_with_include(tmp_path):
   template_0 = dir_0 / 'template.txt.j2'
   template_0.write_text(TEMPLATE_0)
 
-  resource_viewer = ResourceViewer(str(dir_0))
+  viewer = build_scoped_viewer(str(dir_0))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   TEMPLATE = '''\
   Template content line 1
   {% include 'template.txt.j2' %}
+  '''
+
+  renderer.set_template_vars({'content': 'content 0'})
+  assert renderer.render(TEMPLATE) == \
+  '''\
+  Template content line 1
+  Template content 0
+  '''
+
+def test_JinjaRenderer__render_with_include_from_parent_dir(tmp_path):
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_0 = dir_root / 'dir_0'
+  dir_0.mkdir()
+  dir_1 = dir_root / 'dir_1'
+  dir_1.mkdir()
+  TEMPLATE_0 = 'Template {{ content }}'
+  template_0 = dir_0 / 'template.txt.j2'
+  template_0.write_text(TEMPLATE_0)
+
+  viewer = build_scoped_viewer(str(dir_root))
+  viewer = viewer.go_to('dir_1')
+  renderer = JinjaRenderer()
+  renderer.set_resource_viewer(viewer)
+
+  TEMPLATE = '''\
+  Template content line 1
+  {% include '../dir_0/template.txt.j2' %}
   '''
 
   renderer.set_template_vars({'content': 'content 0'})
@@ -315,9 +343,9 @@ def test_JinjaRenderer__render_with_include_inception(tmp_path):
   template_1 = dir_0 / 'template_inception.txt.j2'
   template_1.write_text(TEMPLATE_1)
 
-  resource_viewer = ResourceViewer(str(dir_0))
+  viewer = build_scoped_viewer(str(dir_0))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   TEMPLATE = '''\
   Template content line 1
@@ -361,9 +389,9 @@ def test_JinjaRenderer__render_with_file_list_without_prefix(tmp_path):
   file_2 = files / 'file_2.yml'
   file_2.write_text(FILE_2)
 
-  resource_viewer = ResourceViewer(str(dir_0))
+  viewer = build_scoped_viewer(str(dir_0))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   TEMPLATE = '''\
     {% file_list 'files' %}
@@ -393,9 +421,9 @@ def test_JinjaRenderer__render_with_file_list_with_prefix(tmp_path):
   file_2 = files / 'file_2.yml'
   file_2.write_text(FILE_2)
 
-  resource_viewer = ResourceViewer(str(dir_0))
+  viewer = build_scoped_viewer(str(dir_0))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   TEMPLATE = '''\
     {% file_list 'files', '/etc/' %}
@@ -432,9 +460,9 @@ def test_JinjaRenderer__render_with_include_map(tmp_path):
   file_3 = files_subdir / 'file_3.yml'
   file_3.write_text(textwrap.dedent(FILE_3))
 
-  resource_viewer = ResourceViewer(str(dir_0))
+  viewer = build_scoped_viewer(str(dir_0))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   TEMPLATE = '''\
     {% include_map 'files' %}
@@ -477,9 +505,9 @@ def test_JinjaRenderer__render_with_rawinclude_map(tmp_path):
   file_3 = files_subdir / 'file_3.yml'
   file_3.write_text(textwrap.dedent(FILE_3))
 
-  resource_viewer = ResourceViewer(str(dir_0))
+  viewer = build_scoped_viewer(str(dir_0))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   TEMPLATE = '''\
     {% rawinclude_map 'files' %}
@@ -522,9 +550,9 @@ def test_JinjaRenderer__render_with_include_list(tmp_path):
   file_3 = files_subdir / 'file_3.yml'
   file_3.write_text(textwrap.dedent(FILE_3))
 
-  resource_viewer = ResourceViewer(str(dir_0))
+  viewer = build_scoped_viewer(str(dir_0))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   TEMPLATE = '''\
     {% include_list 'files' %}
@@ -565,9 +593,9 @@ def test_JinjaRenderer__render_with_rawinclude_list(tmp_path):
   file_3 = files_subdir / 'file_3.yml'
   file_3.write_text(textwrap.dedent(FILE_3))
 
-  resource_viewer = ResourceViewer(str(dir_0))
+  viewer = build_scoped_viewer(str(dir_0))
   renderer = JinjaRenderer()
-  renderer.set_resource_viewer(resource_viewer)
+  renderer.set_resource_viewer(viewer)
 
   TEMPLATE = '''\
     {% rawinclude_list 'files' %}

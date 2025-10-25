@@ -6,8 +6,8 @@ from make_argocd_fly.context import Context, ctx_set
 from make_argocd_fly.stage import Stage
 from make_argocd_fly.config import get_config
 from make_argocd_fly.param import ApplicationTypes
-from make_argocd_fly.exception import ResourceViewerIsFake, ConfigFileError
-from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
+from make_argocd_fly.exception import ConfigFileError, PathDoesNotExistError
+from make_argocd_fly.resource.viewer import ResourceType, ScopedViewer
 from make_argocd_fly.stage import (DiscoverK8sSimpleApplication, DiscoverK8sKustomizeApplication, DiscoverK8sAppOfAppsApplication,
                                    DiscoverGenericApplication, RenderTemplates, SplitManifests, GenerateManifestNames, GenerateOutputNames,
                                    WriteOnDisk, KustomizeBuild)
@@ -87,15 +87,15 @@ def build_pipeline_generic(limits: RuntimeLimits) -> Pipeline:
   return Pipeline(PipelineType.GENERIC, stages)
 
 
-def build_pipeline(ctx: Context, limits: RuntimeLimits, source_path: str) -> Pipeline:
+def build_pipeline(ctx: Context, limits: RuntimeLimits, viewer: ScopedViewer) -> Pipeline:
   config = get_config()
   params = config.get_params(ctx.env_name, ctx.app_name)
 
-  viewer = ResourceViewer(source_path)
-  ctx_set(ctx, 'source.viewer', viewer)
-
   if params.app_type == ApplicationTypes.K8S:
     try:
+      viewer = viewer.go_to(ctx.app_name)
+      ctx_set(ctx, 'source.viewer', viewer)
+
       kustomize_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML],
                                                            name_pattern='kustomization|Kustomization'))
 
@@ -103,9 +103,12 @@ def build_pipeline(ctx: Context, limits: RuntimeLimits, source_path: str) -> Pip
         return build_pipeline_k8s_kustomize(limits)
       else:
         return build_pipeline_k8s_simple(limits)
-    except ResourceViewerIsFake:
+    except PathDoesNotExistError:
       return build_pipeline_app_of_apps(limits)
   elif params.app_type == ApplicationTypes.GENERIC:
+    viewer = viewer.go_to(ctx.app_name)
+    ctx_set(ctx, 'source.viewer', viewer)
+
     return build_pipeline_generic(limits)
   else:
     log.error(f'Unknown application type \'{params.app_type}\' in application {ctx.app_name} in environment {ctx.env_name}.'

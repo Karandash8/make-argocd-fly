@@ -9,7 +9,7 @@ from typing import Protocol
 
 from make_argocd_fly.context import Context, ctx_get, ctx_set, resolve_expr
 from make_argocd_fly.context.data import Content, Template, OutputResource
-from make_argocd_fly.resource.viewer import ResourceViewer, ResourceType
+from make_argocd_fly.resource.viewer import ScopedViewer, ResourceType
 from make_argocd_fly import default
 from make_argocd_fly.resource.writer import AsyncWriterProto, writer_factory, \
   SyncToAsyncWriter
@@ -18,7 +18,7 @@ from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparam import get_cli_params
 from make_argocd_fly.renderer import JinjaRenderer
 from make_argocd_fly.exception import UndefinedTemplateVariableError, TemplateRenderingError, InternalError, KustomizeError, \
-  MissingFileError, ConfigFileError
+  PathDoesNotExistError, ConfigFileError
 from make_argocd_fly.util import extract_single_resource, FilePathGenerator, get_app_rel_path
 from make_argocd_fly.limits import RuntimeLimits
 
@@ -54,15 +54,15 @@ def _resolve_template_vars(env_name: str, app_name: str) -> dict:
   return vars_
 
 
-def _scan_viewer(viewer: ResourceViewer,
+def _scan_viewer(viewer: ScopedViewer,
                  resource_types: list[ResourceType] | None,
                  template: bool,
                  search_subdirs: list[str] | None = None,
                  excludes: list[str] = []):
   out = []
   for child in viewer.search_subresources(resource_types=resource_types, template=template, search_subdirs=search_subdirs):
-    if any(child.element_rel_path.startswith(e) for e in excludes):
-      log.debug(f'Excluding file {child.element_rel_path}')
+    if any(child.rel_path.startswith(e) for e in excludes):
+      log.debug(f'Excluding file {child.rel_path}')
       continue
     out.append(child)
 
@@ -95,7 +95,7 @@ class DiscoverK8sSimpleApplication(Stage):
                               resource_types=[ResourceType.YAML],
                               template=False,
                               excludes=app_params.exclude_rendering):
-      content.append(Content(resource_type=child.resource_type, data=child.content, source=child.element_rel_path))
+      content.append(Content(resource_type=child.resource_type, data=child.content, source=child.rel_path))
     ctx_set(ctx, self.provides['content'], content)
 
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
@@ -104,7 +104,7 @@ class DiscoverK8sSimpleApplication(Stage):
                               resource_types=[ResourceType.YAML],
                               template=True,
                               excludes=app_params.exclude_rendering):
-      templates.append(Template(resource_type=child.resource_type, vars=resolved_vars, data=child.content, source=child.element_rel_path))
+      templates.append(Template(resource_type=child.resource_type, vars=resolved_vars, data=child.content, source=child.rel_path))
     ctx_set(ctx, self.provides['template'], templates)
 
     ctx_set(ctx, self.provides['output_dir'], config.output_dir)
@@ -137,7 +137,7 @@ class DiscoverK8sKustomizeApplication(Stage):
                               template=False,
                               search_subdirs=search_subdirs,
                               excludes=app_params.exclude_rendering):
-      content.append(Content(resource_type=child.resource_type, data=child.content, source=child.element_rel_path))
+      content.append(Content(resource_type=child.resource_type, data=child.content, source=child.rel_path))
     ctx_set(ctx, self.provides['content'], content)
 
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
@@ -147,7 +147,7 @@ class DiscoverK8sKustomizeApplication(Stage):
                               template=True,
                               search_subdirs=search_subdirs,
                               excludes=app_params.exclude_rendering):
-      templates.append(Template(resource_type=child.resource_type, vars=resolved_vars, data=child.content, source=child.element_rel_path))
+      templates.append(Template(resource_type=child.resource_type, vars=resolved_vars, data=child.content, source=child.rel_path))
     ctx_set(ctx, self.provides['template'], templates)
 
     ctx_set(ctx, self.provides['tmp_dir'], config.tmp_dir)
@@ -241,7 +241,7 @@ class DiscoverGenericApplication(Stage):
                               resource_types=file_types,
                               template=False,
                               excludes=app_params.exclude_rendering):
-      content.append(Content(resource_type=child.resource_type, data=child.content, source=child.element_rel_path))
+      content.append(Content(resource_type=child.resource_type, data=child.content, source=child.rel_path))
     ctx_set(ctx, self.provides['content'], content)
 
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
@@ -250,7 +250,7 @@ class DiscoverGenericApplication(Stage):
                               resource_types=file_types,
                               template=True,
                               excludes=app_params.exclude_rendering):
-      templates.append(Template(resource_type=child.resource_type, vars=resolved_vars, data=child.content, source=child.element_rel_path))
+      templates.append(Template(resource_type=child.resource_type, vars=resolved_vars, data=child.content, source=child.rel_path))
     ctx_set(ctx, self.provides['template'], templates)
 
     ctx_set(ctx, self.provides['output_dir'], config.output_dir)
@@ -283,7 +283,7 @@ class RenderTemplates(Stage):
           source=template.source,
         ))
 
-      except (UndefinedTemplateVariableError, MissingFileError):
+      except (UndefinedTemplateVariableError, PathDoesNotExistError):
         log.error(f'Error rendering template {template.source}')
         raise TemplateRenderingError(template.source, ctx.app_name, ctx.env_name) from None
 

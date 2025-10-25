@@ -61,6 +61,7 @@ envs:
       app_15: {params: {parent_app: service_deployer}}
       app_16: {params: {parent_app: service_deployer}}
       app_17: {params: {parent_app: service_deployer}}
+      app_19: {params: {parent_app: service_deployer}}
   external_1:
     apps:
       bootstrap: {}

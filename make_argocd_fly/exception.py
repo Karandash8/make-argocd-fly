@@ -2,12 +2,6 @@ class BaseError(Exception):
   pass
 
 
-class ResourceViewerIsFake(BaseError):
-  def __init__(self, path: str) -> None:
-    self.path = path
-    super().__init__(f'Path does not exist {path}')
-
-
 class InternalError(BaseError):
   def __init__(self) -> None:
     super().__init__('Internal error')
@@ -43,10 +37,10 @@ class YamlError(BaseError):
     super().__init__(f'YAML error in application {app_name} in environment {env_name}')
 
 
-class MissingFileError(BaseError):
+class PathDoesNotExistError(BaseError):
   def __init__(self, path: str) -> None:
     self.path = path
-    super().__init__(f'Missing file {path}')
+    super().__init__(f'Path does not exist {path}')
 
 
 class KustomizeError(BaseError):

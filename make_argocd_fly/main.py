@@ -9,11 +9,12 @@ import yamllint
 
 from make_argocd_fly import default
 from make_argocd_fly.warning import init_warnings
+from make_argocd_fly.resource.viewer import build_scoped_viewer
 from make_argocd_fly.cliparam import populate_cli_params, get_cli_params
 from make_argocd_fly.config import populate_config, get_config
 from make_argocd_fly.util import init_logging, latest_version_check, get_package_name, get_current_version
 from make_argocd_fly.exception import TemplateRenderingError, YamlError, InternalError, ConfigFileError, KustomizeError, \
-  ResourceViewerIsFake
+  PathDoesNotExistError
 from make_argocd_fly.pipeline import build_pipeline
 from make_argocd_fly.context import Context
 from make_argocd_fly.limits import RuntimeLimits
@@ -44,6 +45,8 @@ async def generate() -> None:
   )
   apps = []
 
+  viewer = build_scoped_viewer(config.source_dir)
+
   log.info('Creating applications')
   for env_name in config.list_envs():
     if envs_to_render and env_name not in envs_to_render:
@@ -54,7 +57,7 @@ async def generate() -> None:
         continue
 
       ctx = Context(env_name, app_name)
-      pipeline = build_pipeline(ctx, limits, os.path.join(config.source_dir, app_name))
+      pipeline = build_pipeline(ctx, limits, viewer)
       apps.append((pipeline, ctx))
 
   try:
@@ -133,8 +136,8 @@ def main(**kwargs) -> None:
   except ConfigFileError:
     log.critical('Config file error')
     exit(1)
-  except ResourceViewerIsFake as e:
-    log.critical(f'Missing application directory: {e.path}')
+  except PathDoesNotExistError as e:
+    log.critical(f'Path does not exist {e.path}')
     exit(1)
   except Exception as e:
     raise e
