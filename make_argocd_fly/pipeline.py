@@ -8,9 +8,9 @@ from make_argocd_fly.config import get_config
 from make_argocd_fly.param import ApplicationTypes
 from make_argocd_fly.exception import ConfigFileError, PathDoesNotExistError
 from make_argocd_fly.resource.viewer import ResourceType, ScopedViewer
-from make_argocd_fly.stage import (DiscoverK8sSimpleApplication, DiscoverK8sKustomizeApplication, DiscoverK8sAppOfAppsApplication,
-                                   DiscoverGenericApplication, RenderTemplates, SplitManifests, GenerateManifestNames, GenerateOutputNames,
-                                   WriteOnDisk, KustomizeBuild)
+from make_argocd_fly.stage import (DiscoverK8sSimpleApplication, DiscoverK8sKustomizeApplication, DiscoverK8sHelmfileApplication,
+                                   DiscoverK8sAppOfAppsApplication, DiscoverGenericApplication, RenderTemplates, SplitManifests,
+                                   GenerateManifestNames, GenerateOutputNames, WriteOnDisk, KustomizeBuild, HelmfileRun)
 from make_argocd_fly.limits import RuntimeLimits
 
 
@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 class PipelineType(StrEnum):
   K8S_SIMPLE = auto()
   K8S_KUSTOMIZE = auto()
+  K8S_HELMFILE = auto()
   K8S_APP_OF_APPS = auto()
   GENERIC = auto()
 
@@ -54,7 +55,7 @@ def build_pipeline_k8s_simple(limits: RuntimeLimits) -> Pipeline:
   return Pipeline(PipelineType.K8S_SIMPLE, stages)
 
 
-def build_pipeline_k8s_kustomize(limits: RuntimeLimits) -> Pipeline:
+def build_pipeline_kustomize(limits: RuntimeLimits) -> Pipeline:
   stages = [DiscoverK8sKustomizeApplication(),
             RenderTemplates(),
             SplitManifests(requires={'content': 'discover.content&template.content'}, provides={'content': 'tmp_manifest.content'}),
@@ -66,6 +67,20 @@ def build_pipeline_k8s_kustomize(limits: RuntimeLimits) -> Pipeline:
             WriteOnDisk(limits=limits, requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
 
   return Pipeline(PipelineType.K8S_KUSTOMIZE, stages)
+
+
+def build_pipeline_helmfile(limits: RuntimeLimits) -> Pipeline:
+  stages = [DiscoverK8sHelmfileApplication(),
+            RenderTemplates(),
+            SplitManifests(requires={'content': 'discover.content&template.content'}, provides={'content': 'tmp_manifest.content'}),
+            GenerateManifestNames(requires={'content': 'tmp_manifest.content'}, provides={'files': 'tmp_output.files'}),
+            WriteOnDisk(limits=limits, requires={'files': 'tmp_output.files', 'output_dir': 'discover.tmp_dir'}),
+            HelmfileRun(limits=limits),
+            SplitManifests(requires={'content': 'helmfile.content'}, provides={'content': 'manifest.content'}),
+            GenerateManifestNames(requires={'content': 'manifest.content'}, provides={'files': 'output.files'}),
+            WriteOnDisk(limits=limits, requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
+
+  return Pipeline(PipelineType.K8S_HELMFILE, stages)
 
 
 def build_pipeline_app_of_apps(limits: RuntimeLimits) -> Pipeline:
@@ -97,10 +112,16 @@ def build_pipeline(ctx: Context, limits: RuntimeLimits, viewer: ScopedViewer) ->
       ctx_set(ctx, 'source.viewer', viewer)
 
       kustomize_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML],
-                                                           name_pattern='kustomization|Kustomization'))
+                                                           name_pattern='kustomization|Kustomization',
+                                                           depth=2))
+      helmfile_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML],
+                                                           name_pattern='helmfile',
+                                                           depth=1))
 
       if kustomize_children:
-        return build_pipeline_k8s_kustomize(limits)
+        return build_pipeline_kustomize(limits)
+      elif helmfile_children:
+        return build_pipeline_helmfile(limits)
       else:
         return build_pipeline_k8s_simple(limits)
     except PathDoesNotExistError:

@@ -18,7 +18,7 @@ from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparam import get_cli_params
 from make_argocd_fly.renderer import JinjaRenderer
 from make_argocd_fly.exception import UndefinedTemplateVariableError, TemplateRenderingError, InternalError, KustomizeError, \
-  PathDoesNotExistError, ConfigFileError
+  PathDoesNotExistError, ConfigFileError, HelmfileError
 from make_argocd_fly.util import extract_single_resource, FilePathGenerator, get_app_rel_path
 from make_argocd_fly.limits import RuntimeLimits
 
@@ -173,6 +173,43 @@ class DiscoverK8sKustomizeApplication(Stage):
       log.error(f'Missing kustomization.yml in the application directory. Skipping application {ctx.app_name} in environment {ctx.env_name}')
 
     ctx_set(ctx, self.provides['kustomize_exec_dir'], kustomize_exec_dir)
+
+
+class DiscoverK8sHelmfileApplication(Stage):
+  name = 'DiscoverK8sHelmfileApplication'
+  requires = {'viewer': 'source.viewer'}
+  provides = {'content': 'discover.content',
+              'template': 'discover.template',
+              'tmp_dir': 'discover.tmp_dir',
+              'output_dir': 'discover.output_dir'}
+
+  async def run(self, ctx: Context) -> None:
+    log.debug(f'Run {self.name} stage')
+    config = get_config()
+    app_params = get_config().get_params(ctx.env_name, ctx.app_name)
+    viewer = ctx_get(ctx, self.requires['viewer'])
+
+    _ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
+
+    content = []
+    for child in _scan_viewer(viewer,
+                              resource_types=[ResourceType.YAML],
+                              template=False,
+                              excludes=app_params.exclude_rendering):
+      content.append(Content(resource_type=child.resource_type, data=child.content, source=child.rel_path))
+    ctx_set(ctx, self.provides['content'], content)
+
+    resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
+    templates = []
+    for child in _scan_viewer(viewer,
+                              resource_types=[ResourceType.YAML],
+                              template=True,
+                              excludes=app_params.exclude_rendering):
+      templates.append(Template(resource_type=child.resource_type, vars=resolved_vars, data=child.content, source=child.rel_path))
+    ctx_set(ctx, self.provides['template'], templates)
+
+    ctx_set(ctx, self.provides['tmp_dir'], config.tmp_dir)
+    ctx_set(ctx, self.provides['output_dir'], config.output_dir)
 
 
 class DiscoverK8sAppOfAppsApplication(Stage):
@@ -466,5 +503,50 @@ class KustomizeBuild(Stage):
         resource_type=ResourceType.YAML,
         data=stdout.decode('utf-8'),
         source='Kustomize'
+    ))
+    ctx_set(ctx, self.provides['content'], ymls)
+
+
+class HelmfileRun(Stage):
+  name = 'HelmfileRun'
+  requires = {'tmp_dir': 'discover.tmp_dir'}
+  provides = {'content': 'helmfile.content'}
+
+  def __init__(self, limits: RuntimeLimits) -> None:
+    self.limits = limits
+
+  async def run(self, ctx: Context) -> None:
+    log.debug(f'Run {self.name} stage')
+    tmp_dir = ctx_get(ctx, self.requires['tmp_dir'])
+
+    dir_path = os.path.join(tmp_dir, get_app_rel_path(ctx.env_name, ctx.app_name))
+    retries = 3
+
+    for attempt in range(retries):
+      async with self.limits.subproc_sem:
+        proc = await asyncio.create_subprocess_exec(
+          'helmfile', 'template', '--quiet',
+          stdout=asyncio.subprocess.PIPE,
+          stderr=asyncio.subprocess.PIPE,
+          cwd=dir_path)
+
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+          log.error(f'Helmfile error: {stderr.decode("utf-8", "ignore")}')
+
+          delay = min(2 ** attempt, 4) + (attempt * 0.1)
+          log.info(f'Retrying {attempt + 1}/{retries} after {delay:.1f}s')
+          await asyncio.sleep(delay)
+          continue
+        break
+    else:
+      raise HelmfileError(ctx.app_name, ctx.env_name)
+
+    ymls = []
+
+    ymls.append(Content(
+        resource_type=ResourceType.YAML,
+        data=stdout.decode('utf-8'),
+        source='Helmfile'
     ))
     ctx_set(ctx, self.provides['content'], ymls)

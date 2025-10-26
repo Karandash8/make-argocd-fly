@@ -8,6 +8,7 @@ Ensure the following tools are installed if you use the related features:
 
 - `python 3.11+`
 - `helm` if Helm chart rendering is needed
+- `helmfile` if Helmfile support is needed
 - `kustomize` if Kustomize overlays are needed
 - `libyaml` if faster YAML parsing is needed
 - `yamllint` if linting YAML files is needed

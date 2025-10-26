@@ -121,7 +121,7 @@ What it does:
 - [Getting Started](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/getting-started.md)
 - [Configuration Reference](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/configuration.md)
 - [Application Templates](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/templates.md)
-- [Kustomize & Helm Integration](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/kustomize.md)
+- [Kustomize & Helm Applications](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/kustomize.md)
 - [ArgoCD Integration](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/argocd.md)
 - [CLI Reference](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/cli.md)
 - [Examples](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/examples.md)

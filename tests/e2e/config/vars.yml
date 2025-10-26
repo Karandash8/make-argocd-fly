@@ -99,6 +99,7 @@ vars:
   number_string: "01239"
   number_string_2: "123"
   number_oct_string: "0123"
+  replicaCount: 2
   app:
     resource: ${resource}
     version: 0.1.0

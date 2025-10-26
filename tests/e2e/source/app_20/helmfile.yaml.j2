@@ -1,0 +1,10 @@
+repositories:
+- name: examples
+  url: https://helm.github.io/examples
+
+releases:
+- name: hello-world
+  chart: examples/hello-world
+  set:
+    - name: replicaCount
+      value: {{ replicaCount }}
