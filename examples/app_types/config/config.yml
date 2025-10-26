@@ -27,6 +27,7 @@ envs:
               destination:
                 server: https://kubernetes.default.svc
                 namespace: argocd
+      06_helmfile_app: {params: {non_k8s_files_to_render: ['helmfile.yaml.j2']}}
 
 vars:
   argocd:

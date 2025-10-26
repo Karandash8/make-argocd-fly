@@ -62,6 +62,7 @@ envs:
       app_16: {params: {parent_app: service_deployer}}
       app_17: {params: {parent_app: service_deployer}}
       app_19: {params: {parent_app: service_deployer}}
+      app_20: {params: {parent_app: service_deployer, non_k8s_files_to_render: ['helmfile.yaml.j2']}}
   external_1:
     apps:
       bootstrap: {}

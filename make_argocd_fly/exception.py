@@ -50,6 +50,19 @@ class KustomizeError(BaseError):
     super().__init__(f'Error running kustomize for application {app_name} in environment {env_name}')
 
 
+class HelmfileError(BaseError):
+  def __init__(self, app_name: str, env_name: str) -> None:
+    self.app_name = app_name
+    self.env_name = env_name
+    super().__init__(f'Error running helmfile for application {app_name} in environment {env_name}')
+
+
 class UnknownJinja2Error(BaseError):
   def __init__(self) -> None:
     super().__init__('Unknown error in jinja2 template')
+
+
+class MissingDependencyError(BaseError):
+  def __init__(self, dependency_name: str) -> None:
+    self.dependency_name = dependency_name
+    super().__init__(f'Missing dependency: {dependency_name}')

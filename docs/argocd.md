@@ -78,6 +78,3 @@ By adopting this pattern with `make-argocd-fly`, you get a workflow that is **de
 | Best for | quick local testing | managed GitOps in clusters |
 
 For real environments (`dev`, `staging`, `prod`), define separate environments and (optionally) `parent_app` relations to generate ArgoCD `Application` CRs. For `local`, deploy the rendered YAML via `kubectl`.
-
-## Rendered Manifest Pattern
-A best practice where manifests are pre-rendered and committed to Git before ArgoCD syncs them.

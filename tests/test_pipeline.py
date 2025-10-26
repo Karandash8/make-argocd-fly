@@ -92,6 +92,35 @@ def test_build_pipeline__create_KustomizeApplication(tmp_path, mocker):
   pipeline = build_pipeline(ctx, limits, build_scoped_viewer(dir_root))
   assert pipeline.type == PipelineType.K8S_KUSTOMIZE
 
+def test_build_pipeline__create_HelmfileApplication(tmp_path, mocker):
+  mock_get_config = MagicMock()
+  mock_config = MagicMock()
+  mock_params = MagicMock()
+  mock_params.app_type = ApplicationTypes.K8S
+  mock_get_config.return_value = mock_config
+  mock_config.get_params.return_value = mock_params
+  mocker.patch('make_argocd_fly.pipeline.get_config', mock_get_config)
+  limits = RuntimeLimits(
+    app_sem=asyncio.Semaphore(1),
+    subproc_sem=asyncio.Semaphore(1),
+    io_sem=asyncio.Semaphore(1),
+  )
+
+  env_name = 'env'
+  app_name = 'app'
+
+  dir_root = tmp_path / 'dir_root'
+  dir_root.mkdir()
+  dir_app = dir_root / app_name
+  dir_app.mkdir()
+  FILE_CONTENT = 'content'
+  file_app = dir_app / 'helmfile.yaml'
+  file_app.write_text(FILE_CONTENT)
+
+  ctx = Context(env_name, app_name)
+  pipeline = build_pipeline(ctx, limits, build_scoped_viewer(dir_root))
+  assert pipeline.type == PipelineType.K8S_HELMFILE
+
 def test_build_pipeline__create_AppOfApps(tmp_path, mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()

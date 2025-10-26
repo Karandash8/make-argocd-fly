@@ -1,10 +1,17 @@
-# Kustomize & Helm Integration
+# Kustomize & Helm Applications
 
-Kustomize applications are rendered in two steps:
-1. **Preparation**: Jinja2 templates are rendered and source manifest files are renamed to match the resource naming convention.
-2. **Kustomization**: The rendered manifests are processed by Kustomize to generate the final Kubernetes manifests.
+`make-argocd-fly` supports multiple Kubernetes application types that build on top of native CLI tools.
+These application types allow you to structure, template, and render your Kubernetes resources before GitOps deployment.
 
-## 🏷️ Kustomize Resource Naming
+---
+
+## 🧱 Kustomize Applications
+
+Kustomize applications are defined by creating a `kustomization.yml` file and are rendered in two steps:
+1. **Preparation**: Jinja2 templates are rendered and source Kubernetes manifests are normalized.
+2. **Kustomization**: The rendered manifests are processed by Kustomize to produce final manifests.
+
+### Resource Naming Convention
 
 Local files that are referenced in the `resources:` section of Kustomize should follow a specific resource naming convention. The referenced file names should consist of the Kubernetes resource type followed by an underscore (`_`) and the resource name.
 
@@ -14,16 +21,27 @@ resources:
   - serviceaccount_nginx-prod.yml
 ```
 
-## 🧱 Kustomize Overlays
+### Directory Structure
 
 When using Kustomize overlays, the directory structure should follow these conventions:
 
 - `base/` directory for shared definitions
 - overlay folders named after environment names
 
-## 🛠️ Helm Integration
+Example:
+```
+my-app/
+  base/
+    kustomization.yml
+  dev/
+    kustomization.yml
+  prod/
+    kustomization.yml
+```
 
-Helm charts can be integrated into the Kustomize workflow by using helm chart inflation through the `helmCharts` field.
+### Helm Integration Inside Kustomize
+
+Kustomize supports Helm chart inflation via:
 
 ```yaml
 helmCharts:
@@ -54,4 +72,17 @@ helmCharts:
   - name: my-chart
     version: 1.0.0
     valuesFile: values.yml
+```
+
+## ⛵ Helmfile Applications
+
+Helmfile applications are similar to Kustomize applications and are defined by creating a `helmfile.yaml` file. `helmfile.yaml` file needs to be added to `non_k8s_files_to_render` parameter to be rendered by `make-argocd-fly`.
+
+```yaml
+envs:
+  <environment_name>:
+    apps:
+      <application_name>:
+        params:
+          non_k8s_files_to_render: ['helmfile.yaml']
 ```
