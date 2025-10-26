@@ -60,3 +60,9 @@ class HelmfileError(BaseError):
 class UnknownJinja2Error(BaseError):
   def __init__(self) -> None:
     super().__init__('Unknown error in jinja2 template')
+
+
+class MissingDependencyError(BaseError):
+  def __init__(self, dependency_name: str) -> None:
+    self.dependency_name = dependency_name
+    super().__init__(f'Missing dependency: {dependency_name}')

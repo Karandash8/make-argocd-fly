@@ -14,7 +14,7 @@ from make_argocd_fly.cliparam import populate_cli_params, get_cli_params
 from make_argocd_fly.config import populate_config, get_config
 from make_argocd_fly.util import init_logging, latest_version_check, get_package_name, get_current_version
 from make_argocd_fly.exception import TemplateRenderingError, YamlError, InternalError, ConfigFileError, KustomizeError, \
-  PathDoesNotExistError, HelmfileError
+  PathDoesNotExistError, HelmfileError, MissingDependencyError
 from make_argocd_fly.pipeline import build_pipeline
 from make_argocd_fly.context import Context
 from make_argocd_fly.limits import RuntimeLimits
@@ -105,7 +105,7 @@ def remove_dir(dir: str) -> None:
     shutil.rmtree(dir)
 
 
-def main(**kwargs) -> None:
+def main(**kwargs) -> None:  # noqa: C901
   try:
     cli_params = populate_cli_params(**kwargs)
     config = populate_config(cli_params.root_dir, cli_params.config_dir, cli_params.source_dir,
@@ -138,6 +138,9 @@ def main(**kwargs) -> None:
     exit(1)
   except PathDoesNotExistError as e:
     log.critical(f'Path does not exist {e.path}')
+    exit(1)
+  except MissingDependencyError as e:
+    log.critical(f'Missing dependency {e.dependency_name}')
     exit(1)
   except Exception as e:
     raise e

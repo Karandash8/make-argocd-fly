@@ -18,7 +18,7 @@ from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparam import get_cli_params
 from make_argocd_fly.renderer import JinjaRenderer
 from make_argocd_fly.exception import UndefinedTemplateVariableError, TemplateRenderingError, InternalError, KustomizeError, \
-  PathDoesNotExistError, ConfigFileError, HelmfileError
+  PathDoesNotExistError, ConfigFileError, HelmfileError, MissingDependencyError
 from make_argocd_fly.util import extract_single_resource, FilePathGenerator, get_app_rel_path
 from make_argocd_fly.limits import RuntimeLimits
 
@@ -477,25 +477,29 @@ class KustomizeBuild(Stage):
     dir_path = os.path.join(tmp_dir, get_app_rel_path(ctx.env_name, ctx.app_name), kustomize_exec_dir)
     retries = 3
 
-    for attempt in range(retries):
+    try:
       async with self.limits.subproc_sem:
-        proc = await asyncio.create_subprocess_exec(
-          'kustomize', 'build', '--enable-helm', '.',
-          stdout=asyncio.subprocess.PIPE,
-          stderr=asyncio.subprocess.PIPE,
-          cwd=dir_path)
+        for attempt in range(retries):
+          proc = await asyncio.create_subprocess_exec(
+            'kustomize', 'build', '--enable-helm', '.',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=dir_path)
 
-        stdout, stderr = await proc.communicate()
-        if proc.returncode != 0:
-          log.error(f'Kustomize error: {stderr.decode("utf-8", "ignore")}')
+          stdout, stderr = await proc.communicate()
+          if proc.returncode != 0:
+            log.error(f'Kustomize error: {stderr.decode("utf-8", "ignore")}')
 
-          delay = min(2 ** attempt, 4) + (attempt * 0.1)
-          log.info(f'Retrying {attempt + 1}/{retries} after {delay:.1f}s')
-          await asyncio.sleep(delay)
-          continue
-        break
-    else:
-      raise KustomizeError(ctx.app_name, ctx.env_name)
+            delay = min(2 ** attempt, 4) + (attempt * 0.1)
+            log.info(f'Retrying {attempt + 1}/{retries} after {delay:.1f}s')
+            await asyncio.sleep(delay)
+            continue
+          break
+        else:
+          raise KustomizeError(ctx.app_name, ctx.env_name)
+    except FileNotFoundError as e:
+      log.error(f'Failed generating application {ctx.app_name} in environment {ctx.env_name}')
+      raise MissingDependencyError(e.filename)
 
     ymls = []
 
@@ -522,25 +526,29 @@ class HelmfileRun(Stage):
     dir_path = os.path.join(tmp_dir, get_app_rel_path(ctx.env_name, ctx.app_name))
     retries = 3
 
-    for attempt in range(retries):
+    try:
       async with self.limits.subproc_sem:
-        proc = await asyncio.create_subprocess_exec(
-          'helmfile', 'template', '--quiet',
-          stdout=asyncio.subprocess.PIPE,
-          stderr=asyncio.subprocess.PIPE,
-          cwd=dir_path)
+        for attempt in range(retries):
+          proc = await asyncio.create_subprocess_exec(
+            'helmfile', 'template', '--quiet',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=dir_path)
 
-        stdout, stderr = await proc.communicate()
-        if proc.returncode != 0:
-          log.error(f'Helmfile error: {stderr.decode("utf-8", "ignore")}')
+          stdout, stderr = await proc.communicate()
+          if proc.returncode != 0:
+            log.error(f'Helmfile error: {stderr.decode("utf-8", "ignore")}')
 
-          delay = min(2 ** attempt, 4) + (attempt * 0.1)
-          log.info(f'Retrying {attempt + 1}/{retries} after {delay:.1f}s')
-          await asyncio.sleep(delay)
-          continue
-        break
-    else:
-      raise HelmfileError(ctx.app_name, ctx.env_name)
+            delay = min(2 ** attempt, 4) + (attempt * 0.1)
+            log.info(f'Retrying {attempt + 1}/{retries} after {delay:.1f}s')
+            await asyncio.sleep(delay)
+            continue
+          break
+        else:
+          raise HelmfileError(ctx.app_name, ctx.env_name)
+    except FileNotFoundError as e:
+      log.error(f'Failed generating application {ctx.app_name} in environment {ctx.env_name}')
+      raise MissingDependencyError(e.filename)
 
     ymls = []
 

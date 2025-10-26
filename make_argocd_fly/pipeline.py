@@ -115,8 +115,8 @@ def build_pipeline(ctx: Context, limits: RuntimeLimits, viewer: ScopedViewer) ->
                                                            name_pattern='kustomization|Kustomization',
                                                            depth=2))
       helmfile_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML],
-                                                           name_pattern='helmfile',
-                                                           depth=1))
+                                                          name_pattern='helmfile',
+                                                          depth=1))
 
       if kustomize_children:
         return build_pipeline_kustomize(limits)
