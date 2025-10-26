@@ -6,7 +6,7 @@ This means templates are rendered **relative to the application directory**, not
 For example, if your application lives under:
 ```
 source/monitoring/grafana/
-````
+```
 
 then:
 
@@ -118,6 +118,6 @@ Your templates also have access to:
 | Type | Source | Engine | Typical use |
 |------|--------|--------|-------------|
 | `generic` | text file / Jinja2 | Jinja2 | infra files (e.g., kind config), passthrough assets |
-| `k8s` | YAML / Jinja2 | Jinja2 + Kustomize / Helmfile | plain Kubernetes manifests |
+| `k8s` | YAML / Jinja2 | Jinja2 + Kustomize or Helmfile | plain Kubernetes manifests |
 
 > See also: [kustomize.md](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/kustomize.md) and [Examples](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/examples.md)
