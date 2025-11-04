@@ -2,11 +2,11 @@ envs:
   local:
     apps:
       k8s/common: {}
-      k8s/prometheus: {}
+      k8s/prometheus: {params: {exclude_rendering: ['files']}}
       k8s/kube_state_metrics: {}
       k8s/node_exporter: {}
-      k8s/grafana: {}
-      k8s/alertmanager: {}
+      k8s/grafana: {params: {exclude_rendering: ['files']}}
+      k8s/alertmanager: {params: {exclude_rendering: ['files']}}
 vars:
   monitoring:
     namespace: kube-monitoring

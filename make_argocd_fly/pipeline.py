@@ -1,6 +1,5 @@
 import logging
 import time
-from enum import StrEnum, auto
 
 from make_argocd_fly.context import Context, ctx_set
 from make_argocd_fly.stage import Stage
@@ -10,19 +9,13 @@ from make_argocd_fly.exception import ConfigFileError, PathDoesNotExistError
 from make_argocd_fly.resource.viewer import ResourceType, ScopedViewer
 from make_argocd_fly.stage import (DiscoverK8sSimpleApplication, DiscoverK8sKustomizeApplication, DiscoverK8sHelmfileApplication,
                                    DiscoverK8sAppOfAppsApplication, DiscoverGenericApplication, RenderTemplates, SplitManifests,
-                                   GenerateManifestNames, GenerateOutputNames, WriteOnDisk, KustomizeBuild, HelmfileRun)
+                                   WriteOnDisk, KustomizeBuild, HelmfileRun, GenerateNames,
+                                   ConvertToYaml)
 from make_argocd_fly.limits import RuntimeLimits
+from make_argocd_fly.type import PipelineType
 
 
 log = logging.getLogger(__name__)
-
-
-class PipelineType(StrEnum):
-  K8S_SIMPLE = auto()
-  K8S_KUSTOMIZE = auto()
-  K8S_HELMFILE = auto()
-  K8S_APP_OF_APPS = auto()
-  GENERIC = auto()
 
 
 class Pipeline:
@@ -49,7 +42,10 @@ def build_pipeline_k8s_simple(limits: RuntimeLimits) -> Pipeline:
   stages = [DiscoverK8sSimpleApplication(),
             RenderTemplates(),
             SplitManifests(requires={'content': 'discover.content&template.content'}, provides={'content': 'manifest.content'}),
-            GenerateManifestNames(requires={'content': 'manifest.content'}, provides={'files': 'output.files'}),
+            ConvertToYaml(requires={'content': 'manifest.content'}, provides={'content': 'manifest.content'}),
+            GenerateNames(requires={'content': 'manifest.content'},
+                          provides={'files': 'output.files'},
+                          pipeline_kind=PipelineType.K8S_SIMPLE),
             WriteOnDisk(limits=limits, requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
 
   return Pipeline(PipelineType.K8S_SIMPLE, stages)
@@ -59,11 +55,17 @@ def build_pipeline_kustomize(limits: RuntimeLimits) -> Pipeline:
   stages = [DiscoverK8sKustomizeApplication(),
             RenderTemplates(),
             SplitManifests(requires={'content': 'discover.content&template.content'}, provides={'content': 'tmp_manifest.content'}),
-            GenerateManifestNames(requires={'content': 'tmp_manifest.content'}, provides={'files': 'tmp_output.files'}),
+            ConvertToYaml(requires={'content': 'tmp_manifest.content'}, provides={'content': 'tmp_manifest.content'}),
+            GenerateNames(requires={'content': 'tmp_manifest.content'},
+                          provides={'files': 'tmp_output.files'},
+                          pipeline_kind=PipelineType.K8S_KUSTOMIZE),
             WriteOnDisk(limits=limits, requires={'files': 'tmp_output.files', 'output_dir': 'discover.tmp_dir'}),
             KustomizeBuild(limits=limits),
             SplitManifests(requires={'content': 'kustomize.content'}, provides={'content': 'manifest.content'}),
-            GenerateManifestNames(requires={'content': 'manifest.content'}, provides={'files': 'output.files'}),
+            ConvertToYaml(requires={'content': 'manifest.content'}, provides={'content': 'manifest.content'}),
+            GenerateNames(requires={'content': 'manifest.content'},
+                          provides={'files': 'output.files'},
+                          pipeline_kind=PipelineType.K8S_KUSTOMIZE),
             WriteOnDisk(limits=limits, requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
 
   return Pipeline(PipelineType.K8S_KUSTOMIZE, stages)
@@ -73,11 +75,17 @@ def build_pipeline_helmfile(limits: RuntimeLimits) -> Pipeline:
   stages = [DiscoverK8sHelmfileApplication(),
             RenderTemplates(),
             SplitManifests(requires={'content': 'discover.content&template.content'}, provides={'content': 'tmp_manifest.content'}),
-            GenerateManifestNames(requires={'content': 'tmp_manifest.content'}, provides={'files': 'tmp_output.files'}),
+            ConvertToYaml(requires={'content': 'tmp_manifest.content'}, provides={'content': 'tmp_manifest.content'}),
+            GenerateNames(requires={'content': 'tmp_manifest.content'},
+                          provides={'files': 'tmp_output.files'},
+                          pipeline_kind=PipelineType.K8S_HELMFILE),
             WriteOnDisk(limits=limits, requires={'files': 'tmp_output.files', 'output_dir': 'discover.tmp_dir'}),
             HelmfileRun(limits=limits),
             SplitManifests(requires={'content': 'helmfile.content'}, provides={'content': 'manifest.content'}),
-            GenerateManifestNames(requires={'content': 'manifest.content'}, provides={'files': 'output.files'}),
+            ConvertToYaml(requires={'content': 'manifest.content'}, provides={'content': 'manifest.content'}),
+            GenerateNames(requires={'content': 'manifest.content'},
+                          provides={'files': 'output.files'},
+                          pipeline_kind=PipelineType.K8S_HELMFILE),
             WriteOnDisk(limits=limits, requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
 
   return Pipeline(PipelineType.K8S_HELMFILE, stages)
@@ -87,7 +95,10 @@ def build_pipeline_app_of_apps(limits: RuntimeLimits) -> Pipeline:
   stages = [DiscoverK8sAppOfAppsApplication(),
             RenderTemplates(),
             SplitManifests(requires={'content': 'template.content'}, provides={'content': 'manifest.content'}),
-            GenerateManifestNames(requires={'content': 'manifest.content'}, provides={'files': 'output.files'}),
+            ConvertToYaml(requires={'content': 'manifest.content'}, provides={'content': 'manifest.content'}),
+            GenerateNames(requires={'content': 'manifest.content'},
+                          provides={'files': 'output.files'},
+                          pipeline_kind=PipelineType.K8S_APP_OF_APPS),
             WriteOnDisk(limits=limits, requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
 
   return Pipeline(PipelineType.K8S_APP_OF_APPS, stages)
@@ -96,7 +107,9 @@ def build_pipeline_app_of_apps(limits: RuntimeLimits) -> Pipeline:
 def build_pipeline_generic(limits: RuntimeLimits) -> Pipeline:
   stages = [DiscoverGenericApplication(),
             RenderTemplates(),
-            GenerateOutputNames(requires={'content': 'discover.content&template.content'}, provides={'files': 'output.files'}),
+            GenerateNames(requires={'content': 'discover.content&template.content'},
+                          provides={'files': 'output.files'},
+                          pipeline_kind=PipelineType.GENERIC),
             WriteOnDisk(limits=limits, requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
 
   return Pipeline(PipelineType.GENERIC, stages)

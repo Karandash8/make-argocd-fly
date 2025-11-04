@@ -5,6 +5,7 @@ import yaml
 import yaml.composer
 import yaml.parser
 import yaml.scanner
+import yaml.constructor
 import asyncio
 from yaml import SafeDumper
 from typing import Protocol, Any
@@ -77,12 +78,15 @@ class YamlWriter(AbstractWriter):
   def write(self, output_path: str, data: Any, env_name: str, app_name: str, source: str) -> None:
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    try:
-      yaml_resource = yaml.load(data, Loader=YamlLoader)
-    except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError, yaml.constructor.ConstructorError):
-      log.error(f'Error building YAML from source `{source}` for resource {app_name} in environment {env_name}')
-      log.debug(f'YAML content:\n{data}')
-      raise YamlError(app_name, env_name) from None
+    if isinstance(data, (dict, list)):
+      yaml_resource = data
+    else:
+      try:
+        yaml_resource = yaml.load(data, Loader=YamlLoader)
+      except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError, yaml.constructor.ConstructorError):
+        log.error(f'Error building YAML from source `{source}` for resource {app_name} in environment {env_name}')
+        log.debug(f'YAML content:\n{data}')
+        raise YamlError(app_name, env_name) from None
 
     with open(output_path, 'w') as f:
       yaml.dump(yaml_resource, f, Dumper=YamlDumper,

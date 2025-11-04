@@ -2,12 +2,13 @@ import pytest
 import asyncio
 from unittest.mock import MagicMock
 
-from make_argocd_fly.pipeline import build_pipeline, PipelineType
+from make_argocd_fly.pipeline import build_pipeline
 from make_argocd_fly.resource.viewer import build_scoped_viewer
 from make_argocd_fly.context import Context
 from make_argocd_fly.param import ApplicationTypes
 from make_argocd_fly.exception import ConfigFileError
 from make_argocd_fly.limits import RuntimeLimits
+from make_argocd_fly.type import PipelineType
 
 
 def test_build_pipeline__unknown_app_type(tmp_path, caplog, mocker):

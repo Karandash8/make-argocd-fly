@@ -3,24 +3,40 @@ import os
 import shutil
 import asyncio
 import textwrap
+import fnmatch
+import yaml
+import yaml.composer
+import yaml.parser
+import yaml.scanner
+import yaml.constructor
+from pathlib import PurePosixPath
 from typing import Any
 from pprint import pformat
-from typing import Protocol
+from typing import Protocol, Iterable
+
+try:
+  from yaml import CSafeLoader as SafeLoader
+except ImportError:
+  from yaml import SafeLoader
 
 from make_argocd_fly.context import Context, ctx_get, ctx_set, resolve_expr
 from make_argocd_fly.context.data import Content, Template, OutputResource
 from make_argocd_fly.resource.viewer import ScopedViewer, ResourceType
 from make_argocd_fly import default
-from make_argocd_fly.resource.writer import AsyncWriterProto, writer_factory, \
-  SyncToAsyncWriter
+from make_argocd_fly.resource.writer import (AsyncWriterProto, writer_factory,
+                                             SyncToAsyncWriter, YamlWriter)
 from make_argocd_fly.param import ParamNames
 from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparam import get_cli_params
 from make_argocd_fly.renderer import JinjaRenderer
-from make_argocd_fly.exception import UndefinedTemplateVariableError, TemplateRenderingError, InternalError, KustomizeError, \
-  PathDoesNotExistError, ConfigFileError, HelmfileError, MissingDependencyError
-from make_argocd_fly.util import extract_single_resource, FilePathGenerator, get_app_rel_path
+from make_argocd_fly.exception import (UndefinedTemplateVariableError, TemplateRenderingError, InternalError,
+                                       KustomizeError, PathDoesNotExistError, ConfigFileError, HelmfileError,
+                                       MissingDependencyError)
+from make_argocd_fly.util import extract_single_resource, get_app_rel_path
 from make_argocd_fly.limits import RuntimeLimits
+from make_argocd_fly.namegen import (K8sInfo, SourceInfo, K8sPolicy, SourcePolicy, Deduper, RoutingRules,
+                                     KUSTOMIZE_BASENAMES, HELMFILE_BASENAMES)
+from make_argocd_fly.type import PipelineType
 
 
 log = logging.getLogger(__name__)
@@ -69,10 +85,37 @@ def _scan_viewer(viewer: ScopedViewer,
   return out
 
 
-def _ensure_list(value: Any, param_name: str) -> None:
+def _ensure_list(value: Any, param_name: str) -> list[str]:
+  if value is None:
+    return []
+
   if not isinstance(value, list):
     log.error(f'Application parameter {param_name} must be a list')
     raise InternalError()
+
+  return value
+
+
+def _is_match(path: str, patterns: Iterable[str]) -> bool:
+  '''Match by prefix or glob; patterns are posix-like relative paths.'''
+  posix = str(PurePosixPath(path))
+  for pat in patterns:
+    pat_posix = str(PurePosixPath(pat))
+
+    # prefix match
+    if posix.startswith(pat_posix.rstrip('/')):
+      return True
+
+    # glob match
+    if fnmatch.fnmatch(posix, pat_posix):
+      return True
+
+  return False
+
+
+def _is_one_of(path: str, names: Iterable[str]) -> bool:
+  '''True if basename (case-sensitive) is in names.'''
+  return PurePosixPath(path).name in names
 
 
 class DiscoverK8sSimpleApplication(Stage):
@@ -353,8 +396,8 @@ class SplitManifests(Stage):
     ctx_set(ctx, self.provides['content'], split_content)
 
 
-class GenerateManifestNames(Stage):
-  name = 'GenerateManifestNames'
+class ConvertToYaml(Stage):
+  name = 'ConvertToYaml'
 
   def __init__(self, requires: dict[str, str], provides: dict[str, str]) -> None:
     self.requires = requires
@@ -362,61 +405,109 @@ class GenerateManifestNames(Stage):
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
-    ymls = ctx_get(ctx, self.requires['content'])
+    items = resolve_expr(ctx, self.requires['content'])
+    out: list[Content] = []
 
-    files = []
+    for it in items:
+      if it.resource_type == ResourceType.YAML:
+        try:
+          obj = yaml.load(it.data, Loader=SafeLoader)
+          out.append(Content(
+            resource_type=it.resource_type,
+            data=it.data,
+            source=it.source,
+            yaml_obj=obj
+          ))
+        except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError, yaml.constructor.ConstructorError):
+          log.debug(f'YAML parse failed in ConvertToYaml for {it.source}; leaving as text')
+          out.append(it)
+      else:
+        out.append(it)
 
-    for resource in ymls:
-      generator = FilePathGenerator(resource.data, resource.source)
-      app_params = get_config().get_params(ctx.env_name, ctx.app_name)
+    ctx_set(ctx, self.provides['content'], out)
 
-      _ensure_list(app_params.non_k8s_files_to_render, ParamNames.NON_K8S_FILES_TO_RENDER)
 
-      if any(resource.source.startswith(element) for element in app_params.non_k8s_files_to_render):
-        files.append(OutputResource(
-            resource_type=resource.resource_type,
-            data=resource.data,
-            source=resource.source,
-            output_path=os.path.join(get_app_rel_path(ctx.env_name, ctx.app_name), generator.generate_from_source_file())
-        ))
+class GenerateNames(Stage):
+  name = 'GenerateNames'
+
+  def __init__(self, requires: dict[str, str],
+               provides: dict[str, str],
+               *,
+               pipeline_kind: PipelineType) -> None:
+    self.requires = requires
+    self.provides = provides
+    self.pipeline_kind = pipeline_kind
+    self.k8s_policy = K8sPolicy()
+    self.src_policy = SourcePolicy()
+
+  async def run(self, ctx: Context) -> None:
+    log.debug(f'Run {self.name} (pipeline_kind={self.pipeline_kind})')
+    items = resolve_expr(ctx, self.requires['content'])
+
+    rules = RoutingRules(
+      pipeline_kind=self.pipeline_kind,
+      kustomize_cfg=set(resolve_expr(ctx, 'discover.kustomize.config_files') or []),
+      helmfile_cfg=set(resolve_expr(ctx, 'discover.helmfile.config_files') or []),
+    )
+
+    app_rel = get_app_rel_path(ctx.env_name, ctx.app_name)
+    dedupe = Deduper()
+    out: list[OutputResource] = []
+
+    for res in sorted(items, key=lambda r: r.source):
+      log.debug(f'Processing resource: {res.source}')
+      policy_key = self._route_policy(res, rules)
+
+      src = SourceInfo.from_source_path(res.source)
+
+      if policy_key == 'k8s':
+        k8s = K8sInfo.from_yaml_obj(getattr(res, 'yaml_obj', None))
+        if not k8s.kind or not k8s.name:
+          # parsed YAML missing essentials, hence fall back to source
+          rel = self.src_policy.render(k8s=None, src=src)
+        else:
+          rel = self.k8s_policy.render(k8s=k8s, src=src)
+
+      elif policy_key == 'source':
+        rel = self.src_policy.render(k8s=None, src=src)
+
+      else:
+        log.debug(f'Skipping resource due to unknown policy \'{policy_key}\': {res.source}')
         continue
 
-      try:
-        files.append(OutputResource(
-          resource_type=resource.resource_type,
-          data=resource.data,
-          source=resource.source,
-          output_path=os.path.join(get_app_rel_path(ctx.env_name, ctx.app_name), generator.generate_from_k8s_resource())
-        ))
-      except ValueError:
-        log.debug(f'Could not generate file path for resource {resource.source}. Skipping it.')
-
-    ctx_set(ctx, self.provides['files'], files)
-
-
-class GenerateOutputNames(Stage):
-  name = 'GenerateOutputNames'
-
-  def __init__(self, requires: dict[str, str], provides: dict[str, str]) -> None:
-    self.requires = requires
-    self.provides = provides
-
-  async def run(self, ctx: Context) -> None:
-    log.debug(f'Run {self.name} stage')
-    input = resolve_expr(ctx, self.requires['content'])
-
-    files = []
-
-    for resource in sorted(input, key=lambda r: r.source):
-      files.append(OutputResource(
-        resource_type=resource.resource_type,
-        data=resource.data,
-        source=resource.source,
-        output_path=os.path.join(get_app_rel_path(ctx.env_name, ctx.app_name),
-                                 resource.source[:-3] if resource.source.endswith('.j2') else resource.source)
+      rel = dedupe.unique(rel)
+      out.append(OutputResource(
+        resource_type=res.resource_type,
+        data=res.data,
+        source=res.source,
+        output_path=os.path.join(app_rel, rel),
+        yaml_obj=getattr(res, 'yaml_obj', None),
       ))
 
-    ctx_set(ctx, self.provides['files'], files)
+    ctx_set(ctx, self.provides['files'], out)
+
+  def _route_policy(self, res, rules: RoutingRules) -> str | None:
+    # Generic pipeline: always name by source
+    if rules.pipeline_kind == PipelineType.GENERIC:
+      return 'source'
+
+    # K8s pipelines
+    if rules.pipeline_kind == PipelineType.K8S_KUSTOMIZE:
+      # SourcePolicy for kustomization/values
+      if _is_one_of(res.source, KUSTOMIZE_BASENAMES) or res.source in rules.kustomize_cfg:
+        return 'source'
+      return 'k8s' if res.resource_type == ResourceType.YAML else None
+
+    if rules.pipeline_kind == PipelineType.K8S_HELMFILE:
+      # SourcePolicy for helmfile
+      if _is_one_of(res.source, HELMFILE_BASENAMES) or res.source in rules.helmfile_cfg:
+        return 'source'
+      return 'k8s' if res.resource_type == ResourceType.YAML else None
+
+    if rules.pipeline_kind in (PipelineType.K8S_SIMPLE, PipelineType.K8S_APP_OF_APPS):
+      return 'k8s' if res.resource_type == ResourceType.YAML else None
+
+    return None
 
 
 class WriteOnDisk(Stage):
@@ -432,11 +523,13 @@ class WriteOnDisk(Stage):
     async with self.limits.io_sem:
       path = os.path.join(output_dir, resource.output_path)
       if path in self._written:
-        log.error(f"Duplicate output: {path}")
+        log.error(f'Duplicate output: {path}')
         raise InternalError()
       self._written.add(path)
 
-      await writer.write_async(path, resource.data, ctx.env_name, ctx.app_name, resource.source)
+      await writer.write_async(path,
+                               resource.yaml_obj if getattr(resource, 'yaml_obj', None) is not None else resource.data,
+                               ctx.env_name, ctx.app_name, resource.source)
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
@@ -451,8 +544,15 @@ class WriteOnDisk(Stage):
     try:
       async with asyncio.TaskGroup() as tg:
         for res in sorted(files, key=lambda r: r.output_path):
-          async_writer = SyncToAsyncWriter(writer_factory(get_config().get_params(ctx.env_name, ctx.app_name).app_type,
-                                                          res.resource_type))
+          # pick writer: yaml_obj present , hence yaml writer; else generic
+          if getattr(res, 'yaml_obj', None) is not None:
+            # force YAML writer
+            async_writer = SyncToAsyncWriter(YamlWriter())
+          else:
+            async_writer = SyncToAsyncWriter(writer_factory(
+              get_config().get_params(ctx.env_name, ctx.app_name).app_type,
+              res.resource_type
+            ))
           tg.create_task(self._write_one(async_writer, output_dir, ctx, res))
     except ExceptionGroup as e:
       if e.exceptions:

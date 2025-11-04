@@ -1,13 +1,10 @@
 import asyncio
-import logging
 import pytest
 import textwrap
 from unittest.mock import MagicMock, PropertyMock
 
-from make_argocd_fly.param import ParamNames
 from make_argocd_fly import default
-from make_argocd_fly.stage import GenerateManifestNames, DiscoverK8sAppOfAppsApplication, WriteOnDisk, \
-  _resolve_template_vars
+from make_argocd_fly.stage import DiscoverK8sAppOfAppsApplication, WriteOnDisk, GenerateNames, _resolve_template_vars
 from make_argocd_fly.context import Context, ctx_set, ctx_get
 from make_argocd_fly.context.data import Content, Template, OutputResource
 from make_argocd_fly.resource.viewer import ResourceType
@@ -16,6 +13,7 @@ from make_argocd_fly.config import populate_config
 from make_argocd_fly.util import check_lists_equal
 from make_argocd_fly.exception import InternalError
 from make_argocd_fly.limits import RuntimeLimits
+from make_argocd_fly.type import PipelineType
 
 ###################
 ### _resolve_template_vars
@@ -191,250 +189,150 @@ async def test_DiscoverK8sAppOfAppsApplication__run__multiple_apps_different_env
                            [('test_env', 'app_1'), ('test_env_2', 'app_2')])
 
 ###################
-### GenerateManifestNames
+### GenerateNames
 ###################
 
-@pytest.fixture
-def stage_generate_manifest_names():
+def _ctx():
+  return Context('my_env', 'my_app')
+
+
+def _stage(pipeline_kind: PipelineType):
   requires = {'content': 'ns1.content'}
   provides = {'files': 'ns2.files'}
+  return GenerateNames(requires=requires, provides=provides, pipeline_kind=pipeline_kind)
 
-  return GenerateManifestNames(requires=requires, provides=provides)
 
-@pytest.mark.asyncio
-async def test_GenerateManifestNames__from_yaml_simple(stage_generate_manifest_names, mocker):
+def _patch_get_config(mocker):
   mock_get_config = MagicMock()
   mock_config = MagicMock()
-  mock_params = MagicMock()
-  mock_params.non_k8s_files_to_render = []
+  mock_config.get_params.return_value = MagicMock()
   mock_get_config.return_value = mock_config
-  mock_config.get_params.return_value = mock_params
   mocker.patch('make_argocd_fly.stage.get_config', mock_get_config)
+  return mock_config
 
-  yml = textwrap.dedent('''\
-    kind: Deployment
-    apiVersion: apps/v1
-    metadata:
-      namespace: monitoring
-      name: grafana
-    ''')
-  source_file_path = 'path/file.txt'
-  env_name = "my_env"
-  app_name = "my_app"
-  ctx = Context(env_name, app_name)
-  output_resource = Content(
-      resource_type=ResourceType.YAML,
-      data=yml,
-      source=source_file_path,
-  )
-
-  ctx_set(ctx, 'ns1.content', [output_resource])
-  await stage_generate_manifest_names.run(ctx)
-  output_resources = ctx_get(ctx, 'ns2.files')
-
-  assert isinstance(output_resources, list)
-  assert len(output_resources) == 1
-  assert isinstance(output_resources[0], OutputResource)
-  assert output_resources[0].output_path == 'my_env/my_app/path/deployment_grafana.yml'
-  mock_config.get_params.assert_called_once_with(env_name, app_name)
 
 @pytest.mark.asyncio
-async def test_GenerateManifestNames__non_k8s_files_to_render(stage_generate_manifest_names, mocker):
-  mock_get_config = MagicMock()
-  mock_config = MagicMock()
-  mock_params = MagicMock()
-  mock_params.non_k8s_files_to_render =  ['path/file.yml']
-  mock_get_config.return_value = mock_config
-  mock_config.get_params.return_value = mock_params
-  mocker.patch('make_argocd_fly.stage.get_config', mock_get_config)
+async def test_generatenames_k8s_simple_uses_k8s_policy_when_yaml_obj_ok(mocker):
+  _patch_get_config(mocker)
+  stage = _stage(PipelineType.K8S_SIMPLE)
 
-  yml = textwrap.dedent('''\
-    text: some text
-    ''')
-  source_file_path = 'path/file.yml'
-  env_name = "my_env"
-  app_name = "my_app"
-  ctx = Context(env_name, app_name)
-  output_resource = Content(
-      resource_type=ResourceType.YAML,
-      data=yml,
-      source=source_file_path,
-  )
+  yaml_obj = {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'grafana', 'namespace': 'monitoring'}}
+  res = Content(resource_type=ResourceType.YAML, data='...', source='path/file.yaml', yaml_obj=yaml_obj)
 
-  ctx_set(ctx, 'ns1.content', [output_resource])
-  await stage_generate_manifest_names.run(ctx)
-  output_resources = ctx_get(ctx, 'ns2.files')
+  ctx = _ctx()
+  ctx_set(ctx, 'ns1.content', [res])
 
-  assert isinstance(output_resources, list)
-  assert len(output_resources) == 1
-  assert isinstance(output_resources[0], OutputResource)
-  assert output_resources[0].output_path == 'my_env/my_app/path/file.yml'
-  mock_config.get_params.assert_called_once_with(env_name, app_name)
+  await stage.run(ctx)
+  out = ctx_get(ctx, 'ns2.files')
+
+  assert isinstance(out, list) and len(out) == 1
+  assert isinstance(out[0], OutputResource)
+  # K8sPolicy default pattern: {rel_dir}/{kind}_{name}.yml
+  assert out[0].output_path == 'my_env/my_app/path/deployment_grafana.yml'
+
 
 @pytest.mark.asyncio
-async def test_GenerateManifestNames__non_k8s_files_to_render_as_j2(stage_generate_manifest_names, mocker):
-  mock_get_config = MagicMock()
-  mock_config = MagicMock()
-  mock_params = MagicMock()
-  mock_params.non_k8s_files_to_render = ['path/file.yml.j2']
-  mock_get_config.return_value = mock_config
-  mock_config.get_params.return_value = mock_params
-  mocker.patch('make_argocd_fly.stage.get_config', mock_get_config)
+async def test_generatenames_k8s_simple_falls_back_to_source_when_yaml_obj_missing_fields(mocker):
+  _patch_get_config(mocker)
+  stage = _stage(PipelineType.K8S_SIMPLE)
 
-  yml = textwrap.dedent('''\
-    text: some text
-    ''')
-  source_file_path = 'path/file.yml.j2'
-  env_name = "my_env"
-  app_name = "my_app"
-  ctx = Context(env_name, app_name)
-  output_resource = Content(
-      resource_type=ResourceType.YAML,
-      data=yml,
-      source=source_file_path,
-  )
+  yaml_obj = {'apiVersion': 'v1', 'kind': 'ConfigMap', 'metadata': {}}
+  res = Content(resource_type=ResourceType.YAML, data='...', source='cfg/config.yml', yaml_obj=yaml_obj)
 
-  ctx_set(ctx, 'ns1.content', [output_resource])
-  await stage_generate_manifest_names.run(ctx)
-  output_resources = ctx_get(ctx, 'ns2.files')
+  ctx = _ctx()
+  ctx_set(ctx, 'ns1.content', [res])
 
-  assert isinstance(output_resources, list)
-  assert len(output_resources) == 1
-  assert isinstance(output_resources[0], OutputResource)
-  assert output_resources[0].output_path == 'my_env/my_app/path/file.yml'
-  mock_config.get_params.assert_called_once_with(env_name, app_name)
+  await stage.run(ctx)
+  out = ctx_get(ctx, 'ns2.files')
+
+  assert out[0].output_path == 'my_env/my_app/cfg/config.yml'
+
 
 @pytest.mark.asyncio
-async def test_GenerateManifestNames__non_k8s_files_to_render_not_in_the_list(stage_generate_manifest_names, mocker, caplog):
-  caplog.set_level(logging.DEBUG)
-  mock_get_config = MagicMock()
-  mock_config = MagicMock()
-  mock_params = MagicMock()
-  mock_params.non_k8s_files_to_render = ['path/file_1.yml']
-  mock_get_config.return_value = mock_config
-  mock_config.get_params.return_value = mock_params
-  mocker.patch('make_argocd_fly.stage.get_config', mock_get_config)
+async def test_generatenames_generic_pipeline_always_source_policy_even_for_yaml(mocker):
+  _patch_get_config(mocker)
+  stage = _stage(PipelineType.GENERIC)
 
-  yml = textwrap.dedent('''\
-    text: some text
-    ''')
-  source_file_path = 'path/file.yml'
-  env_name = "my_env"
-  app_name = "my_app"
-  ctx = Context(env_name, app_name)
-  output_resource = Content(
-      resource_type=ResourceType.YAML,
-      data=yml,
-      source=source_file_path,
-  )
+  yaml_obj = {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'x'}}
+  res = Content(resource_type=ResourceType.YAML, data='...', source='secrets/db.yml.j2', yaml_obj=yaml_obj)
 
-  ctx_set(ctx, 'ns1.content', [output_resource])
-  await stage_generate_manifest_names.run(ctx)
-  output_resources = ctx_get(ctx, 'ns2.files')
+  ctx = _ctx()
+  ctx_set(ctx, 'ns1.content', [res])
 
-  assert isinstance(output_resources, list)
-  assert len(output_resources) == 0
-  assert 'Filename cannot be constructed' in caplog.text
-  mock_config.get_params.assert_called_once_with(env_name, app_name)
+  await stage.run(ctx)
+  out = ctx_get(ctx, 'ns2.files')
+
+  # SourcePolicy strips .j2 but keeps real extension
+  assert out[0].output_path == 'my_env/my_app/secrets/db.yml'
+
 
 @pytest.mark.asyncio
-async def test_GenerateManifestNames__non_k8s_files_to_render_as_dir(stage_generate_manifest_names, mocker):
-  mock_get_config = MagicMock()
-  mock_config = MagicMock()
-  mock_params = MagicMock()
-  mock_params.non_k8s_files_to_render = ['path/']
-  mock_get_config.return_value = mock_config
-  mock_config.get_params.return_value = mock_params
-  mocker.patch('make_argocd_fly.stage.get_config', mock_get_config)
-  env_name = "my_env"
-  app_name = "my_app"
-  yml_children = [MagicMock()]
+async def test_generatenames_kustomize_routes_driver_files_to_source_policy(mocker):
+  _patch_get_config(mocker)
+  stage = _stage(PipelineType.K8S_KUSTOMIZE)
 
-  yml = textwrap.dedent('''\
-    text: some text
-    ''')
-  source_file_path = 'path/file.yml.j2'
-  env_name = "my_env"
-  app_name = "my_app"
-  ctx = Context(env_name, app_name)
-  output_resource = Content(
-      resource_type=ResourceType.YAML,
-      data=yml,
-      source=source_file_path,
-  )
+  # kustomization and values, hence source policy
+  kustomization = Content(ResourceType.YAML, '...', 'kustomization.yaml')
+  values = Content(ResourceType.YAML, '...', 'values.yml')
 
-  ctx_set(ctx, 'ns1.content', [output_resource])
-  await stage_generate_manifest_names.run(ctx)
-  output_resources = ctx_get(ctx, 'ns2.files')
+  # a regular rendered manifest with yaml_obj, hence k8s policy
+  obj = {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'api'}}
+  manifest = Content(ResourceType.YAML, '...', 'manifests/out.yaml', yaml_obj=obj)
 
-  assert isinstance(output_resources, list)
-  assert len(output_resources) == 1
-  assert isinstance(output_resources[0], OutputResource)
-  assert output_resources[0].output_path == 'my_env/my_app/path/file.yml'
-  mock_config.get_params.assert_called_once_with(env_name, app_name)
+  ctx = _ctx()
+  ctx_set(ctx, 'ns1.content', [kustomization, values, manifest])
+
+  await stage.run(ctx)
+  out = ctx_get(ctx, 'ns2.files')
+
+  # order is sorted by source name inside stage, so check membership
+  paths = {r.output_path for r in out}
+  assert 'my_env/my_app/kustomization.yaml' in paths
+  assert 'my_env/my_app/values.yml' in paths
+  assert 'my_env/my_app/manifests/deployment_api.yml' in paths
+
 
 @pytest.mark.asyncio
-async def test_GenerateManifestNames__non_k8s_files_to_render_as_dir_2(stage_generate_manifest_names, mocker):
-  mock_get_config = MagicMock()
-  mock_config = MagicMock()
-  mock_params = MagicMock()
-  mock_params.non_k8s_files_to_render = ['path']
-  mock_get_config.return_value = mock_config
-  mock_config.get_params.return_value = mock_params
-  mocker.patch('make_argocd_fly.stage.get_config', mock_get_config)
+async def test_generatenames_helmfile_routes_driver_file_to_source_policy(mocker):
+  _patch_get_config(mocker)
+  stage = _stage(PipelineType.K8S_HELMFILE)
 
-  yml = textwrap.dedent('''\
-    text: some text
-    ''')
-  source_file_path = 'path/file.yml.j2'
-  env_name = "my_env"
-  app_name = "my_app"
-  ctx = Context(env_name, app_name)
-  output_resource = Content(
-      resource_type=ResourceType.YAML,
-      data=yml,
-      source=source_file_path,
-  )
+  helmfile = Content(ResourceType.YAML, '...', 'helmfile.yaml')
+  obj = {'apiVersion': 'v1', 'kind': 'Service', 'metadata': {'name': 'web'}}
+  svc = Content(ResourceType.YAML, '...', 'templates/svc.yaml', yaml_obj=obj)
 
-  ctx_set(ctx, 'ns1.content', [output_resource])
-  await stage_generate_manifest_names.run(ctx)
-  output_resources = ctx_get(ctx, 'ns2.files')
+  ctx = _ctx()
+  ctx_set(ctx, 'ns1.content', [helmfile, svc])
 
-  assert isinstance(output_resources, list)
-  assert len(output_resources) == 1
-  assert isinstance(output_resources[0], OutputResource)
-  assert output_resources[0].output_path == 'my_env/my_app/path/file.yml'
-  mock_config.get_params.assert_called_once_with(env_name, app_name)
+  await stage.run(ctx)
+  out = ctx_get(ctx, 'ns2.files')
+
+  paths = {r.output_path for r in out}
+  assert 'my_env/my_app/helmfile.yaml' in paths
+  assert 'my_env/my_app/templates/service_web.yml' in paths
+
 
 @pytest.mark.asyncio
-async def test_GenerateManifestNames__non_k8s_files_to_render_as_str(stage_generate_manifest_names, mocker, caplog):
-  mock_get_config = MagicMock()
-  mock_config = MagicMock()
-  mock_params = MagicMock()
-  mock_params.non_k8s_files_to_render = 'path/file.yml'
-  mock_get_config.return_value = mock_config
-  mock_config.get_params.return_value = mock_params
-  mocker.patch('make_argocd_fly.stage.get_config', mock_get_config)
+async def test_generatenames_dedupes_conflicts_with_suffix(mocker):
+  _patch_get_config(mocker)
+  stage = _stage(PipelineType.K8S_SIMPLE)
 
-  yml = textwrap.dedent('''\
-    text: some text
-    ''')
-  source_file_path = 'path/file.yml'
-  env_name = "my_env"
-  app_name = "my_app"
-  ctx = Context(env_name, app_name)
-  output_resource = Content(
-      resource_type=ResourceType.YAML,
-      data=yml,
-      source=source_file_path,
-  )
+  # Two manifests that resolve to the same filename, hence second gets _1
+  obj1 = {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'api'}}
+  obj2 = {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'api'}}
 
-  ctx_set(ctx, 'ns1.content', [output_resource])
-  with pytest.raises(InternalError):
-    await stage_generate_manifest_names.run(ctx)
+  a = Content(ResourceType.YAML, '...', 'src/a.yaml', yaml_obj=obj1)
+  b = Content(ResourceType.YAML, '...', 'src/b.yaml', yaml_obj=obj2)
 
-  assert f'Application parameter {ParamNames.NON_K8S_FILES_TO_RENDER} must be a list' in caplog.text
-  mock_config.get_params.assert_called_once_with(env_name, app_name)
+  ctx = _ctx()
+  ctx_set(ctx, 'ns1.content', [a, b])
+
+  await stage.run(ctx)
+  out = ctx_get(ctx, 'ns2.files')
+
+  # Sorted by source , hence 'a.yaml' first
+  assert out[0].output_path == 'my_env/my_app/src/deployment_api.yml'
+  assert out[1].output_path == 'my_env/my_app/src/deployment_api_1.yml'
 
 ###################
 ### WriteOnDisk

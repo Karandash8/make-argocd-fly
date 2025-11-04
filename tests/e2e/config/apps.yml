@@ -47,7 +47,7 @@ envs:
               {{ argocd.ignoreDifferences | default([]) | to_nice_yaml(indent=2) | trim | indent(2) }}
               {%- endif %}
       app_3: {params: {parent_app: service_deployer}}
-      app_4: {params: {parent_app: service_deployer}}
+      app_4: {params: {parent_app: service_deployer, exclude_rendering: ['files']}}
       app_5: {params: {parent_app: service_deployer}}
       app_6: {params: {parent_app: service_deployer}}
       subdirectory/app_7: {params: {parent_app: service_deployer}}
@@ -58,9 +58,9 @@ envs:
       app_12: {}
       app_13: {params: {parent_app: service_deployer}}
       app_14: {params: {parent_app: service_deployer, exclude_rendering: ['testcases','cases']}}
-      app_15: {params: {parent_app: service_deployer}}
-      app_16: {params: {parent_app: service_deployer}}
-      app_17: {params: {parent_app: service_deployer}}
+      app_15: {params: {parent_app: service_deployer, exclude_rendering: ['files']}}
+      app_16: {params: {parent_app: service_deployer, exclude_rendering: ['files']}}
+      app_17: {params: {parent_app: service_deployer, exclude_rendering: ['files']}}
       app_19: {params: {parent_app: service_deployer}}
       app_20: {params: {parent_app: service_deployer, non_k8s_files_to_render: ['helmfile.yaml.j2']}}
   external_1:
