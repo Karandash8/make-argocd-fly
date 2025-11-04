@@ -79,7 +79,10 @@ async def test_DiscoverK8sAppOfAppsApplication__run__single_app_same_env(tmp_pat
   parent_app_env_name = "test_env"
   parent_app_name = "bootstrap"
   ctx = Context(parent_app_env_name, parent_app_name)
-  stage = DiscoverK8sAppOfAppsApplication()
+  stage = DiscoverK8sAppOfAppsApplication(
+    requires={},
+    provides={'template': 'discover.template', 'output_dir': 'discover.output_dir'},
+  )
 
   await stage.run(ctx)
   templates = ctx_get(ctx, stage.provides['template'])
@@ -127,7 +130,10 @@ async def test_DiscoverK8sAppOfAppsApplication__run__multiple_apps_same_env(tmp_
   parent_app_name = "bootstrap"
   parent_app_env_name = "test_env"
   ctx = Context(parent_app_env_name, parent_app_name)
-  stage = DiscoverK8sAppOfAppsApplication()
+  stage = DiscoverK8sAppOfAppsApplication(
+    requires={},
+    provides={'template': 'discover.template', 'output_dir': 'discover.output_dir'},
+  )
 
   await stage.run(ctx)
   templates = ctx_get(ctx, stage.provides['template'])
@@ -178,7 +184,10 @@ async def test_DiscoverK8sAppOfAppsApplication__run__multiple_apps_different_env
   parent_app_name = "bootstrap"
   parent_app_env_name = "test_env"
   ctx = Context(parent_app_env_name, parent_app_name)
-  stage = DiscoverK8sAppOfAppsApplication()
+  stage = DiscoverK8sAppOfAppsApplication(
+    requires={},
+    provides={'template': 'discover.template', 'output_dir': 'discover.output_dir'},
+  )
 
   await stage.run(ctx)
   templates = ctx_get(ctx, stage.provides['template'])
@@ -347,7 +356,7 @@ def stage_write_on_disk():
     io_sem=asyncio.Semaphore(1),
   )
 
-  return WriteOnDisk(limits=limits, requires=requires)
+  return WriteOnDisk(requires=requires, provides={}, limits=limits)
 
 @pytest.mark.asyncio
 async def test_WriteOnDisk___write_no_duplicates(stage_write_on_disk):

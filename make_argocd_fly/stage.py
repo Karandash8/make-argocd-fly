@@ -120,10 +120,10 @@ def _is_one_of(path: str, names: Iterable[str]) -> bool:
 
 class DiscoverK8sSimpleApplication(Stage):
   name = 'DiscoverK8sSimpleApplication'
-  requires = {'viewer': 'source.viewer'}
-  provides = {'content': 'discover.content',
-              'template': 'discover.template',
-              'output_dir': 'discover.output_dir'}
+
+  def __init__(self, requires: dict[str, str], provides: dict[str, str]) -> None:
+    self.requires = requires
+    self.provides = provides
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
@@ -155,12 +155,10 @@ class DiscoverK8sSimpleApplication(Stage):
 
 class DiscoverK8sKustomizeApplication(Stage):
   name = 'DiscoverK8sKustomizeApplication'
-  requires = {'viewer': 'source.viewer'}
-  provides = {'content': 'discover.content',
-              'template': 'discover.template',
-              'kustomize_exec_dir': 'discover.kustomize_exec_dir',
-              'tmp_dir': 'discover.tmp_dir',
-              'output_dir': 'discover.output_dir'}
+
+  def __init__(self, requires: dict[str, str], provides: dict[str, str]) -> None:
+    self.requires = requires
+    self.provides = provides
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
@@ -220,11 +218,10 @@ class DiscoverK8sKustomizeApplication(Stage):
 
 class DiscoverK8sHelmfileApplication(Stage):
   name = 'DiscoverK8sHelmfileApplication'
-  requires = {'viewer': 'source.viewer'}
-  provides = {'content': 'discover.content',
-              'template': 'discover.template',
-              'tmp_dir': 'discover.tmp_dir',
-              'output_dir': 'discover.output_dir'}
+
+  def __init__(self, requires: dict[str, str], provides: dict[str, str]) -> None:
+    self.requires = requires
+    self.provides = provides
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
@@ -257,9 +254,10 @@ class DiscoverK8sHelmfileApplication(Stage):
 
 class DiscoverK8sAppOfAppsApplication(Stage):
   name = 'DiscoverK8sAppOfAppsApplication'
-  requires = {}
-  provides = {'template': 'discover.template',
-              'output_dir': 'discover.output_dir'}
+
+  def __init__(self, requires: dict[str, str], provides: dict[str, str]) -> None:
+    self.requires = requires
+    self.provides = provides
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
@@ -299,10 +297,10 @@ class DiscoverK8sAppOfAppsApplication(Stage):
 
 class DiscoverGenericApplication(Stage):
   name = 'DiscoverGenericApplication'
-  requires = {'viewer': 'source.viewer'}
-  provides = {'content': 'discover.content',
-              'template': 'discover.template',
-              'output_dir': 'discover.output_dir'}
+
+  def __init__(self, requires: dict[str, str], provides: dict[str, str]) -> None:
+    self.requires = requires
+    self.provides = provides
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
@@ -338,8 +336,10 @@ class DiscoverGenericApplication(Stage):
 
 class RenderTemplates(Stage):
   name = 'RenderTemplates'
-  requires = {'template': 'discover.template', 'viewer': 'source.viewer'}
-  provides = {'content': 'template.content'}
+
+  def __init__(self, requires: dict[str, str], provides: dict[str, str]) -> None:
+    self.requires = requires
+    self.provides = provides
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
@@ -440,6 +440,10 @@ class GenerateNames(Stage):
     self.k8s_policy = K8sPolicy()
     self.src_policy = SourcePolicy()
 
+    if self.pipeline_kind is None:
+      log.error(f'PipelineType must be provided to {self.name} stage')
+      raise InternalError()
+
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} (pipeline_kind={self.pipeline_kind})')
     items = resolve_expr(ctx, self.requires['content'])
@@ -512,12 +516,16 @@ class GenerateNames(Stage):
 
 class WriteOnDisk(Stage):
   name = 'WriteOnDisk'
-  provides = {}
 
-  def __init__(self, limits: RuntimeLimits, requires: dict[str, str]) -> None:
-    self.limits = limits
+  def __init__(self, requires: dict[str, str], provides: dict[str, str], *, limits: RuntimeLimits) -> None:
     self.requires = requires
+    self.provides = provides
+    self.limits = limits
     self._written = set()
+
+    if self.limits is None:
+      log.error(f'RuntimeLimits must be provided to {self.name} stage')
+      raise InternalError()
 
   async def _write_one(self, writer: AsyncWriterProto, output_dir: str, ctx: Context, resource: OutputResource) -> None:
     async with self.limits.io_sem:
@@ -563,11 +571,15 @@ class WriteOnDisk(Stage):
 
 class KustomizeBuild(Stage):
   name = 'KustomizeBuild'
-  requires = {'kustomize_exec_dir': 'discover.kustomize_exec_dir', 'tmp_dir': 'discover.tmp_dir'}
-  provides = {'content': 'kustomize.content'}
 
-  def __init__(self, limits: RuntimeLimits) -> None:
+  def __init__(self, requires: dict[str, str], provides: dict[str, str], *, limits: RuntimeLimits) -> None:
+    self.requires = requires
+    self.provides = provides
     self.limits = limits
+
+    if self.limits is None:
+      log.error(f'RuntimeLimits must be provided to {self.name} stage')
+      raise InternalError()
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
@@ -613,11 +625,15 @@ class KustomizeBuild(Stage):
 
 class HelmfileRun(Stage):
   name = 'HelmfileRun'
-  requires = {'tmp_dir': 'discover.tmp_dir'}
-  provides = {'content': 'helmfile.content'}
 
-  def __init__(self, limits: RuntimeLimits) -> None:
+  def __init__(self, requires: dict[str, str], provides: dict[str, str], *, limits: RuntimeLimits) -> None:
+    self.requires = requires
+    self.provides = provides
     self.limits = limits
+
+    if self.limits is None:
+      log.error(f'RuntimeLimits must be provided to {self.name} stage')
+      raise InternalError()
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
