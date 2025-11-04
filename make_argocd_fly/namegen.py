@@ -126,8 +126,8 @@ class Pattern:
 
 class NamePolicy(ABC):
   @abstractmethod
-  def render(self, *, k8s: K8sInfo | None, src: SourceInfo) -> str: ...
-
+  def render(self, *, k8s: K8sInfo | None, src: SourceInfo) -> str:
+    raise NotImplementedError()
 
 class SourcePolicy(NamePolicy):
   def __init__(self, pattern: Pattern | None = None):
