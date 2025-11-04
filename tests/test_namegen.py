@@ -1,5 +1,3 @@
-import pytest
-
 from make_argocd_fly.namegen import _normalize, K8sInfo, SourceInfo, Pattern, SourcePolicy, K8sPolicy, Deduper
 
 

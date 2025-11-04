@@ -1,14 +1,7 @@
 import asyncio
-import logging
 import pytest
 import textwrap
-import yaml
 from unittest.mock import MagicMock, PropertyMock
-
-try:
-  from yaml import CSafeLoader as SafeLoader
-except ImportError:
-  from yaml import SafeLoader
 
 from make_argocd_fly import default
 from make_argocd_fly.stage import DiscoverK8sAppOfAppsApplication, WriteOnDisk, GenerateNames, _resolve_template_vars
@@ -282,7 +275,7 @@ async def test_generatenames_kustomize_routes_driver_files_to_source_policy(mock
   kustomization = Content(ResourceType.YAML, '...', 'kustomization.yaml')
   values = Content(ResourceType.YAML, '...', 'values.yml')
 
-  # a regular rendered manifest with yaml_obj , hence k8s policy
+  # a regular rendered manifest with yaml_obj, hence k8s policy
   obj = {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'api'}}
   manifest = Content(ResourceType.YAML, '...', 'manifests/out.yaml', yaml_obj=obj)
 
@@ -324,7 +317,7 @@ async def test_generatenames_dedupes_conflicts_with_suffix(mocker):
   _patch_get_config(mocker)
   stage = _stage(PipelineType.K8S_SIMPLE)
 
-  # Two manifests that resolve to the same filename , hence second gets _1
+  # Two manifests that resolve to the same filename, hence second gets _1
   obj1 = {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'api'}}
   obj2 = {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'api'}}
 

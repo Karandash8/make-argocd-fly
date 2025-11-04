@@ -2,6 +2,7 @@ import os
 import re
 import logging
 from typing import Any
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Protocol
@@ -124,7 +125,8 @@ class Pattern:
     return out
 
 
-class NamePolicy(Protocol):
+class NamePolicy(ABC):
+  @abstractmethod
   def render(self, *, k8s: K8sInfo | None, src: SourceInfo) -> str: ...
 
 
