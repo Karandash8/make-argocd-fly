@@ -129,6 +129,7 @@ class NamePolicy(ABC):
   def render(self, *, k8s: K8sInfo | None, src: SourceInfo) -> str:
     raise NotImplementedError()
 
+
 class SourcePolicy(NamePolicy):
   def __init__(self, pattern: Pattern | None = None):
     self.pattern = pattern or Pattern('{rel_dir}/{source_stem}{source_ext}')
