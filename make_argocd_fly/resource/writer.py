@@ -5,6 +5,7 @@ import yaml
 import yaml.composer
 import yaml.parser
 import yaml.scanner
+import yaml.constructor
 import asyncio
 from yaml import SafeDumper
 from typing import Protocol, Any

@@ -159,7 +159,7 @@ class K8sPolicy(NamePolicy):
     fields = {
       'kind': _normalize(k8s.kind),
       'name': _normalize(k8s.name),
-      'namespace': _normalize(k8s.namespace, 'default'),
+      'namespace': _normalize(k8s.namespace),
       'api_version': _normalize(k8s.api_version),
       'group': _normalize(k8s.group),
       'version': _normalize(k8s.version),

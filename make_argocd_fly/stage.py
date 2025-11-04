@@ -8,6 +8,7 @@ import yaml
 import yaml.composer
 import yaml.parser
 import yaml.scanner
+import yaml.constructor
 from pathlib import PurePosixPath
 from typing import Any
 from pprint import pformat
@@ -462,7 +463,7 @@ class GenerateNames(Stage):
       if policy_key == 'k8s':
         k8s = K8sInfo.from_yaml_obj(getattr(res, 'yaml_obj', None))
         if not k8s.kind or not k8s.name:
-          # parsed YAML missing essentials , hence fall back to source
+          # parsed YAML missing essentials, hence fall back to source
           rel = self.src_policy.render(k8s=None, src=src)
         else:
           rel = self.k8s_policy.render(k8s=k8s, src=src)
@@ -492,13 +493,13 @@ class GenerateNames(Stage):
 
     # K8s pipelines
     if rules.pipeline_kind == PipelineType.K8S_KUSTOMIZE:
-      # SourcePolicy for kustomization/values or anything discovered from kustomization
+      # SourcePolicy for kustomization/values
       if _is_one_of(res.source, KUSTOMIZE_BASENAMES) or res.source in rules.kustomize_cfg:
         return 'source'
       return 'k8s' if res.resource_type == ResourceType.YAML else None
 
     if rules.pipeline_kind == PipelineType.K8S_HELMFILE:
-      # SourcePolicy for helmfile driver or anything discovered from helmfile
+      # SourcePolicy for helmfile
       if _is_one_of(res.source, HELMFILE_BASENAMES) or res.source in rules.helmfile_cfg:
         return 'source'
       return 'k8s' if res.resource_type == ResourceType.YAML else None

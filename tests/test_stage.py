@@ -278,7 +278,7 @@ async def test_generatenames_kustomize_routes_driver_files_to_source_policy(mock
   _patch_get_config(mocker)
   stage = _stage(PipelineType.K8S_KUSTOMIZE)
 
-  # kustomization and values , hence source policy
+  # kustomization and values, hence source policy
   kustomization = Content(ResourceType.YAML, '...', 'kustomization.yaml')
   values = Content(ResourceType.YAML, '...', 'values.yml')
 
