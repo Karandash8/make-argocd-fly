@@ -1,5 +1,7 @@
 import logging
 import time
+import inspect
+from dataclasses import dataclass
 
 from make_argocd_fly.context import Context, ctx_set
 from make_argocd_fly.stage import Stage
@@ -38,81 +40,197 @@ class Pipeline:
     log.info(f'Updated application {ctx.app_name} in environment {ctx.env_name}')
 
 
-def build_pipeline_k8s_simple(limits: RuntimeLimits) -> Pipeline:
-  stages = [DiscoverK8sSimpleApplication(),
-            RenderTemplates(),
-            SplitManifests(requires={'content': 'discover.content&template.content'}, provides={'content': 'manifest.content'}),
-            ConvertToYaml(requires={'content': 'manifest.content'}, provides={'content': 'manifest.content'}),
-            GenerateNames(requires={'content': 'manifest.content'},
-                          provides={'files': 'output.files'},
-                          pipeline_kind=PipelineType.K8S_SIMPLE),
-            WriteOnDisk(limits=limits, requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
-
-  return Pipeline(PipelineType.K8S_SIMPLE, stages)
+@dataclass(frozen=True)
+class StageSpec:
+  cls: type[Stage]
+  requires: dict[str, str]
+  provides: dict[str, str]
+  kwargs: dict[str, object] | None = None
 
 
-def build_pipeline_kustomize(limits: RuntimeLimits) -> Pipeline:
-  stages = [DiscoverK8sKustomizeApplication(),
-            RenderTemplates(),
-            SplitManifests(requires={'content': 'discover.content&template.content'}, provides={'content': 'tmp_manifest.content'}),
-            ConvertToYaml(requires={'content': 'tmp_manifest.content'}, provides={'content': 'tmp_manifest.content'}),
-            GenerateNames(requires={'content': 'tmp_manifest.content'},
-                          provides={'files': 'tmp_output.files'},
-                          pipeline_kind=PipelineType.K8S_KUSTOMIZE),
-            WriteOnDisk(limits=limits, requires={'files': 'tmp_output.files', 'output_dir': 'discover.tmp_dir'}),
-            KustomizeBuild(limits=limits),
-            SplitManifests(requires={'content': 'kustomize.content'}, provides={'content': 'manifest.content'}),
-            ConvertToYaml(requires={'content': 'manifest.content'}, provides={'content': 'manifest.content'}),
-            GenerateNames(requires={'content': 'manifest.content'},
-                          provides={'files': 'output.files'},
-                          pipeline_kind=PipelineType.K8S_KUSTOMIZE),
-            WriteOnDisk(limits=limits, requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
+PIPELINES: dict[PipelineType, list[StageSpec]] = {
+  PipelineType.K8S_SIMPLE: [
+    StageSpec(cls=DiscoverK8sSimpleApplication,
+              requires={'viewer': 'source.viewer'},
+              provides={'content': 'discover.content',
+                        'template': 'discover.template',
+                        'output_dir': 'discover.output_dir'}),
+    StageSpec(cls=RenderTemplates,
+              requires={'viewer': 'source.viewer',
+                        'template': 'discover.template'},
+              provides={'content': 'template.content'}),
+    StageSpec(cls=SplitManifests,
+              requires={'content': 'discover.content&template.content'},
+              provides={'content': 'manifests.raw'}),
+    StageSpec(cls=ConvertToYaml,
+              requires={'content': 'manifests.raw'},
+              provides={'content': 'manifests.parsed'}),
+    StageSpec(cls=GenerateNames,
+              requires={'content': 'manifests.parsed'},
+              provides={'files': 'generated.files'},
+              kwargs={'pipeline_kind': None}),
+    StageSpec(cls=WriteOnDisk,
+              requires={'files': 'generated.files',
+                        'output_dir': 'discover.output_dir'},
+              provides={},
+              kwargs={'limits': None}),
+  ],
+  PipelineType.K8S_KUSTOMIZE: [
+    StageSpec(cls=DiscoverK8sKustomizeApplication,
+              requires={'viewer': 'source.viewer'},
+              provides={'content': 'discover.content',
+                        'template': 'discover.template',
+                        'kustomize_exec_dir': 'discover.kustomize_exec_dir',
+                        'tmp_dir': 'discover.tmp_dir',
+                        'output_dir': 'discover.output_dir'}),
+    StageSpec(cls=RenderTemplates,
+              requires={'viewer': 'source.viewer',
+                        'template': 'discover.template'},
+              provides={'content': 'template.content'}),
+    StageSpec(cls=SplitManifests,
+              requires={'content': 'discover.content&template.content'},
+              provides={'content': 'staging.raw'}),
+    StageSpec(cls=ConvertToYaml,
+              requires={'content': 'staging.raw'},
+              provides={'content': 'staging.parsed'}),
+    StageSpec(cls=GenerateNames,
+              requires={'content': 'staging.parsed'},
+              provides={'files': 'generated.tmp_files'},
+              kwargs={'pipeline_kind': None}),
+    StageSpec(cls=WriteOnDisk,
+              requires={'files': 'generated.tmp_files',
+                        'output_dir': 'discover.tmp_dir'},
+              provides={},
+              kwargs={'limits': None}),
+    StageSpec(cls=KustomizeBuild,
+              requires={'kustomize_exec_dir': 'discover.kustomize_exec_dir',
+                        'tmp_dir': 'discover.tmp_dir'},
+              provides={'content': 'kustomize.content'},
+              kwargs={'limits': None}),
+    StageSpec(cls=SplitManifests,
+              requires={'content': 'kustomize.content'},
+              provides={'content': 'manifests.raw'}),
+    StageSpec(cls=ConvertToYaml,
+              requires={'content': 'manifests.raw'},
+              provides={'content': 'manifests.parsed'}),
+    StageSpec(cls=GenerateNames,
+              requires={'content': 'manifests.parsed'},
+              provides={'files': 'generated.files'},
+              kwargs={'pipeline_kind': None}),
+    StageSpec(cls=WriteOnDisk,
+              requires={'files': 'generated.files',
+                        'output_dir': 'discover.output_dir'},
+              provides={},
+              kwargs={'limits': None})
+  ],
+  PipelineType.K8S_HELMFILE: [
+    StageSpec(cls=DiscoverK8sHelmfileApplication,
+              requires={'viewer': 'source.viewer'},
+              provides={'content': 'discover.content',
+                        'template': 'discover.template',
+                        'tmp_dir': 'discover.tmp_dir',
+                        'output_dir': 'discover.output_dir'}),
+    StageSpec(cls=RenderTemplates,
+              requires={'viewer': 'source.viewer',
+                        'template': 'discover.template'},
+              provides={'content': 'template.content'}),
+    StageSpec(cls=SplitManifests,
+              requires={'content': 'discover.content&template.content'},
+              provides={'content': 'staging.raw'}),
+    StageSpec(cls=ConvertToYaml,
+              requires={'content': 'staging.raw'},
+              provides={'content': 'staging.parsed'}),
+    StageSpec(cls=GenerateNames,
+              requires={'content': 'staging.parsed'},
+              provides={'files': 'generated.tmp_files'},
+              kwargs={'pipeline_kind': None}),
+    StageSpec(cls=WriteOnDisk,
+              requires={'files': 'generated.tmp_files',
+                        'output_dir': 'discover.tmp_dir'},
+              provides={},
+              kwargs={'limits': None}),
+    StageSpec(cls=HelmfileRun,
+              requires={'tmp_dir': 'discover.tmp_dir'},
+              provides={'content': 'helmfile.content'},
+              kwargs={'limits': None}),
+    StageSpec(cls=SplitManifests,
+              requires={'content': 'helmfile.content'},
+              provides={'content': 'manifests.raw'}),
+    StageSpec(cls=ConvertToYaml,
+              requires={'content': 'manifests.raw'},
+              provides={'content': 'manifests.parsed'}),
+    StageSpec(cls=GenerateNames,
+              requires={'content': 'manifests.parsed'},
+              provides={'files': 'generated.files'},
+              kwargs={'pipeline_kind': None}),
+    StageSpec(cls=WriteOnDisk,
+              requires={'files': 'generated.files',
+                        'output_dir': 'discover.output_dir'},
+              provides={},
+              kwargs={'limits': None})
+  ],
+  PipelineType.K8S_APP_OF_APPS: [
+    StageSpec(cls=DiscoverK8sAppOfAppsApplication,
+              requires={},
+              provides={'template': 'discover.template',
+                        'output_dir': 'discover.output_dir'}),
+    StageSpec(cls=RenderTemplates,
+              requires={'viewer': 'source.viewer',
+                        'template': 'discover.template'},
+              provides={'content': 'template.content'}),
+    StageSpec(cls=SplitManifests,
+              requires={'content': 'template.content'},
+              provides={'content': 'manifests.raw'}),
+    StageSpec(cls=ConvertToYaml,
+              requires={'content': 'manifests.raw'},
+              provides={'content': 'manifests.parsed'}),
+    StageSpec(cls=GenerateNames,
+              requires={'content': 'manifests.parsed'},
+              provides={'files': 'generated.files'},
+              kwargs={'pipeline_kind': None}),
+    StageSpec(cls=WriteOnDisk,
+              requires={'files': 'generated.files',
+                        'output_dir': 'discover.output_dir'},
+              provides={},
+              kwargs={'limits': None}),
+  ],
+  PipelineType.GENERIC: [
+    StageSpec(cls=DiscoverGenericApplication,
+              requires={'viewer': 'source.viewer'},
+              provides={'content': 'discover.content',
+                        'template': 'discover.template',
+                        'output_dir': 'discover.output_dir'}),
+    StageSpec(cls=RenderTemplates,
+              requires={'viewer': 'source.viewer',
+                        'template': 'discover.template'},
+              provides={'content': 'template.content'}),
+    StageSpec(cls=GenerateNames,
+              requires={'content': 'discover.content&template.content'},
+              provides={'files': 'generated.files'},
+              kwargs={'pipeline_kind': None}),
+    StageSpec(cls=WriteOnDisk,
+              requires={'files': 'generated.files',
+                        'output_dir': 'discover.output_dir'},
+              provides={},
+              kwargs={'limits': None}),
+  ],
+}
 
-  return Pipeline(PipelineType.K8S_KUSTOMIZE, stages)
 
+def _build_pipeline(kind: PipelineType, limits: RuntimeLimits) -> Pipeline:
+  stages = []
+  base_kwargs = {'pipeline_kind': kind, 'limits': limits}
+  for spec in PIPELINES[kind]:
+    sig = inspect.signature(spec.cls.__init__)
+    allowed = {k: v for k, v in (spec.kwargs or {}).items() if k in sig.parameters}
 
-def build_pipeline_helmfile(limits: RuntimeLimits) -> Pipeline:
-  stages = [DiscoverK8sHelmfileApplication(),
-            RenderTemplates(),
-            SplitManifests(requires={'content': 'discover.content&template.content'}, provides={'content': 'tmp_manifest.content'}),
-            ConvertToYaml(requires={'content': 'tmp_manifest.content'}, provides={'content': 'tmp_manifest.content'}),
-            GenerateNames(requires={'content': 'tmp_manifest.content'},
-                          provides={'files': 'tmp_output.files'},
-                          pipeline_kind=PipelineType.K8S_HELMFILE),
-            WriteOnDisk(limits=limits, requires={'files': 'tmp_output.files', 'output_dir': 'discover.tmp_dir'}),
-            HelmfileRun(limits=limits),
-            SplitManifests(requires={'content': 'helmfile.content'}, provides={'content': 'manifest.content'}),
-            ConvertToYaml(requires={'content': 'manifest.content'}, provides={'content': 'manifest.content'}),
-            GenerateNames(requires={'content': 'manifest.content'},
-                          provides={'files': 'output.files'},
-                          pipeline_kind=PipelineType.K8S_HELMFILE),
-            WriteOnDisk(limits=limits, requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
+    for k, v in base_kwargs.items():
+      if k in sig.parameters:
+        allowed[k] = v
+    stage = spec.cls(requires=spec.requires, provides=spec.provides, **allowed)
+    stages.append(stage)
 
-  return Pipeline(PipelineType.K8S_HELMFILE, stages)
-
-
-def build_pipeline_app_of_apps(limits: RuntimeLimits) -> Pipeline:
-  stages = [DiscoverK8sAppOfAppsApplication(),
-            RenderTemplates(),
-            SplitManifests(requires={'content': 'template.content'}, provides={'content': 'manifest.content'}),
-            ConvertToYaml(requires={'content': 'manifest.content'}, provides={'content': 'manifest.content'}),
-            GenerateNames(requires={'content': 'manifest.content'},
-                          provides={'files': 'output.files'},
-                          pipeline_kind=PipelineType.K8S_APP_OF_APPS),
-            WriteOnDisk(limits=limits, requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
-
-  return Pipeline(PipelineType.K8S_APP_OF_APPS, stages)
-
-
-def build_pipeline_generic(limits: RuntimeLimits) -> Pipeline:
-  stages = [DiscoverGenericApplication(),
-            RenderTemplates(),
-            GenerateNames(requires={'content': 'discover.content&template.content'},
-                          provides={'files': 'output.files'},
-                          pipeline_kind=PipelineType.GENERIC),
-            WriteOnDisk(limits=limits, requires={'files': 'output.files', 'output_dir': 'discover.output_dir'})]
-
-  return Pipeline(PipelineType.GENERIC, stages)
+  return Pipeline(kind, stages)
 
 
 def build_pipeline(ctx: Context, limits: RuntimeLimits, viewer: ScopedViewer) -> Pipeline:
@@ -132,18 +250,18 @@ def build_pipeline(ctx: Context, limits: RuntimeLimits, viewer: ScopedViewer) ->
                                                           depth=1))
 
       if kustomize_children:
-        return build_pipeline_kustomize(limits)
+        return _build_pipeline(PipelineType.K8S_KUSTOMIZE, limits)
       elif helmfile_children:
-        return build_pipeline_helmfile(limits)
+        return _build_pipeline(PipelineType.K8S_HELMFILE, limits)
       else:
-        return build_pipeline_k8s_simple(limits)
+        return _build_pipeline(PipelineType.K8S_SIMPLE, limits)
     except PathDoesNotExistError:
-      return build_pipeline_app_of_apps(limits)
+      return _build_pipeline(PipelineType.K8S_APP_OF_APPS, limits)
   elif params.app_type == ApplicationTypes.GENERIC:
     viewer = viewer.go_to(ctx.app_name)
     ctx_set(ctx, 'source.viewer', viewer)
 
-    return build_pipeline_generic(limits)
+    return _build_pipeline(PipelineType.GENERIC, limits)
   else:
     log.error(f'Unknown application type \'{params.app_type}\' in application {ctx.app_name} in environment {ctx.env_name}.'
               f' Valid types are: {[t.value for t in ApplicationTypes]}')
