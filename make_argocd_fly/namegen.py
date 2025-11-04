@@ -5,7 +5,6 @@ from typing import Any
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-from typing import Protocol
 
 from make_argocd_fly.type import PipelineType
 
