@@ -1,7 +1,9 @@
 import asyncio
 import pytest
 import textwrap
+import yaml
 from unittest.mock import MagicMock, PropertyMock
+from yaml import SafeLoader
 
 from make_argocd_fly import default
 from make_argocd_fly.stage import DiscoverK8sAppOfAppsApplication, WriteOnDisk, GenerateNames, _resolve_template_vars
@@ -342,6 +344,30 @@ async def test_generatenames_dedupes_conflicts_with_suffix(mocker):
   # Sorted by source , hence 'a.yaml' first
   assert out[0].output_path == 'my_env/my_app/src/deployment_api.yml'
   assert out[1].output_path == 'my_env/my_app/src/deployment_api_1.yml'
+
+@pytest.mark.asyncio
+async def test_generatenames_k8s_simple_uses_k8s_policy_when_yaml_has_special_characters(mocker):
+  _patch_get_config(mocker)
+  stage = _stage(PipelineType.K8S_SIMPLE)
+
+  yaml_str = '''\
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: "airbyte-test-connection"
+  '''
+  yaml_obj = yaml.load(yaml_str, Loader=SafeLoader)
+  res = Content(resource_type=ResourceType.YAML, data='...', source='path/file.yaml', yaml_obj=yaml_obj)
+
+  ctx = _ctx()
+  ctx_set(ctx, 'ns1.content', [res])
+
+  await stage.run(ctx)
+  out = ctx_get(ctx, 'ns2.files')
+
+  assert isinstance(out, list) and len(out) == 1
+  assert isinstance(out[0], OutputResource)
+  assert out[0].output_path == 'my_env/my_app/path/pod_airbyte-test-connection.yml'
 
 ###################
 ### WriteOnDisk
