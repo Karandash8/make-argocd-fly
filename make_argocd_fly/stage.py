@@ -74,14 +74,22 @@ def _scan_viewer(viewer: ScopedViewer,
                  resource_types: list[ResourceType] | None,
                  template: bool,
                  search_subdirs: list[str] | None = None,
-                 excludes: list[str] = []):
+                 excludes: Iterable[str] | None = None):
+  '''
+  Scan resources from the viewer and filter them using optional exclude patterns.
+  Exclude patterns are POSIX-like relative paths; they support both prefix and glob
+  semantics via _is_match().
+  '''
   out = []
-  for child in viewer.search_subresources(resource_types=resource_types, template=template, search_subdirs=search_subdirs):
-    if any(child.rel_path.startswith(e) for e in excludes):
-      log.debug(f'Excluding file {child.rel_path}')
+  exclude_patterns = list(excludes or [])
+
+  for child in viewer.search_subresources(resource_types=resource_types,
+                                          template=template,
+                                          search_subdirs=search_subdirs):
+    if exclude_patterns and _is_match(child.rel_path, exclude_patterns):
+      log.debug(f'Excluding {child.rel_path}')
       continue
     out.append(child)
-
   return out
 
 
