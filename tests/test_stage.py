@@ -6,10 +6,11 @@ from unittest.mock import MagicMock, PropertyMock
 from yaml import SafeLoader
 
 from make_argocd_fly import default
-from make_argocd_fly.stage import DiscoverK8sAppOfAppsApplication, WriteOnDisk, GenerateNames, _resolve_template_vars
+from make_argocd_fly.stage import (DiscoverK8sAppOfAppsApplication, WriteOnDisk, GenerateNames, _resolve_template_vars,
+                                   _scan_viewer)
 from make_argocd_fly.context import Context, ctx_set, ctx_get
 from make_argocd_fly.context.data import Content, Template, OutputResource
-from make_argocd_fly.resource.viewer import ResourceType
+from make_argocd_fly.resource.viewer import ResourceType, build_scoped_viewer
 from make_argocd_fly.resource.writer import SyncToAsyncWriter
 from make_argocd_fly.config import populate_config
 from make_argocd_fly.util import check_lists_equal
@@ -46,6 +47,135 @@ def test__resolve_template_vars__no_vars(mocker):
   mocker.patch('make_argocd_fly.config.Config.output_dir', new_callable=PropertyMock, return_value=output_dir)
 
   assert _resolve_template_vars(env_name, app_name) == expected_vars
+
+###################
+### _scan_viewer
+###################
+
+def _paths(children):
+  # Helper to extract rel paths in a deterministic order
+  return sorted([c.rel_path for c in children])
+
+def _write(p, text=''):
+  p.parent.mkdir(parents=True, exist_ok=True)
+  p.write_text(text)
+
+def test_scan_viewer__no_excludes_yaml_non_template(tmp_path):
+  root = tmp_path / 'src'
+  # files
+  _write(root / 'a' / 'config.yml', 'k: v')
+  _write(root / 'a' / 'config.yml.j2', 'k: {{ v }}')  # template, should be excluded when template=False
+  _write(root / 'a' / 'notes.txt', 'n/a')             # non-yaml
+  _write(root / 'b' / 'sub' / 'keep.yml', 'k: v')
+  _write(root / 'b' / 'sub' / 'secret.yml', 'k: v')
+
+  viewer = build_scoped_viewer(str(root))
+
+  children = _scan_viewer(
+    viewer=viewer,
+    resource_types=[ResourceType.YAML],
+    template=False,
+    search_subdirs=None,
+    excludes=None,
+  )
+
+  assert _paths(children) == [
+    'a/config.yml',
+    'b/sub/keep.yml',
+    'b/sub/secret.yml',
+  ]
+
+def test_scan_viewer__exclude_by_prefix(tmp_path):
+  root = tmp_path / 'src'
+  _write(root / 'a' / 'config.yml', 'k: v')
+  _write(root / 'b' / 'sub' / 'keep.yml', 'k: v')
+  _write(root / 'b' / 'sub' / 'secret.yml', 'k: v')
+
+  viewer = build_scoped_viewer(str(root))
+
+  children = _scan_viewer(
+    viewer=viewer,
+    resource_types=[ResourceType.YAML],
+    template=False,
+    excludes=['b/sub'],          # prefix exclude
+  )
+
+  assert _paths(children) == ['a/config.yml']
+
+def test_scan_viewer__exclude_by_glob(tmp_path):
+  root = tmp_path / 'src'
+  _write(root / 'b' / 'sub' / 'keep.yml', 'k: v')
+  _write(root / 'b' / 'sub' / 'secret.yml', 'k: v')
+  _write(root / 'b' / 'sub' / 'secret-values.yaml', 'k: v')
+  _write(root / 'b' / 'other' / 'secret.yml', 'k: v')
+
+  viewer = build_scoped_viewer(str(root))
+
+  children = _scan_viewer(
+    viewer=viewer,
+    resource_types=[ResourceType.YAML],
+    template=False,
+    excludes=['b/**/secret*'],   # glob exclude across nested dirs
+  )
+
+  assert _paths(children) == ['b/sub/keep.yml']
+
+def test_scan_viewer__template_true_picks_j2_yaml(tmp_path):
+  root = tmp_path / 'src'
+  _write(root / 'a' / 'plain.yml', 'k: v')
+  _write(root / 'a' / 'tpl.yml.j2', 'k: {{ v }}')
+  _write(root / 'a' / 'tpl.txt.j2', 'plain')  # non-yaml template -> not YAML ResourceType
+
+  viewer = build_scoped_viewer(str(root))
+
+  # Non-templates
+  non_tpl = _scan_viewer(
+    viewer=viewer,
+    resource_types=[ResourceType.YAML],
+    template=False,
+  )
+  assert _paths(non_tpl) == ['a/plain.yml']
+
+  # Templates
+  tpl = _scan_viewer(
+    viewer=viewer,
+    resource_types=[ResourceType.YAML],
+    template=True,
+  )
+  # Only YAML templates (e.g., *.yml.j2 / *.yaml.j2) should be included
+  assert _paths(tpl) == ['a/tpl.yml.j2']
+
+def test_scan_viewer__search_subdirs_limits_scope(tmp_path):
+  root = tmp_path / 'src'
+  _write(root / 'a' / 'one.yml', 'k: v')
+  _write(root / 'b' / 'two.yml', 'k: v')
+  _write(root / 'b' / 'nested' / 'three.yml', 'k: v')
+
+  viewer = build_scoped_viewer(str(root))
+
+  children = _scan_viewer(
+    viewer=viewer,
+    resource_types=[ResourceType.YAML],
+    template=False,
+    search_subdirs=['a'],
+  )
+  assert _paths(children) == ['a/one.yml']
+
+def test_scan_viewer__combined_template_and_excludes(tmp_path):
+  root = tmp_path / 'src'
+  _write(root / 'env' / 'values.yml.j2', 'k: {{ v }}')
+  _write(root / 'env' / 'patch.yml.j2', 'k: {{ v }}')
+  _write(root / 'env' / 'readme.txt', 'ignore')
+
+  viewer = build_scoped_viewer(str(root))
+
+  tpl = _scan_viewer(
+    viewer=viewer,
+    resource_types=[ResourceType.YAML],
+    template=True,
+    excludes=['env/patch*'],   # should exclude the template by glob
+  )
+  assert _paths(tpl) == ['env/values.yml.j2']
 
 ###################
 ### DiscoverK8sAppOfAppsApplication
