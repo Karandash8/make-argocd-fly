@@ -386,7 +386,7 @@ async def test_generatenames_k8s_simple_falls_back_to_source_when_yaml_obj_missi
   await stage.run(ctx)
   out = ctx_get(ctx, 'ns2.files')
 
-  assert out[0].output_path == 'my_env/my_app/cfg/config.yml'
+  assert out == []
 
 
 @pytest.mark.asyncio
@@ -498,6 +498,113 @@ async def test_generatenames_k8s_simple_uses_k8s_policy_when_yaml_has_special_ch
   assert isinstance(out, list) and len(out) == 1
   assert isinstance(out[0], OutputResource)
   assert out[0].output_path == 'my_env/my_app/path/pod_airbyte-test-connection.yml'
+
+@pytest.mark.asyncio
+async def test_generatenames_k8s_simple_skips_non_yaml(mocker, caplog):
+  _patch_get_config(mocker)
+  stage = _stage(PipelineType.K8S_SIMPLE)
+
+  text = Content(resource_type=ResourceType.UNKNOWN, data='hello', source='docs/readme.txt', yaml_obj=None)
+
+  ctx = _ctx()
+  ctx_set(ctx, 'ns1.content', [text])
+
+  await stage.run(ctx)
+  out = ctx_get(ctx, 'ns2.files')
+  assert out == []  # non-YAML skipped in K8s pipelines
+  assert "Skipping resource due to unknown policy 'None'" in caplog.text
+
+@pytest.mark.asyncio
+async def test_generatenames_k8s_simple_skips_when_yaml_obj_missing(mocker):
+  _patch_get_config(mocker)
+  stage = _stage(PipelineType.K8S_SIMPLE)
+
+  # YAML file but parser failed earlier -> yaml_obj is None -> strict skip
+  y = Content(resource_type=ResourceType.YAML, data=': : :', source='cfg/bad.yaml', yaml_obj=None)
+
+  ctx = _ctx()
+  ctx_set(ctx, 'ns1.content', [y])
+
+  await stage.run(ctx)
+  out = ctx_get(ctx, 'ns2.files')
+  assert out == []  # no fallback for k8s policy
+
+@pytest.mark.asyncio
+async def test_generatenames_kustomize_uses_dynamic_config_list_for_source_policy(mocker):
+  _patch_get_config(mocker)
+  stage = _stage(PipelineType.K8S_KUSTOMIZE)
+
+  # Pretend this arbitrary path is flagged as a kustomize config file
+  driver = Content(ResourceType.YAML, '...', 'custom/path/my-kustomize-driver.yml')
+  obj = Content(ResourceType.YAML, '...', 'manifests/app.yaml',
+                yaml_obj={'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'api'}})
+
+  ctx = _ctx()
+  ctx_set(ctx, 'ns1.content', [driver, obj])
+  # Dynamic routing lists
+  ctx_set(ctx, 'discover.kustomize.config_files', {'custom/path/my-kustomize-driver.yml'})
+  ctx_set(ctx, 'discover.helmfile.config_files', set())
+
+  await stage.run(ctx)
+  out = ctx_get(ctx, 'ns2.files')
+  paths = {r.output_path for r in out}
+  assert 'my_env/my_app/custom/path/my-kustomize-driver.yml' in paths  # source policy
+  assert 'my_env/my_app/manifests/deployment_api.yml' in paths         # k8s policy
+
+@pytest.mark.asyncio
+async def test_generatenames_helmfile_uses_dynamic_config_list_for_source_policy(mocker):
+  _patch_get_config(mocker)
+  stage = _stage(PipelineType.K8S_HELMFILE)
+
+  driver = Content(ResourceType.YAML, '...', 'charts/root/helmfile-prod.yaml')
+  obj = Content(ResourceType.YAML, '...', 'rendered/svc.yaml',
+                yaml_obj={'apiVersion': 'v1', 'kind': 'Service', 'metadata': {'name': 'web'}})
+
+  ctx = _ctx()
+  ctx_set(ctx, 'ns1.content', [driver, obj])
+  ctx_set(ctx, 'discover.kustomize.config_files', set())
+  ctx_set(ctx, 'discover.helmfile.config_files', {'charts/root/helmfile-prod.yaml'})
+
+  await stage.run(ctx)
+  out = ctx_get(ctx, 'ns2.files')
+  paths = {r.output_path for r in out}
+  assert 'my_env/my_app/charts/root/helmfile-prod.yaml' in paths       # source policy via dynamic list
+  assert 'my_env/my_app/rendered/service_web.yml' in paths             # k8s policy
+
+@pytest.mark.asyncio
+async def test_generatenames_generic_includes_non_yaml_and_strips_j2(mocker):
+  _patch_get_config(mocker)
+  stage = _stage(PipelineType.GENERIC)
+
+  txt = Content(ResourceType.UNKNOWN, 'hello', 'docs/intro.txt')
+  templ = Content(ResourceType.YAML, '...', 'secrets/values.yml.j2')  # SourcePolicy strips .j2
+
+  ctx = _ctx()
+  ctx_set(ctx, 'ns1.content', [txt, templ])
+
+  await stage.run(ctx)
+  out = ctx_get(ctx, 'ns2.files')
+  paths = {r.output_path for r in out}
+  assert 'my_env/my_app/docs/intro.txt' in paths
+  assert 'my_env/my_app/secrets/values.yml' in paths
+
+@pytest.mark.asyncio
+async def test_generatenames_k8s_app_of_apps_behaves_like_k8s_simple(mocker):
+  _patch_get_config(mocker)
+  stage = _stage(PipelineType.K8S_APP_OF_APPS)
+
+  good = Content(ResourceType.YAML, '...', 'a/cm.yaml',
+                 yaml_obj={'apiVersion': 'v1', 'kind': 'Application', 'metadata': {'name': 'app'}})
+  bad = Content(ResourceType.YAML, '...', 'b/cm.yaml', yaml_obj=None)  # will be skipped
+
+  ctx = _ctx()
+  ctx_set(ctx, 'ns1.content', [bad, good])  # ordering verifies deterministic sort + dedupe path
+
+  await stage.run(ctx)
+  out = ctx_get(ctx, 'ns2.files')
+  assert len(out) == 1
+  assert isinstance(out[0], OutputResource)
+  assert out[0].output_path == 'my_env/my_app/a/application_app.yml'
 
 ###################
 ### WriteOnDisk

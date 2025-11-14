@@ -31,7 +31,7 @@ from make_argocd_fly.cliparam import get_cli_params
 from make_argocd_fly.renderer import JinjaRenderer
 from make_argocd_fly.exception import (UndefinedTemplateVariableError, TemplateRenderingError, InternalError,
                                        KustomizeError, PathDoesNotExistError, ConfigFileError, HelmfileError,
-                                       MissingDependencyError)
+                                       OutputFilenameConstructionError)
 from make_argocd_fly.util import extract_single_resource, get_app_rel_path
 from make_argocd_fly.limits import RuntimeLimits
 from make_argocd_fly.namegen import (K8sInfo, SourceInfo, K8sPolicy, SourcePolicy, Deduper, RoutingRules,
@@ -472,19 +472,17 @@ class GenerateNames(Stage):
 
       src = SourceInfo.from_source_path(res.source)
 
-      if policy_key == 'k8s':
-        k8s = K8sInfo.from_yaml_obj(getattr(res, 'yaml_obj', None))
-        if not k8s.kind or not k8s.name:
-          # parsed YAML missing essentials, hence fall back to source
+      try:
+        if policy_key == 'k8s':
+          k8s = K8sInfo.from_yaml_obj(getattr(res, 'yaml_obj', None))
+          rel = self.k8s_policy.render(k8s=k8s, src=src)
+        elif policy_key == 'source':
           rel = self.src_policy.render(k8s=None, src=src)
         else:
-          rel = self.k8s_policy.render(k8s=k8s, src=src)
-
-      elif policy_key == 'source':
-        rel = self.src_policy.render(k8s=None, src=src)
-
-      else:
-        log.debug(f'Skipping resource due to unknown policy \'{policy_key}\': {res.source}')
+          log.warning(f'Skipping resource due to unknown policy \'{policy_key}\': {res.source}')
+          continue
+      except OutputFilenameConstructionError as e:
+        log.warning(f'Failed to construct output filename for {res.source} {e}')
         continue
 
       rel = dedupe.unique(rel)
@@ -505,7 +503,7 @@ class GenerateNames(Stage):
 
     # K8s pipelines
     if rules.pipeline_kind == PipelineType.K8S_KUSTOMIZE:
-      # SourcePolicy for kustomization/values
+      # SourcePolicy for kustomization and values files
       if _is_one_of(res.source, KUSTOMIZE_BASENAMES) or res.source in rules.kustomize_cfg:
         return 'source'
       return 'k8s' if res.resource_type == ResourceType.YAML else None
@@ -594,7 +592,7 @@ class KustomizeBuild(Stage):
     kustomize_exec_dir = ctx_get(ctx, self.requires['kustomize_exec_dir'])
     tmp_dir = ctx_get(ctx, self.requires['tmp_dir'])
 
-    dir_path = os.path.join(tmp_dir, get_app_rel_path(ctx.env_name, ctx.app_name), kustomize_exec_dir)
+    dir_path = os.path.normpath(os.path.join(tmp_dir, get_app_rel_path(ctx.env_name, ctx.app_name), kustomize_exec_dir))
     retries = 3
 
     try:
@@ -619,7 +617,7 @@ class KustomizeBuild(Stage):
           raise KustomizeError(ctx.app_name, ctx.env_name)
     except FileNotFoundError as e:
       log.error(f'Failed generating application {ctx.app_name} in environment {ctx.env_name}')
-      raise MissingDependencyError(e.filename)
+      raise e
 
     ymls = []
 
@@ -672,7 +670,7 @@ class HelmfileRun(Stage):
           raise HelmfileError(ctx.app_name, ctx.env_name)
     except FileNotFoundError as e:
       log.error(f'Failed generating application {ctx.app_name} in environment {ctx.env_name}')
-      raise MissingDependencyError(e.filename)
+      raise e
 
     ymls = []
 

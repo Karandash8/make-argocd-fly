@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 
 from make_argocd_fly.type import PipelineType
+from make_argocd_fly.exception import OutputFilenameConstructionError
 
 
 log = logging.getLogger(__name__)
@@ -41,9 +42,9 @@ class RoutingRules:
   helmfile_cfg: set[str]
 
 
-def _normalize(s: str | None, default: str = 'unknown') -> str:
+def _normalize(s: str | None) -> str | None:
   if not s:
-    return default
+    return s
   return _normalize_re.sub('-', s).strip('-').lower()
 
 
@@ -94,7 +95,7 @@ class SourceInfo:
   @staticmethod
   def from_source_path(source_rel: str) -> 'SourceInfo':
     p = PurePosixPath(source_rel)
-    rel_dir = '' if str(p.parent) == '.' else str(p.parent)
+    rel_dir = '.' if str(p.parent) == '.' else str(p.parent)
     base = p.name.removesuffix('.j2')
     if '.' in base:
       stem, ext = base.rsplit('.', 1)
@@ -121,7 +122,7 @@ class Pattern:
     if self.lower:
       out = out.lower()
 
-    return out
+    return os.path.normpath(out)
 
 
 class NamePolicy(ABC):
@@ -136,18 +137,17 @@ class SourcePolicy(NamePolicy):
 
   def render(self, *, k8s: K8sInfo | None, src: SourceInfo) -> str:
     fields = {
-      'kind': '',
-      'name': '',
-      'namespace': '',
-      'api_version': '',
-      'group': '',
-      'version': '',
       'rel_dir': src.rel_dir,
       'source_stem': src.source_stem,
       'source_ext': src.source_ext,
     }
 
-    return self.pattern.apply(fields)
+    try:
+      relpath = self.pattern.apply(fields)
+    except KeyError as e:
+      raise OutputFilenameConstructionError(e.args[0])
+
+    return relpath
 
 
 class K8sPolicy(NamePolicy):
@@ -155,22 +155,33 @@ class K8sPolicy(NamePolicy):
     self.pattern = pattern or Pattern('{rel_dir}/{kind}_{name}.yml')
 
   def render(self, *, k8s: K8sInfo | None, src: SourceInfo) -> str:
-    if not k8s or not k8s.kind or not k8s.name:
-      return SourcePolicy().render(k8s=None, src=src)
+    if not k8s:
+      raise OutputFilenameConstructionError()
 
     fields = {
-      'kind': _normalize(k8s.kind),
-      'name': _normalize(k8s.name),
-      'namespace': _normalize(k8s.namespace),
-      'api_version': _normalize(k8s.api_version),
-      'group': _normalize(k8s.group),
-      'version': _normalize(k8s.version),
       'rel_dir': src.rel_dir,
       'source_stem': src.source_stem,
       'source_ext': src.source_ext,
     }
+    if _kind := _normalize(k8s.kind):
+      fields['kind'] = _kind
+    if _name := _normalize(k8s.name):
+      fields['name'] = _name
+    if _namespace := _normalize(k8s.namespace):
+      fields['namespace'] = _namespace
+    if _api_version := _normalize(k8s.api_version):
+      fields['api_version'] = _api_version
+    if _group := _normalize(k8s.group):
+      fields['group'] = _group
+    if _version := _normalize(k8s.version):
+      fields['version'] = _version
 
-    return self.pattern.apply(fields)
+    try:
+      relpath = self.pattern.apply(fields)
+    except KeyError as e:
+      raise OutputFilenameConstructionError(e.args[0])
+
+    return relpath
 
 
 class Deduper:

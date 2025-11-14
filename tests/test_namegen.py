@@ -1,3 +1,6 @@
+import pytest
+
+from make_argocd_fly.exception import OutputFilenameConstructionError
 from make_argocd_fly.namegen import _normalize, K8sInfo, SourceInfo, Pattern, SourcePolicy, K8sPolicy, Deduper
 
 
@@ -5,15 +8,11 @@ from make_argocd_fly.namegen import _normalize, K8sInfo, SourceInfo, Pattern, So
 ### _normalize
 ##################
 
-def test_normalize__none_uses_default():
-  assert _normalize(None) == 'unknown'
-  assert _normalize(None, default='dflt') == 'dflt'
+def test_normalize__none():
+  assert _normalize(None) == None
 
-
-def test_normalize__empty_string_uses_default():
-  assert _normalize('') == 'unknown'
-  assert _normalize('', default='custom') == 'custom'
-
+def test_normalize__empty_string():
+  assert _normalize('') == ''
 
 def test_normalize__whitespace_collapses_to_empty():
   # Whitespace is a truthy string; regex turns spaces into '-', strip removes them.
@@ -167,14 +166,14 @@ def test_from_source_path__multi_dot_extension():
 
 def test_from_source_path__root_file_yaml_j2():
   si = SourceInfo.from_source_path('service.yaml.j2')
-  assert si.rel_dir == ''
+  assert si.rel_dir == '.'
   assert si.source_stem == 'service'
   assert si.source_ext == '.yaml'
 
 
 def test_from_source_path__root_file_plain():
   si = SourceInfo.from_source_path('service')
-  assert si.rel_dir == ''
+  assert si.rel_dir == '.'
   assert si.source_stem == 'service'
   assert si.source_ext == ''
 
@@ -321,9 +320,8 @@ def test_sourcepolicy_custom_pattern_uses_source_fields():
 def test_k8spolicy_falls_back_when_k8s_is_none():
   pol = K8sPolicy()
   src = _src('apps/cm.yml.j2')
-  out = pol.render(k8s=None, src=src)
-  # Fallback behaves like SourcePolicy: strip .j2, preserve ext & rel_dir
-  assert out == 'apps/cm.yml'
+  with pytest.raises(OutputFilenameConstructionError):
+    pol.render(k8s=None, src=src)
 
 
 def test_k8spolicy_falls_back_when_kind_missing():
@@ -331,8 +329,8 @@ def test_k8spolicy_falls_back_when_kind_missing():
   src = _src('svc/service.yaml')
   k = K8sInfo(api_version='v1', kind=None, name='web', namespace='default',
               group=None, version='v1')
-  out = pol.render(k8s=k, src=src)
-  assert out == 'svc/service.yaml'
+  with pytest.raises(OutputFilenameConstructionError):
+    pol.render(k8s=k, src=src)
 
 
 def test_k8spolicy_falls_back_when_name_missing():
@@ -340,8 +338,9 @@ def test_k8spolicy_falls_back_when_name_missing():
   src = _src('ns/namespace.yaml')
   k = K8sInfo(api_version='v1', kind='Namespace', name=None, namespace=None,
               group=None, version='v1')
-  out = pol.render(k8s=k, src=src)
-  assert out == 'ns/namespace.yaml'
+  with pytest.raises(OutputFilenameConstructionError):
+    pol.render(k8s=k, src=src)
+
 
 
 def test_k8spolicy_basic_render_with_defaults_and_normalization():
@@ -387,8 +386,8 @@ def test_k8spolicy_missing_api_version_becomes_unknown_in_fields():
   src = _src('apps/cm.yaml')
   k = K8sInfo(api_version=None, kind='ConfigMap', name='Cfg', namespace='ns',
               group=None, version=None)
-  out = pol.render(k8s=k, src=src)
-  assert out == 'apps/unknown_configmap_cfg.yml'
+  with pytest.raises(OutputFilenameConstructionError):
+    pol.render(k8s=k, src=src)
 
 
 ##################
