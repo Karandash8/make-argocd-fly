@@ -4,7 +4,6 @@ import os
 import yaml
 from yaml import SafeDumper
 from typing import Any, Final, NamedTuple
-from dataclasses import dataclass
 
 from make_argocd_fly.exception import InternalError, YamlObjectRequiredError
 from make_argocd_fly.resource.viewer import ResourceType
