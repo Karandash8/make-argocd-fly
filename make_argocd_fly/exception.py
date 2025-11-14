@@ -67,3 +67,8 @@ class OutputFilenameConstructionError(BaseError):
     _msg = f'(hint: missing key \'{key}\')' if key else '(required fields missing)'
 
     super().__init__(_msg)
+
+
+class YamlObjectRequiredError(BaseError):
+  def __init__(self) -> None:
+    super().__init__('YamlWriter requires a mapping (dict) yaml_obj payload')

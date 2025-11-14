@@ -23,8 +23,7 @@ from make_argocd_fly.context import Context, ctx_get, ctx_set, resolve_expr
 from make_argocd_fly.context.data import Content, Template, OutputResource
 from make_argocd_fly.resource.viewer import ScopedViewer, ResourceType
 from make_argocd_fly import default
-from make_argocd_fly.resource.writer import (AsyncWriterProto, writer_factory,
-                                             SyncToAsyncWriter, YamlWriter)
+from make_argocd_fly.resource.writer import plan_writer, AbstractWriter
 from make_argocd_fly.param import ParamNames
 from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparam import get_cli_params
@@ -427,7 +426,7 @@ class ConvertToYaml(Stage):
             yaml_obj=obj
           ))
         except (yaml.composer.ComposerError, yaml.parser.ParserError, yaml.scanner.ScannerError, yaml.constructor.ConstructorError):
-          log.debug(f'YAML parse failed in ConvertToYaml for {it.source}; leaving as text')
+          log.warning(f'YAML parse failed in ConvertToYaml for {it.source}; leaving as text')
           out.append(it)
       else:
         out.append(it)
@@ -533,7 +532,7 @@ class WriteOnDisk(Stage):
       log.error(f'RuntimeLimits must be provided to {self.name} stage')
       raise InternalError()
 
-  async def _write_one(self, writer: AsyncWriterProto, output_dir: str, ctx: Context, resource: OutputResource) -> None:
+  async def _write_one(self, writer: AbstractWriter, payload: Any, output_dir: str, ctx: Context, resource: OutputResource) -> None:
     async with self.limits.io_sem:
       path = os.path.join(output_dir, resource.output_path)
       if path in self._written:
@@ -541,9 +540,8 @@ class WriteOnDisk(Stage):
         raise InternalError()
       self._written.add(path)
 
-      await writer.write_async(path,
-                               resource.yaml_obj if getattr(resource, 'yaml_obj', None) is not None else resource.data,
-                               ctx.env_name, ctx.app_name, resource.source)
+      # Offload the blocking write to a thread, bounded by io_sem
+      await asyncio.to_thread(writer.write, path, payload, ctx.env_name, ctx.app_name, resource.source)
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
@@ -557,17 +555,14 @@ class WriteOnDisk(Stage):
 
     try:
       async with asyncio.TaskGroup() as tg:
+        app_type = get_config().get_params(ctx.env_name, ctx.app_name).app_type
+
         for res in sorted(files, key=lambda r: r.output_path):
-          # pick writer: yaml_obj present , hence yaml writer; else generic
-          if getattr(res, 'yaml_obj', None) is not None:
-            # force YAML writer
-            async_writer = SyncToAsyncWriter(YamlWriter())
-          else:
-            async_writer = SyncToAsyncWriter(writer_factory(
-              get_config().get_params(ctx.env_name, ctx.app_name).app_type,
-              res.resource_type
-            ))
-          tg.create_task(self._write_one(async_writer, output_dir, ctx, res))
+          has_yaml = getattr(res, 'yaml_obj', None) is not None
+          wplan = plan_writer(app_type, res.resource_type, has_yaml_obj=has_yaml)
+          payload = (res.yaml_obj if wplan.use_yaml_obj else res.data)
+
+          tg.create_task(self._write_one(wplan.writer, payload, output_dir, ctx, res))
     except ExceptionGroup as e:
       if e.exceptions:
         raise e.exceptions[0]

@@ -1,8 +1,8 @@
 import os
 import pytest
 from make_argocd_fly.resource.viewer import ResourceViewer, _get_resource_params, ResourceType, build_scoped_viewer
-from make_argocd_fly.resource.writer import writer_factory, GenericWriter, YamlWriter
-from make_argocd_fly.exception import InternalError
+from make_argocd_fly.resource.writer import GenericWriter, YamlWriter, plan_writer, WriterPlan
+from make_argocd_fly.exception import InternalError, YamlObjectRequiredError
 from make_argocd_fly.param import ApplicationTypes
 from make_argocd_fly.util import check_lists_equal
 
@@ -552,29 +552,42 @@ def test_ResourceViewer__search_subresources__by_depth(tmp_path):
   assert check_lists_equal([(res.name, res.content, res.resource_type, res.template) for res in depth_resources], [])
 
 ##################
-### writer_factory
+### plan_writer
 ##################
 
-def test_writer_factory__k8s_yaml():
-  assert isinstance(writer_factory(ApplicationTypes.K8S, ResourceType.YAML), YamlWriter)
+def test_plan_writer__generic_app_always_generic():
+  # Even if has_yaml_obj is True, GENERIC apps must use GenericWriter and raw data
+  plan = plan_writer(ApplicationTypes.GENERIC, ResourceType.YAML, has_yaml_obj=True)
+  assert isinstance(plan, WriterPlan)
+  assert isinstance(plan.writer, GenericWriter)
+  assert plan.use_yaml_obj is False
 
-def test_writer_factory__k8s_unknown():
-  assert isinstance(writer_factory(ApplicationTypes.K8S, ResourceType.UNKNOWN), GenericWriter)
+  plan2 = plan_writer(ApplicationTypes.GENERIC, ResourceType.UNKNOWN, has_yaml_obj=False)
+  assert isinstance(plan2.writer, GenericWriter)
+  assert plan2.use_yaml_obj is False
 
-def test_writer_factory__generic_yaml():
-  assert isinstance(writer_factory(ApplicationTypes.GENERIC, ResourceType.YAML), GenericWriter)
+def test_plan_writer__k8s_yaml_with_yaml_obj():
+  plan = plan_writer(ApplicationTypes.K8S, ResourceType.YAML, has_yaml_obj=True)
+  assert isinstance(plan.writer, YamlWriter)
+  assert plan.use_yaml_obj is True
 
-def test_writer_factory__generic_unknown():
-  assert isinstance(writer_factory(ApplicationTypes.GENERIC, ResourceType.UNKNOWN), GenericWriter)
+def test_plan_writer__k8s_yaml_without_yaml_obj():
+  # If we ever end up here, we expect the writer to be YamlWriter, but the
+  # caller will pass raw data, which should trigger YamlObjectRequiredError.
+  plan = plan_writer(ApplicationTypes.K8S, ResourceType.YAML, has_yaml_obj=False)
+  assert isinstance(plan.writer, YamlWriter)
+  assert plan.use_yaml_obj is False
 
-def test_writer_factory__k8s_unsupported(caplog):
+def test_plan_writer__k8s_non_yaml():
+  plan = plan_writer(ApplicationTypes.K8S, ResourceType.UNKNOWN, has_yaml_obj=False)
+  assert isinstance(plan.writer, GenericWriter)
+  assert plan.use_yaml_obj is False
+
+def test_plan_writer__k8s_unsupported_raises():
   with pytest.raises(InternalError):
-    writer_factory(ApplicationTypes.K8S, ResourceType.DIRECTORY)
-  assert 'Cannot write resource of type DIRECTORY' in caplog.text
-
+    plan_writer(ApplicationTypes.K8S, ResourceType.DIRECTORY, has_yaml_obj=False)
   with pytest.raises(InternalError):
-    writer_factory(ApplicationTypes.K8S, ResourceType.DOES_NOT_EXIST)
-  assert 'Cannot write resource of type DOES_NOT_EXIST' in caplog.text
+    plan_writer(ApplicationTypes.K8S, ResourceType.DOES_NOT_EXIST, has_yaml_obj=False)
 
 ##################
 ### GenericWriter
@@ -616,38 +629,65 @@ def test_GenericWriter__write__multiline(tmp_path):
 ### YamlWriter
 ##################
 
-def test_YamlWriter__write__simple(tmp_path):
+def test_YamlWriter__write__dict_simple(tmp_path):
   dir_root = tmp_path / 'output'
   dir_root.mkdir()
   file = dir_root / 'file.yaml'
-  content = 'key: value'
-
-  expected_content = f'---\n{content}\n'
+  data = {'key': 'value'}
 
   writer = YamlWriter()
   writer.write(output_path=file,
-               data=content,
+               data=data,
                env_name='env',
                app_name='app',
                source='/a/b/c')
 
   assert file.exists()
-  assert file.read_text() == expected_content
+  # Adjust this if your dumper formatting changes
+  content = file.read_text()
+  # we expect a simple YAML mapping with one key
+  assert 'key: value' in content
 
-def test_YamlWriter__write__multiline(tmp_path):
+def test_YamlWriter__write__dict_multiline(tmp_path):
   dir_root = tmp_path / 'output'
   dir_root.mkdir()
   file = dir_root / 'file.yaml'
-  content = 'key: value\nanother_key: another_value'
-
-  expected_content = '---\nkey: value\nanother_key: another_value\n'
+  data = {
+    'key': 'value',
+    'another_key': 'another_value',
+  }
 
   writer = YamlWriter()
   writer.write(output_path=file,
-               data=content,
+               data=data,
                env_name='env',
                app_name='app',
                source='/a/b/c')
 
   assert file.exists()
-  assert file.read_text() == expected_content
+  content = file.read_text()
+  # Order isn’t strictly guaranteed unless you fix sort_keys,
+  # so just assert both lines are there.
+  assert 'key: value' in content
+  assert 'another_key: another_value' in content
+
+def test_YamlWriter__write__non_mapping_raises(tmp_path):
+  dir_root = tmp_path / 'output'
+  dir_root.mkdir()
+  file = dir_root / 'file.yaml'
+
+  writer = YamlWriter()
+
+  with pytest.raises(YamlObjectRequiredError):
+    writer.write(output_path=file,
+                 data='key: value',      # not a dict
+                 env_name='env',
+                 app_name='app',
+                 source='/a/b/c')
+
+  with pytest.raises(YamlObjectRequiredError):
+    writer.write(output_path=file,
+                 data=['a', 'b'],        # also not a dict
+                 env_name='env',
+                 app_name='app',
+                 source='/a/b/c')

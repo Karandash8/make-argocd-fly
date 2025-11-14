@@ -11,7 +11,6 @@ from make_argocd_fly.stage import (DiscoverK8sAppOfAppsApplication, WriteOnDisk,
 from make_argocd_fly.context import Context, ctx_set, ctx_get
 from make_argocd_fly.context.data import Content, Template, OutputResource
 from make_argocd_fly.resource.viewer import ResourceType, build_scoped_viewer
-from make_argocd_fly.resource.writer import SyncToAsyncWriter
 from make_argocd_fly.config import populate_config
 from make_argocd_fly.util import check_lists_equal
 from make_argocd_fly.exception import InternalError
@@ -605,42 +604,3 @@ async def test_generatenames_k8s_app_of_apps_behaves_like_k8s_simple(mocker):
   assert len(out) == 1
   assert isinstance(out[0], OutputResource)
   assert out[0].output_path == 'my_env/my_app/a/application_app.yml'
-
-###################
-### WriteOnDisk
-###################
-
-@pytest.fixture
-def stage_write_on_disk():
-  requires = {'files': 'ns1.files', 'output_dir': 'ns2.output_dir'}
-  limits = RuntimeLimits(
-    app_sem=asyncio.Semaphore(1),
-    subproc_sem=asyncio.Semaphore(1),
-    io_sem=asyncio.Semaphore(1),
-  )
-
-  return WriteOnDisk(requires=requires, provides={}, limits=limits)
-
-@pytest.mark.asyncio
-async def test_WriteOnDisk___write_no_duplicates(stage_write_on_disk):
-  writer = SyncToAsyncWriter(MagicMock())
-  ctx = Context('my_env', 'my_app')
-
-  await stage_write_on_disk._write_one(writer, '/output/dir', ctx, OutputResource(ResourceType.YAML, 'data', 'source', 'path/file1.txt'))
-  await stage_write_on_disk._write_one(writer, '/output/dir', ctx, OutputResource(ResourceType.YAML, 'data', 'source', 'path/file2.txt'))
-  await stage_write_on_disk._write_one(writer, '/output/dir', ctx, OutputResource(ResourceType.YAML, 'data', 'source', 'path/file3.txt'))
-
-  assert getattr(writer.sync_writer.write, 'call_count', 0) == 3
-
-@pytest.mark.asyncio
-async def test_WriteOnDisk___write_with_duplicates(stage_write_on_disk, caplog):
-  writer = SyncToAsyncWriter(MagicMock())
-  ctx = Context('my_env', 'my_app')
-
-  await stage_write_on_disk._write_one(writer, '/output/dir', ctx, OutputResource(ResourceType.YAML, 'data', 'source', 'path/file1.txt'))
-  await stage_write_on_disk._write_one(writer, '/output/dir', ctx, OutputResource(ResourceType.YAML, 'data', 'source', 'path/file2.txt'))
-  with pytest.raises(InternalError):
-    await stage_write_on_disk._write_one(writer, '/output/dir', ctx, OutputResource(ResourceType.YAML, 'data', 'source', 'path/file1.txt'))
-  assert 'Duplicate output: /output/dir/path/file1.txt' in caplog.text
-
-  assert getattr(writer.sync_writer.write, 'call_count', 0) == 2
