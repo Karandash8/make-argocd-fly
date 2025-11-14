@@ -18,16 +18,13 @@ class YamlDumper(SafeDumper):
 
 
 def represent_str(dumper, data):
-  '''
-  configures pyyaml for dumping multiline strings
-  Ref: https://stackoverflow.com/questions/8640959/how-can-i-control-what-scalar-form-pyyaml-uses-for-my-data
-  '''
+  # configures pyyaml for dumping multiline strings
+  # Ref: https://stackoverflow.com/questions/8640959/how-can-i-control-what-scalar-form-pyyaml-uses-for-my-data
   if data.count('\n') > 0:
     return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
-  '''
-  configure pyyaml for dumping numbers that start with 0 as strings
-  Ref: https://github.com/yaml/pyyaml/issues/98
-  '''
+
+  # configure pyyaml for dumping numbers that start with 0 as strings
+  # Ref: https://github.com/yaml/pyyaml/issues/98
   if data.startswith('0'):
     try:
       int(data[1:])
@@ -49,9 +46,12 @@ class AbstractWriter(ABC):
 class GenericWriter(AbstractWriter):
   def write(self, output_path: str, data: Any, env_name: str, app_name: str, source: str) -> None:
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    mode = 'wb' if isinstance(data, (bytes, bytearray)) else 'w'
+    mode = 'wb' if isinstance(data, (bytes, bytearray, memoryview)) else 'w'
     with open(output_path, mode) as f:
-      f.write(data)
+      if mode == 'w':
+        f.write(str(data))
+      else:
+        f.write(data)
 
 
 class YamlWriter(AbstractWriter):
@@ -93,8 +93,8 @@ def plan_writer(app_type: ApplicationTypes,
   Rules:
     - GENERIC app type: always GenericWriter with raw data (never yaml_obj).
     - Non-GENERIC:
-        * YAML => YamlWriter; payload is yaml_obj iff available; otherwise still YAML writer
-          (caller will pass raw text only if you purposely allow parsing here; we forbid it).
+        * YAML => YamlWriter; payload is yaml_obj if available; otherwise still YAML writer
+          (if yaml_obj is unavailable, the caller will pass raw text to YamlWriter, which will raise YamlObjectRequiredError).
         * Non-YAML => GenericWriter with raw data.
     - DIRECTORY / DOES_NOT_EXIST: invalid to write.
   '''
