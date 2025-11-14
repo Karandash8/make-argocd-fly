@@ -64,6 +64,6 @@ class UnknownJinja2Error(BaseError):
 
 class OutputFilenameConstructionError(BaseError):
   def __init__(self, key: str | None = None) -> None:
-    _msg = f'(hint: missing key \'{key}\')' if key else ''
+    _msg = f'(hint: missing key \'{key}\')' if key else '(required fields missing)'
 
     super().__init__(_msg)

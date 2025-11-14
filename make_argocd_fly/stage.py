@@ -482,7 +482,7 @@ class GenerateNames(Stage):
           log.warning(f'Skipping resource due to unknown policy \'{policy_key}\': {res.source}')
           continue
       except OutputFilenameConstructionError as e:
-        log.warning(f'Failed to construct output filename for {res.source} {e}')
+        log.warning(f'Failed to construct output filename for {res.source}: {e}')
         continue
 
       rel = dedupe.unique(rel)

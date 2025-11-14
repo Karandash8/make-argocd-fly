@@ -9,7 +9,7 @@ from make_argocd_fly.namegen import _normalize, K8sInfo, SourceInfo, Pattern, So
 ##################
 
 def test_normalize__none():
-  assert _normalize(None) == None
+  assert _normalize(None) is None
 
 def test_normalize__empty_string():
   assert _normalize('') == ''
