@@ -13,8 +13,8 @@ from make_argocd_fly.resource.viewer import build_scoped_viewer
 from make_argocd_fly.cliparam import populate_cli_params, get_cli_params
 from make_argocd_fly.config import populate_config, get_config
 from make_argocd_fly.util import init_logging, latest_version_check, get_package_name, get_current_version
-from make_argocd_fly.exception import TemplateRenderingError, YamlError, InternalError, ConfigFileError, KustomizeError, \
-  PathDoesNotExistError, HelmfileError, MissingDependencyError
+from make_argocd_fly.exception import (TemplateRenderingError, YamlError, InternalError, ConfigFileError, KustomizeError,
+                                       PathDoesNotExistError, HelmfileError)
 from make_argocd_fly.pipeline import build_pipeline
 from make_argocd_fly.context import Context
 from make_argocd_fly.limits import RuntimeLimits
@@ -139,8 +139,8 @@ def main(**kwargs) -> None:  # noqa: C901
   except PathDoesNotExistError as e:
     log.critical(f'Path does not exist {e.path}')
     exit(1)
-  except MissingDependencyError as e:
-    log.critical(f'Missing dependency {e.dependency_name}')
+  except FileNotFoundError as e:
+    log.critical(f'File or directory not found {e.filename}')
     exit(1)
   except Exception as e:
     raise e
