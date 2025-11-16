@@ -136,6 +136,7 @@ def test_from_yaml_obj_group_version_split_with_weird_chars():
 
 def test_from_source_path__simple_yaml_in_dir():
   si = SourceInfo.from_source_path('app/deploy.yml')
+  assert si is not None
   assert si.rel_dir == 'app'
   assert si.source_stem == 'deploy'
   assert si.source_ext == '.yml'
@@ -144,6 +145,7 @@ def test_from_source_path__simple_yaml_in_dir():
 def test_from_source_path__templated_yaml_j2():
   si = SourceInfo.from_source_path('app/deploy.yml.j2')
   # '.j2' is removed first, then last extension split
+  assert si is not None
   assert si.rel_dir == 'app'
   assert si.source_stem == 'deploy'
   assert si.source_ext == '.yml'
@@ -151,6 +153,7 @@ def test_from_source_path__templated_yaml_j2():
 
 def test_from_source_path__no_extension():
   si = SourceInfo.from_source_path('app/config')
+  assert si is not None
   assert si.rel_dir == 'app'
   assert si.source_stem == 'config'
   assert si.source_ext == ''
@@ -159,6 +162,7 @@ def test_from_source_path__no_extension():
 def test_from_source_path__multi_dot_extension():
   si = SourceInfo.from_source_path('app/archive/file.tar.gz')
   # Only the LAST extension is treated as ext
+  assert si is not None
   assert si.rel_dir == 'app/archive'
   assert si.source_stem == 'file.tar'
   assert si.source_ext == '.gz'
@@ -166,6 +170,7 @@ def test_from_source_path__multi_dot_extension():
 
 def test_from_source_path__root_file_yaml_j2():
   si = SourceInfo.from_source_path('service.yaml.j2')
+  assert si is not None
   assert si.rel_dir == '.'
   assert si.source_stem == 'service'
   assert si.source_ext == '.yaml'
@@ -173,6 +178,7 @@ def test_from_source_path__root_file_yaml_j2():
 
 def test_from_source_path__root_file_plain():
   si = SourceInfo.from_source_path('service')
+  assert si is not None
   assert si.rel_dir == '.'
   assert si.source_stem == 'service'
   assert si.source_ext == ''
@@ -180,6 +186,7 @@ def test_from_source_path__root_file_plain():
 
 def test_from_source_path__hidden_file_dotenv():
   si = SourceInfo.from_source_path('config/.env')
+  assert si is not None
   assert si.rel_dir == 'config'
   assert si.source_stem == '.env'
   assert si.source_ext == ''
@@ -187,6 +194,7 @@ def test_from_source_path__hidden_file_dotenv():
 
 def test_from_source_path__hidden_file_dotenv_j2():
   si = SourceInfo.from_source_path('config/.env.j2')
+  assert si is not None
   assert si.rel_dir == 'config'
   assert si.source_stem == '.env'
   assert si.source_ext == ''
@@ -195,6 +203,7 @@ def test_from_source_path__hidden_file_dotenv_j2():
 def test_from_source_path__script_j2_without_prior_ext():
   si = SourceInfo.from_source_path('scripts/setup.j2')
   # '.j2' removed -> 'setup' with no extension
+  assert si is not None
   assert si.rel_dir == 'scripts'
   assert si.source_stem == 'setup'
   assert si.source_ext == ''

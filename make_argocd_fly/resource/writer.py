@@ -40,11 +40,11 @@ yaml.add_representer(str, represent_str, Dumper=YamlDumper)
 
 class AbstractWriter(ABC):
   @abstractmethod
-  def write(self, output_path: str, data: Any, env_name: str, app_name: str, source: str) -> None: ...
+  def write(self, output_path: str, data: Any, env_name: str, app_name: str, origin: str) -> None: ...
 
 
 class GenericWriter(AbstractWriter):
-  def write(self, output_path: str, data: Any, env_name: str, app_name: str, source: str) -> None:
+  def write(self, output_path: str, data: Any, env_name: str, app_name: str, origin: str) -> None:
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     mode = 'wb' if isinstance(data, (bytes, bytearray, memoryview)) else 'w'
     with open(output_path, mode) as f:
@@ -59,11 +59,11 @@ class YamlWriter(AbstractWriter):
   Strict YAML writer: requires a parsed YAML mapping (dict) as input.
   Never parses text here. If the pipeline doesn't provide yaml_obj, that's an error.
   '''
-  def write(self, output_path: str, data: Any, env_name: str, app_name: str, source: str) -> None:
+  def write(self, output_path: str, data: Any, env_name: str, app_name: str, origin: str) -> None:
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     if not isinstance(data, dict):
-      log.error('YamlWriter requires dict yaml_obj; got %s from %s', type(data).__name__, source)
+      log.error('YamlWriter requires dict yaml_obj; got %s from %s', type(data).__name__, origin)
       raise YamlObjectRequiredError()
 
     with open(output_path, 'w') as f:
@@ -92,7 +92,7 @@ def plan_writer(app_type: ApplicationTypes,
   Decide both the writer and which payload to pass.
   Rules:
     - GENERIC app type: always GenericWriter with raw data (never yaml_obj).
-    - Non-GENERIC:
+    - Non-GENERIC app type:
         * YAML => YamlWriter; payload is yaml_obj if available; otherwise still YAML writer
           (if yaml_obj is unavailable, the caller will pass raw text to YamlWriter, which will raise YamlObjectRequiredError).
         * Non-YAML => GenericWriter with raw data.

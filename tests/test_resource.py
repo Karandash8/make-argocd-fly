@@ -604,7 +604,7 @@ def test_GenericWriter__write__simple(tmp_path):
                data=content,
                env_name='env',
                app_name='app',
-               source='/a/b/c')
+               origin='/a/b/c')
 
   assert file.exists()
   assert file.read_text() == content
@@ -620,7 +620,7 @@ def test_GenericWriter__write__multiline(tmp_path):
                data=content,
                env_name='env',
                app_name='app',
-               source='/a/b/c')
+               origin='/a/b/c')
 
   assert file.exists()
   assert file.read_text() == content
@@ -640,7 +640,7 @@ def test_YamlWriter__write__dict_simple(tmp_path):
                data=data,
                env_name='env',
                app_name='app',
-               source='/a/b/c')
+               origin='/a/b/c')
 
   assert file.exists()
   # Adjust this if your dumper formatting changes
@@ -662,7 +662,7 @@ def test_YamlWriter__write__dict_multiline(tmp_path):
                data=data,
                env_name='env',
                app_name='app',
-               source='/a/b/c')
+               origin='/a/b/c')
 
   assert file.exists()
   content = file.read_text()
@@ -683,11 +683,11 @@ def test_YamlWriter__write__non_mapping_raises(tmp_path):
                  data='key: value',      # not a dict
                  env_name='env',
                  app_name='app',
-                 source='/a/b/c')
+                 origin='/a/b/c')
 
   with pytest.raises(YamlObjectRequiredError):
     writer.write(output_path=file,
                  data=['a', 'b'],        # also not a dict
                  env_name='env',
                  app_name='app',
-                 source='/a/b/c')
+                 origin='/a/b/c')

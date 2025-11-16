@@ -265,7 +265,7 @@ class JinjaRenderer():
     self.viewer = None
     self.template_vars = {}
     # Use a non-path sentinel so coverage doesn't think this is a file on disk
-    self.template_source = '<Unknown>'
+    self.template_origin = '<Unknown>'
 
     self._unresolved_re = re.compile(re.escape(self.config.cli_params.var_identifier) + r'\{[^}]+\}')
 
@@ -316,15 +316,15 @@ class JinjaRenderer():
   def set_template_vars(self, template_vars: dict) -> None:
     self.template_vars = template_vars
 
-  def set_template_source(self, source: str) -> None:
-    self.template_source = source
+  def set_template_origin(self, origin: str) -> None:
+    self.template_origin = origin
 
   def set_resource_viewer(self, viewer: ScopedViewer) -> None:
     self.viewer = viewer
 
   def render(self, content: str) -> str:
     template = self.env.from_string(content)
-    template.filename = self.template_source
+    template.filename = self.template_origin
 
     try:
       rendered = template.render(self.template_vars)
@@ -334,7 +334,7 @@ class JinjaRenderer():
       log.error(f'Variable "{variable_name}" is undefined')
       raise UndefinedTemplateVariableError(variable_name) from None
     except TypeError:
-      log.error(f'Likely a missing variable in template {self.template_source}')
+      log.error(f'Likely a missing variable in template {self.template_origin}')
       raise UndefinedTemplateVariableError('Unknown variable in template') from None
 
     return rendered

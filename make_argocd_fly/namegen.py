@@ -42,12 +42,6 @@ class RoutingRules:
   helmfile_cfg: set[str]
 
 
-def _normalize(s: str | None) -> str | None:
-  if not s:
-    return s
-  return _normalize_re.sub('-', s).strip('-').lower()
-
-
 @dataclass(frozen=True)
 class K8sInfo:
   api_version: str | None
@@ -90,10 +84,13 @@ class K8sInfo:
 class SourceInfo:
   rel_dir: str
   source_stem: str  # name without .j2 and extension
-  source_ext: str   # includes leading dot or ''
+  source_ext: str  # includes leading dot or ''
 
   @staticmethod
-  def from_source_path(source_rel: str) -> 'SourceInfo':
+  def from_source_path(source_rel: str | None) -> 'SourceInfo | None':
+    if source_rel is None:
+      return None
+
     p = PurePosixPath(source_rel)
     rel_dir = '.' if str(p.parent) == '.' else str(p.parent)
     base = p.name.removesuffix('.j2')
@@ -125,9 +122,22 @@ class Pattern:
     return os.path.normpath(out)
 
 
+def _normalize(s: str | None) -> str | None:
+  if s is None:
+    return s
+  return _normalize_re.sub('-', s).strip('-').lower()
+
+
+def _add_normalized(fields: dict[str, str], key: str, raw: str | None) -> None:
+  '''Normalize value and add to fields if non-empty.'''
+  norm = _normalize(raw)
+  if norm:
+    fields[key] = norm
+
+
 class NamePolicy(ABC):
   @abstractmethod
-  def render(self, *, k8s: K8sInfo | None, src: SourceInfo) -> str:
+  def render(self, *, k8s: K8sInfo | None, src: SourceInfo | None) -> str:
     raise NotImplementedError()
 
 
@@ -135,8 +145,11 @@ class SourcePolicy(NamePolicy):
   def __init__(self, pattern: Pattern | None = None):
     self.pattern = pattern or Pattern('{rel_dir}/{source_stem}{source_ext}')
 
-  def render(self, *, k8s: K8sInfo | None, src: SourceInfo) -> str:
-    fields = {
+  def render(self, *, k8s: K8sInfo | None, src: SourceInfo | None) -> str:
+    if src is None:
+      raise OutputFilenameConstructionError()
+
+    fields: dict[str, str] = {
       'rel_dir': src.rel_dir,
       'source_stem': src.source_stem,
       'source_ext': src.source_ext,
@@ -154,27 +167,26 @@ class K8sPolicy(NamePolicy):
   def __init__(self, pattern: Pattern | None = None):
     self.pattern = pattern or Pattern('{rel_dir}/{kind}_{name}.yml')
 
-  def render(self, *, k8s: K8sInfo | None, src: SourceInfo) -> str:
+  def render(self, *, k8s: K8sInfo | None, src: SourceInfo | None) -> str:
     if not k8s:
       raise OutputFilenameConstructionError()
 
-    fields = {
-      'rel_dir': src.rel_dir,
-      'source_stem': src.source_stem,
-      'source_ext': src.source_ext,
-    }
-    if _kind := _normalize(k8s.kind):
-      fields['kind'] = _kind
-    if _name := _normalize(k8s.name):
-      fields['name'] = _name
-    if _namespace := _normalize(k8s.namespace):
-      fields['namespace'] = _namespace
-    if _api_version := _normalize(k8s.api_version):
-      fields['api_version'] = _api_version
-    if _group := _normalize(k8s.group):
-      fields['group'] = _group
-    if _version := _normalize(k8s.version):
-      fields['version'] = _version
+    rel_dir = src.rel_dir if src is not None else '.'
+    fields: dict[str, str] = {'rel_dir': rel_dir}
+
+    if src is not None:
+      if src.source_stem is not None:
+        fields['source_stem'] = src.source_stem
+      if src.source_ext is not None:
+        fields['source_ext'] = src.source_ext
+
+    for key, raw in (('kind', k8s.kind),
+                     ('name', k8s.name),
+                     ('namespace', k8s.namespace),
+                     ('api_version', k8s.api_version),
+                     ('group', k8s.group),
+                     ('version', k8s.version)):
+      _add_normalized(fields, key, raw)
 
     try:
       relpath = self.pattern.apply(fields)
