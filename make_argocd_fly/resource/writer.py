@@ -92,7 +92,7 @@ def plan_writer(app_type: ApplicationTypes,
   Decide both the writer and which payload to pass.
   Rules:
     - GENERIC app type: always GenericWriter with raw data (never yaml_obj).
-    - K8S app type:
+    - Non-GENERIC app type:
         * YAML => YamlWriter; payload is yaml_obj if available; otherwise still YAML writer
           (if yaml_obj is unavailable, the caller will pass raw text to YamlWriter, which will raise YamlObjectRequiredError).
         * Non-YAML => GenericWriter with raw data.

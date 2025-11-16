@@ -146,14 +146,14 @@ class SourcePolicy(NamePolicy):
     self.pattern = pattern or Pattern('{rel_dir}/{source_stem}{source_ext}')
 
   def render(self, *, k8s: K8sInfo | None, src: SourceInfo | None) -> str:
-    if src is None or src.source_stem is None:
+    if src is None:
       raise OutputFilenameConstructionError()
 
-    fields: dict[str, str] = {'rel_dir': src.rel_dir}
-    if src.source_stem is not None:
-      fields['source_stem'] = src.source_stem
-    if src.source_ext is not None:
-      fields['source_ext'] = src.source_ext
+    fields: dict[str, str] = {
+      'rel_dir': src.rel_dir,
+      'source_stem': src.source_stem,
+      'source_ext': src.source_ext,
+    }
 
     try:
       relpath = self.pattern.apply(fields)

@@ -6,10 +6,10 @@ from unittest.mock import MagicMock, PropertyMock
 from yaml import SafeLoader
 
 from make_argocd_fly import default
-from make_argocd_fly.stage import (DiscoverK8sAppOfAppsApplication, WriteOnDisk, GenerateNames, _resolve_template_vars,
+from make_argocd_fly.stage import (DiscoverK8sAppOfAppsApplication, GenerateNames, _resolve_template_vars,
                                    _scan_viewer)
 from make_argocd_fly.context import Context, ctx_set, ctx_get
-from make_argocd_fly.context.data import TemplatedResource, Resource
+from make_argocd_fly.context.data import Resource
 from make_argocd_fly.resource.viewer import ResourceType, build_scoped_viewer
 from make_argocd_fly.config import populate_config
 from make_argocd_fly.util import check_lists_equal
