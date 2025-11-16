@@ -4,25 +4,39 @@ from make_argocd_fly.resource.viewer import ResourceType
 
 
 @dataclass
-class Template:
+class TemplatedResource:
   resource_type: ResourceType
   vars: dict
   data: str
-  source: str
+  origin: str
+  source_path: str | None = None
 
 
 @dataclass
-class Content:
+class Resource:
   resource_type: ResourceType
-  data: str             # original text (for non-YAML this is the final data)
-  source: str
-  yaml_obj: Any = None  # Optional parsed YAML if conversion succeeded
+  data: str
+  origin: str
+  source_path: str | None = None
+  yaml_obj: Any | None = None
+  output_path: str | None = None
 
+  def with_yaml(self, obj: Any) -> 'Resource':
+    return Resource(
+      resource_type=self.resource_type,
+      data=self.data,
+      origin=self.origin,
+      source_path=self.source_path,
+      yaml_obj=obj,
+      output_path=self.output_path,
+    )
 
-@dataclass
-class OutputResource:
-  resource_type: ResourceType
-  data: str             # original text (for non-YAML this is the final data)
-  source: str
-  output_path: str
-  yaml_obj: Any = None  # Optional parsed YAML if conversion succeeded
+  def with_output_path(self, output_path: str) -> 'Resource':
+    return Resource(
+      resource_type=self.resource_type,
+      data=self.data,
+      origin=self.origin,
+      source_path=self.source_path,
+      yaml_obj=self.yaml_obj,
+      output_path=output_path,
+    )
