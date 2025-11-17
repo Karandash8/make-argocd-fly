@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from make_argocd_fly.context import Context, ctx_set
 from make_argocd_fly.stage import Stage
 from make_argocd_fly.config import get_config
-from make_argocd_fly.param import ApplicationTypes
+from make_argocd_fly.param import ApplicationTypes, ParamNames
 from make_argocd_fly.exception import ConfigFileError, PathDoesNotExistError
 from make_argocd_fly.resource.viewer import ResourceType, ScopedViewer
 from make_argocd_fly.stage import (DiscoverK8sSimpleApplication, DiscoverK8sKustomizeApplication, DiscoverK8sHelmfileApplication,
@@ -15,6 +15,7 @@ from make_argocd_fly.stage import (DiscoverK8sSimpleApplication, DiscoverK8sKust
                                    ConvertToYaml)
 from make_argocd_fly.limits import RuntimeLimits
 from make_argocd_fly.type import PipelineType
+from make_argocd_fly.util import ensure_list
 
 
 log = logging.getLogger(__name__)
@@ -242,12 +243,16 @@ def build_pipeline(ctx: Context, limits: RuntimeLimits, viewer: ScopedViewer) ->
       viewer = viewer.go_to(ctx.app_name)
       ctx_set(ctx, 'source.viewer', viewer)
 
+      exclude_rendering = ensure_list(params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
       kustomize_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML],
                                                            name_pattern='kustomization|Kustomization',
-                                                           depth=2))
+                                                           search_subdirs=['.', 'base'] + config.list_envs(),
+                                                           depth=1,
+                                                           excludes=exclude_rendering))
       helmfile_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML],
                                                           name_pattern='helmfile',
-                                                          depth=1))
+                                                          depth=1,
+                                                          excludes=exclude_rendering))
 
       if kustomize_children:
         return _build_pipeline(PipelineType.K8S_KUSTOMIZE, limits)

@@ -63,6 +63,9 @@ envs:
       app_17: {params: {parent_app: service_deployer, exclude_rendering: ['files']}}
       app_19: {params: {parent_app: service_deployer}}
       app_20: {params: {parent_app: service_deployer, non_k8s_files_to_render: ['helmfile.yaml.j2']}}
+      app_21_not_kustomize: {params: {parent_app: service_deployer, exclude_rendering: ['random']}}
+      app_22_kustomize_with_env_only: {params: {parent_app: service_deployer}}
+      app_23_excluded_base: {params: {parent_app: service_deployer, exclude_rendering: ['base']}}
   external_1:
     apps:
       bootstrap: {}
