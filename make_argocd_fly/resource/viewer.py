@@ -1,10 +1,11 @@
 import logging
 import os
 import re
-from typing import Generator
+from typing import Generator, Iterable
 from enum import StrEnum, auto
 
 from make_argocd_fly.exception import PathDoesNotExistError
+from make_argocd_fly.util import is_match
 
 log = logging.getLogger(__name__)
 
@@ -190,17 +191,30 @@ class ScopedViewer:
                           template: bool | None = None,
                           name_pattern: str = r'.*',
                           search_subdirs: list[str] | None = None,
-                          depth: int = -1):
+                          depth: int = -1,
+                          excludes: Iterable[str] | None = None):
     """
     Delegate to the underlying node but re-wrap yielded children in this scope.
     `search_subdirs` remain relative to this scope (same as underlying semantics).
+    `excludes` is a list of POSIX-like relative patterns (prefix or glob),
+    matched against this scope's `rel_path`.
     """
+
+    exclude_patterns = list(excludes or [])
+
     for child in self._node._search_subresources(resource_types=resource_types,
                                                  template=template,
                                                  name_pattern=name_pattern,
                                                  search_subdirs=search_subdirs,
                                                  depth=depth):
-      yield ScopedViewer(child, base_path=self._base_path)
+      scoped = ScopedViewer(child, base_path=self._base_path)
+
+      if exclude_patterns:
+        if is_match(scoped.rel_path, exclude_patterns):
+          log.debug("Excluding %s", scoped.rel_path)
+          continue
+
+      yield scoped
 
   def iter_children(self):
     for _, child in self._node._iter_children():

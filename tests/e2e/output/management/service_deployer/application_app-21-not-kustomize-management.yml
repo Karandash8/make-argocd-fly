@@ -1,0 +1,20 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-21-not-kustomize-management
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: url
+    targetRevision: revision
+    path: output/management/app_21_not_kustomize
+  destination:
+    server: management-api-server
+    namespace: argocd
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true

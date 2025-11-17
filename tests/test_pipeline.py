@@ -40,6 +40,7 @@ def test_build_pipeline__create_SimpleApplication(tmp_path, mocker):
   mock_config = MagicMock()
   mock_params = MagicMock()
   mock_params.app_type = ApplicationTypes.K8S
+  mock_params.exclude_rendering = []
   mock_get_config.return_value = mock_config
   mock_config.get_params.return_value = mock_params
   mocker.patch('make_argocd_fly.pipeline.get_config', mock_get_config)
@@ -69,8 +70,10 @@ def test_build_pipeline__create_KustomizeApplication(tmp_path, mocker):
   mock_config = MagicMock()
   mock_params = MagicMock()
   mock_params.app_type = ApplicationTypes.K8S
+  mock_params.exclude_rendering = []
   mock_get_config.return_value = mock_config
   mock_config.get_params.return_value = mock_params
+  mock_config.list_envs.return_value = ['env']
   mocker.patch('make_argocd_fly.pipeline.get_config', mock_get_config)
   limits = RuntimeLimits(
     app_sem=asyncio.Semaphore(1),
@@ -98,6 +101,7 @@ def test_build_pipeline__create_HelmfileApplication(tmp_path, mocker):
   mock_config = MagicMock()
   mock_params = MagicMock()
   mock_params.app_type = ApplicationTypes.K8S
+  mock_params.exclude_rendering = []
   mock_get_config.return_value = mock_config
   mock_config.get_params.return_value = mock_params
   mocker.patch('make_argocd_fly.pipeline.get_config', mock_get_config)

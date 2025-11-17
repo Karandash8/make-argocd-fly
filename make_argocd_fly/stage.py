@@ -3,16 +3,13 @@ import os
 import shutil
 import asyncio
 import textwrap
-import fnmatch
 import yaml
 import yaml.composer
 import yaml.parser
 import yaml.scanner
 import yaml.constructor
-from pathlib import PurePosixPath
-from typing import Any
 from pprint import pformat
-from typing import Protocol, Iterable
+from typing import Protocol, Iterable, Any
 
 try:
   from yaml import CSafeLoader as SafeLoader
@@ -31,7 +28,7 @@ from make_argocd_fly.renderer import JinjaRenderer
 from make_argocd_fly.exception import (UndefinedTemplateVariableError, TemplateRenderingError, InternalError,
                                        KustomizeError, PathDoesNotExistError, ConfigFileError, HelmfileError,
                                        OutputFilenameConstructionError)
-from make_argocd_fly.util import extract_single_resource, get_app_rel_path
+from make_argocd_fly.util import extract_single_resource, get_app_rel_path, ensure_list, is_one_of
 from make_argocd_fly.limits import RuntimeLimits
 from make_argocd_fly.namegen import (K8sInfo, SourceInfo, K8sPolicy, SourcePolicy, Deduper, RoutingRules,
                                      KUSTOMIZE_BASENAMES, HELMFILE_BASENAMES)
@@ -69,29 +66,6 @@ def _resolve_template_vars(env_name: str, app_name: str) -> dict:
   return vars_
 
 
-def _scan_viewer(viewer: ScopedViewer,
-                 resource_types: list[ResourceType] | None,
-                 template: bool,
-                 search_subdirs: list[str] | None = None,
-                 excludes: Iterable[str] | None = None):
-  '''
-  Scan resources from the viewer and filter them using optional exclude patterns.
-  Exclude patterns are POSIX-like relative paths; they support both prefix and glob
-  semantics via _is_match().
-  '''
-  out = []
-  exclude_patterns = list(excludes or [])
-
-  for child in viewer.search_subresources(resource_types=resource_types,
-                                          template=template,
-                                          search_subdirs=search_subdirs):
-    if exclude_patterns and _is_match(child.rel_path, exclude_patterns):
-      log.debug(f'Excluding {child.rel_path}')
-      continue
-    out.append(child)
-  return out
-
-
 def _discover_resources_and_templates(viewer: ScopedViewer,
                                       resource_types: list[ResourceType],
                                       resolved_vars: dict,
@@ -101,8 +75,10 @@ def _discover_resources_and_templates(viewer: ScopedViewer,
   resources: list[Resource] = []
   templated_resources: list[TemplatedResource] = []
 
-  for child in _scan_viewer(viewer, resource_types, template=False,
-                            search_subdirs=search_subdirs, excludes=excludes):
+  for child in viewer.search_subresources(resource_types=resource_types,
+                                          template=False,
+                                          search_subdirs=search_subdirs,
+                                          excludes=excludes):
     resources.append(Resource(
       resource_type=child.resource_type,
       data=child.content,
@@ -110,8 +86,10 @@ def _discover_resources_and_templates(viewer: ScopedViewer,
       source_path=child.rel_path,
     ))
 
-  for child in _scan_viewer(viewer, resource_types, template=True,
-                            search_subdirs=search_subdirs, excludes=excludes):
+  for child in viewer.search_subresources(resource_types=resource_types,
+                                          template=True,
+                                          search_subdirs=search_subdirs,
+                                          excludes=excludes):
     templated_resources.append(TemplatedResource(
       resource_type=child.resource_type,
       vars=resolved_vars,
@@ -121,39 +99,6 @@ def _discover_resources_and_templates(viewer: ScopedViewer,
     ))
 
   return resources, templated_resources
-
-
-def _ensure_list(value: Any, param_name: str) -> list[str]:
-  if value is None:
-    return []
-
-  if not isinstance(value, list):
-    log.error(f'Application parameter {param_name} must be a list')
-    raise InternalError()
-
-  return value
-
-
-def _is_match(path: str, patterns: Iterable[str]) -> bool:
-  '''Match by prefix or glob; patterns are posix-like relative paths.'''
-  posix = str(PurePosixPath(path))
-  for pat in patterns:
-    pat_posix = str(PurePosixPath(pat))
-
-    # prefix match
-    if posix.startswith(pat_posix.rstrip('/')):
-      return True
-
-    # glob match
-    if fnmatch.fnmatch(posix, pat_posix):
-      return True
-
-  return False
-
-
-def _is_one_of(path: str, names: Iterable[str]) -> bool:
-  '''True if basename (case-sensitive) is in names.'''
-  return PurePosixPath(path).name in names
 
 
 class DiscoverK8sSimpleApplication(Stage):
@@ -169,7 +114,7 @@ class DiscoverK8sSimpleApplication(Stage):
     app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
 
-    exclude_rendering = _ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
+    exclude_rendering = ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
 
     out_resources, out_templated_resources = _discover_resources_and_templates(viewer,
@@ -196,12 +141,24 @@ class DiscoverK8sKustomizeApplication(Stage):
     app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
 
-    exclude_rendering = _ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
+    exclude_rendering = ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
 
-    # TODO: this will not work if there is a directory named `base` in addition to the kustomize base
-    search_subdirs = ['base', ctx.env_name] if list(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
-                                                                               name_pattern='base$')) else None
+    # Determine search_subdirs:
+    # look for root-level "base" and "<env_name>" directories; if none exist, use None
+    candidate_subdirs: list[str] = []
+
+    if list(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
+                                       name_pattern=r'^base$',
+                                       depth=1)):
+      candidate_subdirs.append('base')
+
+    if list(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
+                                       name_pattern=fr'^{ctx.env_name}$',
+                                       depth=1)):
+      candidate_subdirs.append(ctx.env_name)
+
+    search_subdirs = candidate_subdirs or None
 
     out_resources, out_templated_resources = _discover_resources_and_templates(viewer,
                                                                                resource_types=[ResourceType.YAML],
@@ -229,9 +186,8 @@ class DiscoverK8sKustomizeApplication(Stage):
                                          depth=1)):
       kustomize_exec_dir = '.'
     else:
-      # TODO: this doesn't skip anything, just logs an error
-      kustomize_exec_dir = ''
       log.error(f'Missing kustomization.yml in the application directory. Skipping application {ctx.app_name} in environment {ctx.env_name}')
+      raise InternalError()
 
     ctx_set(ctx, self.provides['kustomize_exec_dir'], kustomize_exec_dir)
 
@@ -249,7 +205,7 @@ class DiscoverK8sHelmfileApplication(Stage):
     app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
 
-    exclude_rendering = _ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
+    exclude_rendering = ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
 
     out_resources, out_templated_resources = _discover_resources_and_templates(viewer,
@@ -321,7 +277,7 @@ class DiscoverGenericApplication(Stage):
     app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
 
-    exclude_rendering = _ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
+    exclude_rendering = ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
 
     file_types = [resource_type for resource_type in ResourceType if
@@ -468,13 +424,16 @@ class GenerateNames(Stage):
         elif policy_key == 'source':
           rel = self.src_policy.render(k8s=None, src=src)
         elif policy_key is None:
-          log.warning(f'No naming policy for origin={res.origin} path={res.source_path}; skipping')
+          log.warning(f'Skipping resource due to no naming policy found (origin={res.origin} path={res.source_path}) '
+                      f'for application {ctx.app_name} in environment {ctx.env_name}')
           continue
         else:
-          log.warning(f'Skipping resource due to unknown policy \'{policy_key}\' (origin={res.origin} path={res.source_path})')
+          log.warning(f'Skipping resource due to unknown policy \'{policy_key}\' (origin={res.origin} path={res.source_path})'
+                      f' for application {ctx.app_name} in environment {ctx.env_name}')
           continue
       except OutputFilenameConstructionError as e:
-        log.warning(f'Failed to construct output filename for origin={res.origin} path={res.source_path}: {e}')
+        log.warning(f'Failed to construct output filename (origin={res.origin} path={res.source_path})'
+                    f' for application {ctx.app_name} in environment {ctx.env_name}: {e}')
         continue
 
       rel = dedupe.unique(rel)
@@ -490,13 +449,13 @@ class GenerateNames(Stage):
     # K8s pipelines
     if rules.pipeline_kind == PipelineType.K8S_KUSTOMIZE:
       # SourcePolicy for kustomization and values files
-      if res.source_path and (_is_one_of(res.source_path, KUSTOMIZE_BASENAMES) or res.source_path in rules.kustomize_cfg):
+      if res.source_path and (is_one_of(res.source_path, KUSTOMIZE_BASENAMES) or res.source_path in rules.kustomize_cfg):
         return 'source'
       return 'k8s' if res.resource_type == ResourceType.YAML else None
 
     if rules.pipeline_kind == PipelineType.K8S_HELMFILE:
       # SourcePolicy for helmfile
-      if res.source_path and (_is_one_of(res.source_path, HELMFILE_BASENAMES) or res.source_path in rules.helmfile_cfg):
+      if res.source_path and (is_one_of(res.source_path, HELMFILE_BASENAMES) or res.source_path in rules.helmfile_cfg):
         return 'source'
       return 'k8s' if res.resource_type == ResourceType.YAML else None
 

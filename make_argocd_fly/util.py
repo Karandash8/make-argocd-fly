@@ -5,11 +5,13 @@ import os
 import copy
 import ast
 import json
+import fnmatch
 import ssl
 import yaml
 import urllib.request
 import urllib.error
-from typing import Optional, List
+from typing import Iterable, Any
+from pathlib import PurePosixPath
 from collections.abc import Iterator
 from importlib.metadata import version, PackageNotFoundError
 from packaging.version import Version
@@ -129,7 +131,7 @@ class VarsResolver:
       return resolved_vars
 
 
-def extract_single_resource(multi_resource_yml: Optional[str]) -> Iterator[str]:
+def extract_single_resource(multi_resource_yml: str | None) -> Iterator[str]:
   if multi_resource_yml is None:
     log.error('Multi-resource YAML is empty')
     raise InternalError()
@@ -147,7 +149,7 @@ def get_app_rel_path(env_name: str, app_name: str) -> str:
   return os.path.join(env_name, app_name)
 
 
-def merge_lists_without_duplicates(*lists, key_path: Optional[List] = None):
+def merge_lists_without_duplicates(*lists, key_path: list | None = None):
   if not lists:
     return []
 
@@ -168,7 +170,7 @@ def merge_lists_without_duplicates(*lists, key_path: Optional[List] = None):
   return merged
 
 
-def merge_dicts_without_duplicates(*dicts, key_path: Optional[List] = None):
+def merge_dicts_without_duplicates(*dicts, key_path: list | None = None):
   if not dicts:
     return {}
 
@@ -243,7 +245,7 @@ def get_package_name() -> str:
   return get_module_name().replace('_', '-')
 
 
-def get_current_version() -> Optional[Version]:
+def get_current_version() -> Version | None:
   try:
     return Version(version(get_module_name()))
   except PackageNotFoundError:
@@ -251,7 +253,7 @@ def get_current_version() -> Optional[Version]:
     return None
 
 
-def get_latest_version() -> Optional[Version]:
+def get_latest_version() -> Version | None:
   try:
     pypi_url = f'https://pypi.org/pypi/{get_module_name()}/json'
     response = urllib.request.urlopen(pypi_url).read().decode()
@@ -300,3 +302,36 @@ def extract_undefined_variable(message: str) -> str:
     raise UnknownJinja2Error
 
   return variable_name
+
+
+def ensure_list(value: Any, param_name: str) -> list[str]:
+  if value is None:
+    return []
+
+  if not isinstance(value, list):
+    log.error(f'Application parameter {param_name} must be a list')
+    raise InternalError()
+
+  return value
+
+
+def is_match(path: str, patterns: Iterable[str]) -> bool:
+  '''Match by prefix or glob; patterns are posix-like relative paths.'''
+  posix = str(PurePosixPath(path))
+  for pat in patterns:
+    pat_posix = str(PurePosixPath(pat))
+
+    # prefix match
+    if posix.startswith(pat_posix.rstrip('/')):
+      return True
+
+    # glob match
+    if fnmatch.fnmatch(posix, pat_posix):
+      return True
+
+  return False
+
+
+def is_one_of(path: str, names: Iterable[str]) -> bool:
+  '''True if basename (case-sensitive) is in names.'''
+  return PurePosixPath(path).name in names
