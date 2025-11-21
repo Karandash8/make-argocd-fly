@@ -121,7 +121,7 @@ def main(**kwargs) -> None:  # noqa: C901
     if not cli_params.skip_generate:
       asyncio.run(generate())
 
-    if not cli_params.preserve_tmp_dir:
+    if not cli_params.preserve_tmp_dir and not cli_params.dump_context:
       remove_dir(config.tmp_dir)
 
     # TODO: it does not make sense to write yamls on disk and then read them again to run through linters
@@ -158,7 +158,7 @@ def cli_entry_point() -> None:
   parser.add_argument('--skip-generate', action='store_true', help='Skip resource generation')
   parser.add_argument('--preserve-tmp-dir', action='store_true', help='Preserve temporary directory')
   parser.add_argument('--remove-output-dir', action='store_true', help='Remove output directory')
-  parser.add_argument('--print-vars', action='store_true', help='Print variables for each application')
+  parser.add_argument('--print-vars', action='store_true', help='Print variables for each application (DEPRECATED)')
   parser.add_argument('--var-identifier', type=str, default=default.VAR_IDENTIFIER, help='Variable prefix in configuration files (default: $)')
   parser.add_argument('--skip-latest-version-check', action='store_true', help='Skip latest version check')
   parser.add_argument('--yaml-linter', action='store_true', help='Run yamllint against output directory (https://github.com/adrienverge/yamllint)')
@@ -167,6 +167,7 @@ def cli_entry_point() -> None:
                       help='Maximum number of applications to render concurrently (default: 8)')
   parser.add_argument('--max-subproc', type=int, default=default.MAX_SUBPROC,
                       help='Maximum number of subprocesses to run concurrently (default: number of CPU cores)')
+  parser.add_argument('--dump-context', action='store_true', help='Dump per-stage context snapshots for debugging')
   parser.add_argument('--max-io', type=int, default=default.MAX_IO, help='Maximum number of I/O operations to run concurrently (default: 32)')
   parser.add_argument('--loglevel', type=str, default=default.LOGLEVEL, help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
   parser.add_argument('--version', action='version', version=f'{get_package_name()} {get_current_version()}', help='Show version')

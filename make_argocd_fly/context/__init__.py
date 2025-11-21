@@ -1,5 +1,9 @@
+import logging
 from dataclasses import dataclass, field
 from typing import Any
+
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -11,8 +15,8 @@ class Context:
   def __init__(self, env_name: str, app_name: str):
     self.env_name = env_name
     self.app_name = app_name
-    self._ns: dict[str, NS] = {}
     self.trace: list[dict] = []
+    self._ns: dict[str, NS] = {}
 
   def ns(self, name: str) -> NS:
     ns = self._ns.get(name)
@@ -22,7 +26,6 @@ class Context:
 
 
 # TODO: make the following functions methods of Context?
-
 # TODO: deal with dotted keys in a more robust way. Check that there is something to split.
 def ctx_get(ctx: Context, dotted: str) -> Any:
   ns, key = dotted.split(".", 1)

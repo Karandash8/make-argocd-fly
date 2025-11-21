@@ -34,7 +34,8 @@ make-argocd-fly -h
 
 | Flag                      | Description                                                                      |
 |---------------------------|----------------------------------------------------------------------------------|
-| `--print-vars`            | Show variables used per application                                              |
+| `--print-vars`            | Show variables used per application (DEPRECATED)    |
+| `--dump-context`          | Dump the entire relevant context used for rendering applications                         |
 | `--var-identifier`        | Prefix used for variable interpolation in config files (default: `$`)           |
 | `--loglevel`              | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`               |
 | `--skip-latest-version-check` | Suppress remote version check                                                |

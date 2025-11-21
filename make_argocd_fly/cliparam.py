@@ -27,6 +27,7 @@ class CLIParams:
     self.max_concurrent_apps = default.MAX_CONCURRENT_APPS
     self.max_subproc = default.MAX_SUBPROC
     self.max_io = default.MAX_IO
+    self.dump_context = False
 
   def populate_cli_params(self, **kwargs) -> None:
     self.__dict__.update(kwargs)
