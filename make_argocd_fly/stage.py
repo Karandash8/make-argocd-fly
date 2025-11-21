@@ -10,6 +10,7 @@ import yaml.scanner
 import yaml.constructor
 from pprint import pformat
 from typing import Protocol, Iterable, Any
+from deprecated import deprecated
 
 try:
   from yaml import CSafeLoader as SafeLoader
@@ -46,6 +47,11 @@ class Stage(Protocol):
   async def run(self, ctx: Context) -> None: ...
 
 
+@deprecated(version='v0.4.4', reason='`--print-vars` is deprecated, use `--dump-context` instead')
+def print_vars_deprecated(app_name: str, env_name: str, vars_: dict) -> None:
+  log.info(f'Variables for application {app_name} in environment {env_name}:\n{pformat(vars_)}')
+
+
 def _resolve_template_vars(env_name: str, app_name: str) -> dict:
   config = get_config()
   extra = {
@@ -61,7 +67,7 @@ def _resolve_template_vars(env_name: str, app_name: str) -> dict:
   vars_ = config.get_vars(env_name=env_name, app_name=app_name, extra_vars=extra)
 
   if get_cli_params().print_vars:
-    log.info(f'Variables for application {app_name} in environment {env_name}:\n{pformat(vars_)}')
+    print_vars_deprecated(app_name, env_name, vars_)
 
   return vars_
 
@@ -168,7 +174,7 @@ class DiscoverK8sKustomizeApplication(Stage):
 
     ctx_set(ctx, self.provides['resources'], out_resources)
     ctx_set(ctx, self.provides['templated_resources'], out_templated_resources)
-    ctx_set(ctx, self.provides['tmp_dir'], config.tmp_dir)
+    ctx_set(ctx, self.provides['tmp_dir'], os.path.join(config.tmp_dir, default.KUSTOMIZE_DIR))
     ctx_set(ctx, self.provides['output_dir'], config.output_dir)
 
     if list(viewer.search_subresources(resource_types=[ResourceType.YAML],
@@ -216,7 +222,7 @@ class DiscoverK8sHelmfileApplication(Stage):
 
     ctx_set(ctx, self.provides['resources'], out_resources)
     ctx_set(ctx, self.provides['templated_resources'], out_templated_resources)
-    ctx_set(ctx, self.provides['tmp_dir'], config.tmp_dir)
+    ctx_set(ctx, self.provides['tmp_dir'], os.path.join(config.tmp_dir, default.HELMFILE_DIR))
     ctx_set(ctx, self.provides['output_dir'], config.output_dir)
 
 

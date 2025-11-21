@@ -16,6 +16,8 @@ from make_argocd_fly.stage import (DiscoverK8sSimpleApplication, DiscoverK8sKust
 from make_argocd_fly.limits import RuntimeLimits
 from make_argocd_fly.type import PipelineType
 from make_argocd_fly.util import ensure_list
+from make_argocd_fly.cliparam import get_cli_params
+from make_argocd_fly.debug_dump import StageContextDumper
 
 
 log = logging.getLogger(__name__)
@@ -27,16 +29,23 @@ class Pipeline:
     self.stages = stages
 
   async def run(self, ctx: Context):
-    for s in self.stages:
+    cli = get_cli_params()
+    dumper = StageContextDumper(enabled=cli.dump_context, ctx=ctx)
+
+    for stage in self.stages:
       # TODO: pre-validate: ensure required keys are present
 
       t0 = time.perf_counter()
-      await s.run(ctx)
+      try:
+        await stage.run(ctx)
+      except Exception as e:
+        dumper.dump_error(ctx, stage, e)
+        raise
       t1 = time.perf_counter()
 
       # TODO: post-validate: ensure provided keys are present
-
-      ctx.trace.append({'stage': s.name, 'ms': (t1 - t0) * 1000.0})
+      ctx.trace.append({'stage': stage.name, 'ms': (t1 - t0) * 1000.0})
+      dumper.dump_success(ctx, stage)
 
     log.info(f'Updated application {ctx.app_name} in environment {ctx.env_name}')
 
