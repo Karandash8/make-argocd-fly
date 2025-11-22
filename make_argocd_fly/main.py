@@ -2,6 +2,7 @@ import logging
 import logging.config
 import os
 import argparse
+import time
 import shutil
 import asyncio
 import subprocess
@@ -18,6 +19,7 @@ from make_argocd_fly.exception import (TemplateRenderingError, YamlError, Intern
 from make_argocd_fly.pipeline import build_pipeline
 from make_argocd_fly.context import Context
 from make_argocd_fly.limits import RuntimeLimits
+from make_argocd_fly.stats import print_stats
 
 
 logging.basicConfig(level=default.LOGLEVEL)
@@ -60,6 +62,7 @@ async def generate() -> None:
       pipeline = build_pipeline(ctx, limits, viewer)
       apps.append((pipeline, ctx))
 
+  t0 = time.perf_counter()
   try:
     async with asyncio.TaskGroup() as tg:
       for (pipeline, ctx) in apps:
@@ -69,6 +72,11 @@ async def generate() -> None:
       raise e.exceptions[0]
     else:
       raise e
+  t1 = time.perf_counter()
+  wall_ms = (t1 - t0) * 1000.0
+
+  if cli_params.stats:
+    print_stats(apps, wall_ms=wall_ms)
 
 
 def run_yamllint() -> None:
@@ -168,6 +176,7 @@ def cli_entry_point() -> None:
   parser.add_argument('--max-subproc', type=int, default=default.MAX_SUBPROC,
                       help='Maximum number of subprocesses to run concurrently (default: number of CPU cores)')
   parser.add_argument('--dump-context', action='store_true', help='Dump per-stage context snapshots for debugging')
+  parser.add_argument('--stats', action='store_true', help='Print execution time statistics per stage and per application')
   parser.add_argument('--max-io', type=int, default=default.MAX_IO, help='Maximum number of I/O operations to run concurrently (default: 32)')
   parser.add_argument('--loglevel', type=str, default=default.LOGLEVEL, help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
   parser.add_argument('--version', action='version', version=f'{get_package_name()} {get_current_version()}', help='Show version')

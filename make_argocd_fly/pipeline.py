@@ -32,7 +32,7 @@ class Pipeline:
     cli = get_cli_params()
     dumper = StageContextDumper(enabled=cli.dump_context, ctx=ctx)
 
-    for stage in self.stages:
+    for idx, stage in enumerate(self.stages):
       # TODO: pre-validate: ensure required keys are present
 
       t0 = time.perf_counter()
@@ -44,7 +44,11 @@ class Pipeline:
       t1 = time.perf_counter()
 
       # TODO: post-validate: ensure provided keys are present
-      ctx.trace.append({'stage': stage.name, 'ms': (t1 - t0) * 1000.0})
+      ctx.trace.append({
+        'stage': stage.name,
+        'index': idx,
+        'ms': (t1 - t0) * 1000.0,
+      })
       dumper.dump_success(ctx, stage)
 
     log.info(f'Updated application {ctx.app_name} in environment {ctx.env_name}')
