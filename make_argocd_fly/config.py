@@ -78,6 +78,17 @@ class Config:
 
     return self.config[ConfigKeywords.ENVS][env_name]
 
+  def list_filtered_envs(self) -> list[str]:
+    """Return envs filtered according to --render-envs, if provided."""
+    envs = self.list_envs()
+    render_envs = self.cli_params.render_envs
+
+    if not render_envs:
+      return envs
+
+    selected = set(render_envs.split(','))
+    return [env for env in envs if env in selected]
+
   def list_apps(self, env_name: str) -> list[str]:
     if self.config is None:
       log.error('Config is not populated')
@@ -89,6 +100,16 @@ class Config:
       return []
 
     return list(env[ConfigKeywords.APPS].keys())
+
+  def list_filtered_apps(self, env_name: str) -> list[str]:
+    """Return apps in env filtered according to --render-apps, if provided."""
+    apps = self.list_apps(env_name)
+    render_apps = self.cli_params.render_apps
+    if not render_apps:
+      return apps
+
+    selected = set(render_apps.split(','))
+    return [app for app in apps if app in selected]
 
   def get_app(self, env_name: str, app_name: str) -> dict:
     if self.config is None:
