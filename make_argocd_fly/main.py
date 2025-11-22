@@ -35,11 +35,7 @@ async def run_one_app(pipeline, ctx, limits: RuntimeLimits):
 async def generate() -> None:
   config = get_config()
   cli_params = get_cli_params()
-  render_apps = cli_params.render_apps
-  render_envs = cli_params.render_envs
 
-  apps_to_render = render_apps.split(',') if render_apps is not None else []
-  envs_to_render = render_envs.split(',') if render_envs is not None else []
   limits = RuntimeLimits(
     app_sem=asyncio.Semaphore(cli_params.max_concurrent_apps),
     subproc_sem=asyncio.Semaphore(cli_params.max_subproc),
@@ -50,16 +46,11 @@ async def generate() -> None:
   viewer = build_scoped_viewer(config.source_dir)
 
   log.info('Creating applications')
-  for env_name in config.list_envs():
-    if envs_to_render and env_name not in envs_to_render:
-      continue
-
-    for app_name in config.list_apps(env_name):
-      if apps_to_render and app_name not in apps_to_render:
-        continue
-
+  for env_name in config.list_filtered_envs():
+    for app_name in config.list_filtered_apps(env_name):
       ctx = Context(env_name, app_name)
       pipeline = build_pipeline(ctx, limits, viewer)
+
       apps.append((pipeline, ctx))
 
   t0 = time.perf_counter()
