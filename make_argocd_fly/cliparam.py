@@ -28,6 +28,7 @@ class CLIParams:
     self.max_subproc = default.MAX_SUBPROC
     self.max_io = default.MAX_IO
     self.dump_context = False
+    self.stats = False
 
   def populate_cli_params(self, **kwargs) -> None:
     self.__dict__.update(kwargs)
