@@ -66,6 +66,8 @@ envs:
       app_21_not_kustomize: {params: {parent_app: service_deployer, exclude_rendering: ['random']}}
       app_22_kustomize_with_env_only: {params: {parent_app: service_deployer}}
       app_23_excluded_base: {params: {parent_app: service_deployer, exclude_rendering: ['base']}}
+      app_24_extra_files: {params: {parent_app: service_deployer, non_k8s_files_to_render: ['init_*', 'subdir/']}}
+      app_25_local_helm: {params: {parent_app: service_deployer, non_k8s_files_to_render: ['helm_local/']}}
   external_1:
     apps:
       bootstrap: {}

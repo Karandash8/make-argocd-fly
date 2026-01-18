@@ -192,15 +192,17 @@ class ScopedViewer:
                           name_pattern: str = r'.*',
                           search_subdirs: list[str] | None = None,
                           depth: int = -1,
-                          excludes: Iterable[str] | None = None):
+                          excludes: Iterable[str] | None = None,
+                          includes: Iterable[str] | None = None):
     """
     Delegate to the underlying node but re-wrap yielded children in this scope.
     `search_subdirs` remain relative to this scope (same as underlying semantics).
-    `excludes` is a list of POSIX-like relative patterns (prefix or glob),
+    `excludes` / `includes` are POSIX-like relative patterns (prefix or glob),
     matched against this scope's `rel_path`.
     """
 
     exclude_patterns = list(excludes or [])
+    include_patterns = list(includes or [])
 
     for child in self._node._search_subresources(resource_types=resource_types,
                                                  template=template,
@@ -209,10 +211,12 @@ class ScopedViewer:
                                                  depth=depth):
       scoped = ScopedViewer(child, base_path=self._base_path)
 
-      if exclude_patterns:
-        if is_match(scoped.rel_path, exclude_patterns):
-          log.debug("Excluding %s", scoped.rel_path)
-          continue
+      if exclude_patterns and is_match(scoped.rel_path, exclude_patterns):
+        log.debug('Excluding %s', scoped.rel_path)
+        continue
+
+      if include_patterns and not is_match(scoped.rel_path, include_patterns):
+        continue
 
       yield scoped
 

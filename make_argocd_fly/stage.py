@@ -21,7 +21,7 @@ from make_argocd_fly.context import Context, ctx_get, ctx_set, resolve_expr
 from make_argocd_fly.context.data import TemplatedResource, Resource
 from make_argocd_fly.resource.viewer import ScopedViewer, ResourceType
 from make_argocd_fly import default
-from make_argocd_fly.resource.writer import plan_writer, AbstractWriter
+from make_argocd_fly.resource.writer import AbstractWriter, GENERIC_WRITER, YAML_WRITER
 from make_argocd_fly.param import ParamNames
 from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparam import get_cli_params
@@ -33,7 +33,7 @@ from make_argocd_fly.util import extract_single_resource, get_app_rel_path, ensu
 from make_argocd_fly.limits import RuntimeLimits
 from make_argocd_fly.namegen import (K8sInfo, SourceInfo, K8sPolicy, SourcePolicy, Deduper, RoutingRules,
                                      KUSTOMIZE_BASENAMES, HELMFILE_BASENAMES)
-from make_argocd_fly.type import PipelineType
+from make_argocd_fly.type import PipelineType, NamingPolicyType, WriterType
 
 
 log = logging.getLogger(__name__)
@@ -72,39 +72,84 @@ def _resolve_template_vars(env_name: str, app_name: str) -> dict:
   return vars_
 
 
-def _discover_resources_and_templates(viewer: ScopedViewer,
-                                      resource_types: list[ResourceType],
-                                      resolved_vars: dict,
-                                      *,
-                                      search_subdirs: list[str] | None,
-                                      excludes: Iterable[str] | None) -> tuple[list[Resource], list[TemplatedResource]]:
-  resources: list[Resource] = []
-  templated_resources: list[TemplatedResource] = []
-
+def _discover_resources(viewer: ScopedViewer,
+                        resource_types: list[ResourceType],
+                        *,
+                        search_subdirs: list[str] | None,
+                        excludes: Iterable[str] | None) -> list[Resource]:
+  out_resources = []
   for child in viewer.search_subresources(resource_types=resource_types,
                                           template=False,
                                           search_subdirs=search_subdirs,
                                           excludes=excludes):
-    resources.append(Resource(
-      resource_type=child.resource_type,
-      data=child.content,
-      origin=child.rel_path,
-      source_path=child.rel_path,
-    ))
+    out_resources.append(Resource(resource_type=child.resource_type,
+                                  data=child.content,
+                                  origin=child.rel_path,
+                                  source_path=child.rel_path))
 
-  for child in viewer.search_subresources(resource_types=resource_types,
-                                          template=True,
-                                          search_subdirs=search_subdirs,
-                                          excludes=excludes):
-    templated_resources.append(TemplatedResource(
-      resource_type=child.resource_type,
-      vars=resolved_vars,
-      data=child.content,
-      origin=child.rel_path,
-      source_path=child.rel_path,
-    ))
+  return out_resources
 
-  return resources, templated_resources
+
+def _discover_templated_resources(viewer: ScopedViewer,
+                                  resource_types: list[ResourceType],
+                                  resolved_vars: dict,
+                                  *,
+                                  search_subdirs: list[str] | None,
+                                  excludes: Iterable[str] | None) -> list[TemplatedResource]:
+    out_templated_resources = []
+    for child in viewer.search_subresources(resource_types=resource_types,
+                                            template=True,
+                                            search_subdirs=search_subdirs,
+                                            excludes=excludes):
+      out_templated_resources.append(TemplatedResource(resource_type=child.resource_type,
+                                                       vars=resolved_vars,
+                                                       data=child.content,
+                                                       origin=child.rel_path,
+                                                       source_path=child.rel_path))
+
+    return out_templated_resources
+
+
+def _discover_extra_resources(viewer: ScopedViewer,
+                              resource_types: list[ResourceType],
+                              *,
+                              search_subdirs: list[str] | None,
+                              excludes: Iterable[str] | None,
+                              includes: Iterable[str] | None) -> list[Resource]:
+    out_extra_resources = []
+    for child in viewer.search_subresources(resource_types=resource_types,
+                                            template=False,
+                                            search_subdirs=search_subdirs,
+                                            excludes=excludes,
+                                            includes=includes):
+      out_extra_resources.append(Resource(resource_type=child.resource_type,
+                                          data=child.content,
+                                          origin=child.rel_path,
+                                          source_path=child.rel_path))
+
+    return out_extra_resources
+
+
+def _discover_templated_extra_resources(viewer: ScopedViewer,
+                                        resource_types: list[ResourceType],
+                                        resolved_vars: dict,
+                                        *,
+                                        search_subdirs: list[str] | None,
+                                        excludes: Iterable[str] | None,
+                                        includes: Iterable[str] | None) -> list[TemplatedResource]:
+    out_templated_extra_resources = []
+    for child in viewer.search_subresources(resource_types=resource_types,
+                                            template=True,
+                                            search_subdirs=search_subdirs,
+                                            excludes=excludes,
+                                            includes=includes):
+      out_templated_extra_resources.append(TemplatedResource(resource_type=child.resource_type,
+                                                             vars=resolved_vars,
+                                                             data=child.content,
+                                                             origin=child.rel_path,
+                                                             source_path=child.rel_path))
+
+    return out_templated_extra_resources
 
 
 class DiscoverK8sSimpleApplication(Stage):
@@ -123,11 +168,15 @@ class DiscoverK8sSimpleApplication(Stage):
     exclude_rendering = ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
 
-    out_resources, out_templated_resources = _discover_resources_and_templates(viewer,
-                                                                               resource_types=[ResourceType.YAML],
-                                                                               resolved_vars=resolved_vars,
-                                                                               search_subdirs=None,
-                                                                               excludes=exclude_rendering)
+    out_resources = _discover_resources(viewer,
+                                        resource_types=[ResourceType.YAML],
+                                        search_subdirs=None,
+                                        excludes=exclude_rendering)
+    out_templated_resources = _discover_templated_resources(viewer,
+                                                            resource_types=[ResourceType.YAML],
+                                                            resolved_vars=resolved_vars,
+                                                            search_subdirs=None,
+                                                            excludes=exclude_rendering)
 
     ctx_set(ctx, self.provides['resources'], out_resources)
     ctx_set(ctx, self.provides['templated_resources'], out_templated_resources)
@@ -147,7 +196,6 @@ class DiscoverK8sKustomizeApplication(Stage):
     app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
 
-    exclude_rendering = ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
 
     # Determine search_subdirs:
@@ -166,14 +214,45 @@ class DiscoverK8sKustomizeApplication(Stage):
 
     search_subdirs = candidate_subdirs or None
 
-    out_resources, out_templated_resources = _discover_resources_and_templates(viewer,
-                                                                               resource_types=[ResourceType.YAML],
-                                                                               resolved_vars=resolved_vars,
-                                                                               search_subdirs=search_subdirs,
-                                                                               excludes=exclude_rendering)
+    non_k8s_files = ensure_list(app_params.non_k8s_files_to_render, ParamNames.NON_K8S_FILES_TO_RENDER)
+    exclude_rendering = ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
+
+    # 1) regular YAML resources (non-template), exclude both lists
+    out_resources = _discover_resources(viewer,
+                                        resource_types=[ResourceType.YAML],
+                                        search_subdirs=search_subdirs,
+                                        excludes=exclude_rendering + non_k8s_files)
+
+    # 2) regular YAML templated resources, exclude both lists
+    out_templated_resources = _discover_templated_resources(viewer,
+                                                            resource_types=[ResourceType.YAML],
+                                                            resolved_vars=resolved_vars,
+                                                            search_subdirs=search_subdirs,
+                                                            excludes=exclude_rendering + non_k8s_files)
+
+    all_file_types = [resource_type for resource_type in ResourceType if
+                      (resource_type != ResourceType.DIRECTORY and
+                       resource_type != ResourceType.DOES_NOT_EXIST)]
+
+    # 3) extra resources: include only non_k8s_files_to_render (any file type), exclude exclude_rendering
+    out_extra_resources = _discover_extra_resources(viewer,
+                                                    resource_types=all_file_types,
+                                                    search_subdirs=search_subdirs,
+                                                    excludes=exclude_rendering,
+                                                    includes=non_k8s_files)
+
+    # 4) templated extra resources: include only non_k8s_files_to_render (any file type), exclude exclude_rendering
+    out_templated_extra_resources = _discover_templated_extra_resources(viewer,
+                                                                        resource_types=all_file_types,
+                                                                        resolved_vars=resolved_vars,
+                                                                        search_subdirs=search_subdirs,
+                                                                        excludes=exclude_rendering,
+                                                                        includes=non_k8s_files)
 
     ctx_set(ctx, self.provides['resources'], out_resources)
     ctx_set(ctx, self.provides['templated_resources'], out_templated_resources)
+    ctx_set(ctx, self.provides['extra_resources'], out_extra_resources)
+    ctx_set(ctx, self.provides['templated_extra_resources'], out_templated_extra_resources)
     ctx_set(ctx, self.provides['tmp_dir'], os.path.join(config.tmp_dir, default.KUSTOMIZE_DIR))
     ctx_set(ctx, self.provides['output_dir'], config.output_dir)
 
@@ -214,11 +293,15 @@ class DiscoverK8sHelmfileApplication(Stage):
     exclude_rendering = ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
 
-    out_resources, out_templated_resources = _discover_resources_and_templates(viewer,
-                                                                               resource_types=[ResourceType.YAML],
-                                                                               resolved_vars=resolved_vars,
-                                                                               search_subdirs=None,
-                                                                               excludes=exclude_rendering)
+    out_resources = _discover_resources(viewer,
+                                        resource_types=[ResourceType.YAML],
+                                        search_subdirs=None,
+                                        excludes=exclude_rendering)
+    out_templated_resources = _discover_templated_resources(viewer,
+                                                            resource_types=[ResourceType.YAML],
+                                                            resolved_vars=resolved_vars,
+                                                            search_subdirs=None,
+                                                            excludes=exclude_rendering)
 
     ctx_set(ctx, self.provides['resources'], out_resources)
     ctx_set(ctx, self.provides['templated_resources'], out_templated_resources)
@@ -286,15 +369,19 @@ class DiscoverGenericApplication(Stage):
     exclude_rendering = ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
 
-    file_types = [resource_type for resource_type in ResourceType if
-                  (resource_type != ResourceType.DIRECTORY and
-                   resource_type != ResourceType.DOES_NOT_EXIST)]
+    all_file_types = [resource_type for resource_type in ResourceType if
+                      (resource_type != ResourceType.DIRECTORY and
+                       resource_type != ResourceType.DOES_NOT_EXIST)]
 
-    out_resources, out_templated_resources = _discover_resources_and_templates(viewer,
-                                                                               resource_types=file_types,
-                                                                               resolved_vars=resolved_vars,
-                                                                               search_subdirs=None,
-                                                                               excludes=exclude_rendering)
+    out_resources = _discover_resources(viewer,
+                                        resource_types=all_file_types,
+                                        search_subdirs=None,
+                                        excludes=exclude_rendering)
+    out_templated_resources = _discover_templated_resources(viewer,
+                                                            resource_types=all_file_types,
+                                                            resolved_vars=resolved_vars,
+                                                            search_subdirs=None,
+                                                            excludes=exclude_rendering)
 
     ctx_set(ctx, self.provides['resources'], out_resources)
     ctx_set(ctx, self.provides['templated_resources'], out_templated_resources)
@@ -424,10 +511,10 @@ class GenerateNames(Stage):
       src = SourceInfo.from_source_path(res.source_path)
 
       try:
-        if policy_key == 'k8s':
+        if policy_key == NamingPolicyType.K8S:
           k8s = K8sInfo.from_yaml_obj(res.yaml_obj)
           rel = self.k8s_policy.render(k8s=k8s, src=src)
-        elif policy_key == 'source':
+        elif policy_key == NamingPolicyType.SOURCE:
           rel = self.src_policy.render(k8s=None, src=src)
         elif policy_key is None:
           log.warning(f'Skipping resource due to no naming policy found (origin={res.origin} path={res.source_path}) '
@@ -450,24 +537,23 @@ class GenerateNames(Stage):
   def _route_policy(self, res: Resource, rules: RoutingRules) -> str | None:
     # Generic pipeline: always name by source
     if rules.pipeline_kind == PipelineType.GENERIC:
-      return 'source' if res.source_path is not None else None
+      return NamingPolicyType.SOURCE if res.source_path is not None else None
 
     # K8s pipelines
     if rules.pipeline_kind == PipelineType.K8S_KUSTOMIZE:
       # SourcePolicy for kustomization and values files
       if res.source_path and (is_one_of(res.source_path, KUSTOMIZE_BASENAMES) or res.source_path in rules.kustomize_cfg):
-        return 'source'
-      return 'k8s' if res.resource_type == ResourceType.YAML else None
+        return NamingPolicyType.SOURCE
+      return NamingPolicyType.K8S if res.writer_type == WriterType.K8S_YAML else NamingPolicyType.SOURCE
 
     if rules.pipeline_kind == PipelineType.K8S_HELMFILE:
       # SourcePolicy for helmfile
       if res.source_path and (is_one_of(res.source_path, HELMFILE_BASENAMES) or res.source_path in rules.helmfile_cfg):
-        return 'source'
-      return 'k8s' if res.resource_type == ResourceType.YAML else None
+        return NamingPolicyType.SOURCE
+      return NamingPolicyType.K8S if res.writer_type == WriterType.K8S_YAML else NamingPolicyType.SOURCE
 
     if rules.pipeline_kind in (PipelineType.K8S_SIMPLE, PipelineType.K8S_APP_OF_APPS):
-      return 'k8s' if res.resource_type == ResourceType.YAML else None
-
+      return NamingPolicyType.K8S if res.writer_type == WriterType.K8S_YAML else None
     return None
 
 
@@ -507,18 +593,24 @@ class WriteOnDisk(Stage):
 
     try:
       async with asyncio.TaskGroup() as tg:
-        app_type = get_config().get_params(ctx.env_name, ctx.app_name).app_type
-
         for resource in sorted(resources, key=lambda r: r.output_path):
           if resource.output_path is None:
             log.error(f'Resource {resource.origin} passed to {self.name} stage without output_path')
             raise InternalError()
 
-          has_yaml = resource.yaml_obj is not None
-          wplan = plan_writer(app_type, resource.resource_type, has_yaml_obj=has_yaml)
-          payload = (resource.yaml_obj if wplan.use_yaml_obj else resource.data)
+          # Disallow writing non-files
+          if resource.resource_type in (ResourceType.DIRECTORY, ResourceType.DOES_NOT_EXIST):
+            log.error(f'Cannot write resource of type {resource.resource_type.name} (origin={resource.origin})')
+            raise InternalError()
 
-          tg.create_task(self._write_one(wplan.writer, payload, output_dir, ctx, resource))
+          if resource.writer_type == WriterType.K8S_YAML:
+            writer = YAML_WRITER
+            payload = resource.yaml_obj
+          else:
+            writer = GENERIC_WRITER
+            payload = resource.data
+
+          tg.create_task(self._write_one(writer, payload, output_dir, ctx, resource))
     except ExceptionGroup as e:
       if e.exceptions:
         raise e.exceptions[0]

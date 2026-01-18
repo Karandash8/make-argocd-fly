@@ -1,7 +1,7 @@
 import os
 import pytest
 from make_argocd_fly.resource.viewer import ResourceViewer, _get_resource_params, ResourceType, build_scoped_viewer
-from make_argocd_fly.resource.writer import GenericWriter, YamlWriter, plan_writer, WriterPlan
+from make_argocd_fly.resource.writer import GenericWriter, YamlWriter
 from make_argocd_fly.exception import InternalError, YamlObjectRequiredError
 from make_argocd_fly.param import ApplicationTypes
 from make_argocd_fly.util import check_lists_equal
@@ -657,45 +657,6 @@ def test_ResourceViewer__search_subresources__combined_template_and_excludes(tmp
                                    template=True,
                                    excludes=['env/patch*'])
   assert _paths(tpl) == ['env/values.yml.j2']
-
-
-##################
-### plan_writer
-##################
-
-def test_plan_writer__generic_app_always_generic():
-  # Even if has_yaml_obj is True, GENERIC apps must use GenericWriter and raw data
-  plan = plan_writer(ApplicationTypes.GENERIC, ResourceType.YAML, has_yaml_obj=True)
-  assert isinstance(plan, WriterPlan)
-  assert isinstance(plan.writer, GenericWriter)
-  assert plan.use_yaml_obj is False
-
-  plan2 = plan_writer(ApplicationTypes.GENERIC, ResourceType.UNKNOWN, has_yaml_obj=False)
-  assert isinstance(plan2.writer, GenericWriter)
-  assert plan2.use_yaml_obj is False
-
-def test_plan_writer__k8s_yaml_with_yaml_obj():
-  plan = plan_writer(ApplicationTypes.K8S, ResourceType.YAML, has_yaml_obj=True)
-  assert isinstance(plan.writer, YamlWriter)
-  assert plan.use_yaml_obj is True
-
-def test_plan_writer__k8s_yaml_without_yaml_obj():
-  # If we ever end up here, we expect the writer to be YamlWriter, but the
-  # caller will pass raw data, which should trigger YamlObjectRequiredError.
-  plan = plan_writer(ApplicationTypes.K8S, ResourceType.YAML, has_yaml_obj=False)
-  assert isinstance(plan.writer, YamlWriter)
-  assert plan.use_yaml_obj is False
-
-def test_plan_writer__k8s_non_yaml():
-  plan = plan_writer(ApplicationTypes.K8S, ResourceType.UNKNOWN, has_yaml_obj=False)
-  assert isinstance(plan.writer, GenericWriter)
-  assert plan.use_yaml_obj is False
-
-def test_plan_writer__k8s_unsupported_raises():
-  with pytest.raises(InternalError):
-    plan_writer(ApplicationTypes.K8S, ResourceType.DIRECTORY, has_yaml_obj=False)
-  with pytest.raises(InternalError):
-    plan_writer(ApplicationTypes.K8S, ResourceType.DOES_NOT_EXIST, has_yaml_obj=False)
 
 ##################
 ### GenericWriter

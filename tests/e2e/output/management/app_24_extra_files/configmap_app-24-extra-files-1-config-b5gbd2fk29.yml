@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+data:
+  init_1.sh: |
+    #!/bin/bash
+
+    echo "init_1.sh executed"
+kind: ConfigMap
+metadata:
+  name: app-24-extra-files-1-config-b5gbd2fk29

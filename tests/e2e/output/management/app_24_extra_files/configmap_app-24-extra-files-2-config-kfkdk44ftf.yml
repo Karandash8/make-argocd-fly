@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+data:
+  init_2.sh: |-
+    #!/bin/bash
+
+    echo "init_2.sh executed"
+kind: ConfigMap
+metadata:
+  name: app-24-extra-files-2-config-kfkdk44ftf

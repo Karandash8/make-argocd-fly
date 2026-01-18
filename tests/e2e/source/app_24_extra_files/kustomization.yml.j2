@@ -1,0 +1,20 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+helmCharts:
+  - name: hello-world
+    namespace: {{ namespace }}
+    releaseName: hello-world
+    repo: https://helm.github.io/examples
+    version: {{ version }}
+    valuesInLine: {}
+
+configMapGenerator:
+  - name: app-24-extra-files-1-config
+    files:
+      - init_1.sh
+
+  - name: app-24-extra-files-2-config
+    files:
+      - subdir/init_2.sh

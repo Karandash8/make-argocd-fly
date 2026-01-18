@@ -3,11 +3,9 @@ import logging
 import os
 import yaml
 from yaml import SafeDumper
-from typing import Any, Final, NamedTuple
+from typing import Any, Final
 
-from make_argocd_fly.exception import InternalError, YamlObjectRequiredError
-from make_argocd_fly.resource.viewer import ResourceType
-from make_argocd_fly.param import ApplicationTypes
+from make_argocd_fly.exception import YamlObjectRequiredError
 
 log = logging.getLogger(__name__)
 
@@ -78,34 +76,3 @@ class YamlWriter(AbstractWriter):
 # Stateless singletons (safe to reuse across tasks)
 GENERIC_WRITER: Final[AbstractWriter] = GenericWriter()
 YAML_WRITER: Final[AbstractWriter] = YamlWriter()
-
-
-class WriterPlan(NamedTuple):
-  writer: AbstractWriter
-  use_yaml_obj: bool  # True => pass resource.yaml_obj; False => pass resource.data
-
-
-def plan_writer(app_type: ApplicationTypes,
-                res_type: ResourceType,
-                has_yaml_obj: bool) -> WriterPlan:
-  '''
-  Decide both the writer and which payload to pass.
-  Rules:
-    - GENERIC app type: always GenericWriter with raw data (never yaml_obj).
-    - Non-GENERIC app type:
-        * YAML => YamlWriter; payload is yaml_obj if available; otherwise still YAML writer
-          (if yaml_obj is unavailable, the caller will pass raw text to YamlWriter, which will raise YamlObjectRequiredError).
-        * Non-YAML => GenericWriter with raw data.
-    - DIRECTORY / DOES_NOT_EXIST: invalid to write.
-  '''
-  if app_type == ApplicationTypes.GENERIC:
-    return WriterPlan(GENERIC_WRITER, False)
-
-  if res_type in (ResourceType.DIRECTORY, ResourceType.DOES_NOT_EXIST):
-    log.error('Cannot write resource of type %s', res_type.name)
-    raise InternalError()
-
-  if res_type == ResourceType.YAML:
-    return WriterPlan(YAML_WRITER, has_yaml_obj)
-
-  return WriterPlan(GENERIC_WRITER, False)

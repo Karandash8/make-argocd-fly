@@ -9,12 +9,10 @@ from make_argocd_fly import default
 from make_argocd_fly.stage import DiscoverK8sAppOfAppsApplication, GenerateNames, _resolve_template_vars
 from make_argocd_fly.context import Context, ctx_set, ctx_get
 from make_argocd_fly.context.data import Resource
-from make_argocd_fly.resource.viewer import ResourceType, build_scoped_viewer
+from make_argocd_fly.resource.viewer import ResourceType
 from make_argocd_fly.config import populate_config
 from make_argocd_fly.util import check_lists_equal
-from make_argocd_fly.exception import InternalError
-from make_argocd_fly.limits import RuntimeLimits
-from make_argocd_fly.type import PipelineType
+from make_argocd_fly.type import PipelineType, WriterType
 
 ###################
 ### _resolve_template_vars
@@ -227,7 +225,12 @@ async def test_generatenames_k8s_simple_uses_k8s_policy_when_yaml_obj_ok(mocker)
   stage = _stage(PipelineType.K8S_SIMPLE)
 
   yaml_obj = {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'grafana', 'namespace': 'monitoring'}}
-  res = Resource(resource_type=ResourceType.YAML, data='...', origin='path/file.yaml', source_path='path/file.yaml', yaml_obj=yaml_obj)
+  res = Resource(resource_type=ResourceType.YAML,
+                 data='...',
+                 origin='path/file.yaml',
+                 source_path='path/file.yaml',
+                 yaml_obj=yaml_obj,
+                 writer_type=WriterType.K8S_YAML)
 
   ctx = _ctx()
   ctx_set(ctx, 'ns1.resources', [res])
@@ -287,7 +290,12 @@ async def test_generatenames_kustomize_routes_driver_files_to_source_policy(mock
 
   # a regular rendered manifest with yaml_obj, hence k8s policy
   obj = {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'api'}}
-  manifest = Resource(resource_type=ResourceType.YAML, data='...', origin='manifests/out.yaml', source_path='manifests/out.yaml', yaml_obj=obj)
+  manifest = Resource(resource_type=ResourceType.YAML,
+                      data='...',
+                      origin='manifests/out.yaml',
+                      source_path='manifests/out.yaml',
+                      yaml_obj=obj,
+                      writer_type=WriterType.K8S_YAML)
 
   ctx = _ctx()
   ctx_set(ctx, 'ns1.resources', [kustomization, values, manifest])
@@ -309,7 +317,12 @@ async def test_generatenames_helmfile_routes_driver_file_to_source_policy(mocker
 
   helmfile = Resource(resource_type=ResourceType.YAML, data='...', origin='helmfile.yaml', source_path='helmfile.yaml')
   obj = {'apiVersion': 'v1', 'kind': 'Service', 'metadata': {'name': 'web'}}
-  svc = Resource(resource_type=ResourceType.YAML, data='...', origin='templates/svc.yaml', source_path='templates/svc.yaml', yaml_obj=obj)
+  svc = Resource(resource_type=ResourceType.YAML,
+                 data='...',
+                 origin='templates/svc.yaml',
+                 source_path='templates/svc.yaml',
+                 yaml_obj=obj,
+                 writer_type=WriterType.K8S_YAML)
 
   ctx = _ctx()
   ctx_set(ctx, 'ns1.resources', [helmfile, svc])
@@ -331,8 +344,18 @@ async def test_generatenames_dedupes_conflicts_with_suffix(mocker):
   obj1 = {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'api'}}
   obj2 = {'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'api'}}
 
-  a = Resource(resource_type=ResourceType.YAML, data='...', origin='src/a.yaml', source_path='src/a.yaml', yaml_obj=obj1)
-  b = Resource(resource_type=ResourceType.YAML, data='...', origin='src/b.yaml', source_path='src/b.yaml', yaml_obj=obj2)
+  a = Resource(resource_type=ResourceType.YAML,
+               data='...',
+               origin='src/a.yaml',
+               source_path='src/a.yaml',
+               yaml_obj=obj1,
+               writer_type=WriterType.K8S_YAML)
+  b = Resource(resource_type=ResourceType.YAML,
+               data='...',
+               origin='src/b.yaml',
+               source_path='src/b.yaml',
+               yaml_obj=obj2,
+               writer_type=WriterType.K8S_YAML)
 
   ctx = _ctx()
   ctx_set(ctx, 'ns1.resources', [a, b])
@@ -356,7 +379,12 @@ async def test_generatenames_k8s_simple_uses_k8s_policy_when_yaml_has_special_ch
       name: "airbyte-test-connection"
   '''
   yaml_obj = yaml.load(yaml_str, Loader=SafeLoader)
-  res = Resource(resource_type=ResourceType.YAML, data='...', origin='path/file.yaml', source_path='path/file.yaml', yaml_obj=yaml_obj)
+  res = Resource(resource_type=ResourceType.YAML,
+                 data='...',
+                 origin='path/file.yaml',
+                 source_path='path/file.yaml',
+                 yaml_obj=yaml_obj,
+                 writer_type=WriterType.K8S_YAML)
 
   ctx = _ctx()
   ctx_set(ctx, 'ns1.resources', [res])
@@ -405,8 +433,12 @@ async def test_generatenames_kustomize_uses_dynamic_config_list_for_source_polic
 
   # Pretend this arbitrary path is flagged as a kustomize config file
   driver = Resource(resource_type=ResourceType.YAML, data='...', origin='custom/path/my-kustomize-driver.yml', source_path='custom/path/my-kustomize-driver.yml')
-  obj = Resource(resource_type=ResourceType.YAML, data='...', origin='manifests/app.yaml', source_path='manifests/app.yaml',
-                 yaml_obj={'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'api'}})
+  obj = Resource(resource_type=ResourceType.YAML,
+                 data='...',
+                 origin='manifests/app.yaml',
+                 source_path='manifests/app.yaml',
+                 yaml_obj={'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'api'}},
+                 writer_type=WriterType.K8S_YAML)
 
   ctx = _ctx()
   ctx_set(ctx, 'ns1.resources', [driver, obj])
@@ -426,8 +458,12 @@ async def test_generatenames_helmfile_uses_dynamic_config_list_for_source_policy
   stage = _stage(PipelineType.K8S_HELMFILE)
 
   driver = Resource(resource_type=ResourceType.YAML, data='...', origin='charts/root/helmfile-prod.yaml', source_path='charts/root/helmfile-prod.yaml')
-  obj = Resource(resource_type=ResourceType.YAML, data='...', origin='rendered/svc.yaml', source_path='rendered/svc.yaml',
-                 yaml_obj={'apiVersion': 'v1', 'kind': 'Service', 'metadata': {'name': 'web'}})
+  obj = Resource(resource_type=ResourceType.YAML,
+                 data='...',
+                 origin='rendered/svc.yaml',
+                 source_path='rendered/svc.yaml',
+                 yaml_obj={'apiVersion': 'v1', 'kind': 'Service', 'metadata': {'name': 'web'}},
+                 writer_type=WriterType.K8S_YAML)
 
   ctx = _ctx()
   ctx_set(ctx, 'ns1.resources', [driver, obj])
@@ -462,8 +498,12 @@ async def test_generatenames_k8s_app_of_apps_behaves_like_k8s_simple(mocker):
   _patch_get_config(mocker)
   stage = _stage(PipelineType.K8S_APP_OF_APPS)
 
-  good = Resource(resource_type=ResourceType.YAML, data='...', origin='a/cm.yaml', source_path='a/cm.yaml',
-                 yaml_obj={'apiVersion': 'v1', 'kind': 'Application', 'metadata': {'name': 'app'}})
+  good = Resource(resource_type=ResourceType.YAML,
+                 data='...',
+                 origin='a/cm.yaml',
+                 source_path='a/cm.yaml',
+                 yaml_obj={'apiVersion': 'v1', 'kind': 'Application', 'metadata': {'name': 'app'}},
+                 writer_type=WriterType.K8S_YAML)
   bad = Resource(resource_type=ResourceType.YAML, data='...', origin='b/cm.yaml', source_path='b/cm.yaml', yaml_obj=None)  # will be skipped
 
   ctx = _ctx()
