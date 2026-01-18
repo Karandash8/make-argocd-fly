@@ -12,7 +12,7 @@ This pattern is particularly useful for large projects with multiple microservic
 
 ## 🚀 Using `make-argocd-fly` for App-of-Apps
 
-`make-argocd-fly` simplifies implementation of the app-of-apps pattern by automatically generating necessary ArgoCD `Application` resources based on your configuration. You can define your applications and their relationships in a structured way, and `make-argocd-fly` will handle the generation of the appropriate YAML files for you.
+`make-argocd-fly` simplifies the implementation of the app-of-apps pattern by automatically generating the necessary ArgoCD `Application` resources based on your configuration. You can define your applications and their relationships in a structured way, and `make-argocd-fly` will handle the generation of the appropriate YAML files for you.
 
 ## 🛠️ Configuration Example
 
