@@ -658,6 +658,71 @@ def test_ResourceViewer__search_subresources__combined_template_and_excludes(tmp
                                    excludes=['env/patch*'])
   assert _paths(tpl) == ['env/values.yml.j2']
 
+def test_ResourceViewer__search_subresources__include_by_prefix(tmp_path):
+  root = tmp_path / 'src'
+  _write(root / 'a' / 'config.yml', 'k: v')
+  _write(root / 'a' / 'other.yml', 'k: v')
+  _write(root / 'b' / 'sub' / 'keep.yml', 'k: v')
+
+  viewer = build_scoped_viewer(str(root))
+
+  children = viewer.search_subresources(resource_types=[ResourceType.YAML],
+                                        template=False,
+                                        includes=['a'])
+
+  assert _paths(children) == [
+    'a/config.yml',
+    'a/other.yml',
+  ]
+
+def test_ResourceViewer__search_subresources__include_by_glob(tmp_path):
+  root = tmp_path / 'src'
+  _write(root / 'a' / 'config.yml', 'k: v')
+  _write(root / 'a' / 'config-prod.yml', 'k: v')
+  _write(root / 'a' / 'notes.txt', 'n/a')
+  _write(root / 'b' / 'config-prod.yml', 'k: v')
+
+  viewer = build_scoped_viewer(str(root))
+
+  children = viewer.search_subresources(resource_types=[ResourceType.YAML],
+                                        template=False,
+                                        includes=['**/*prod*'])
+
+  assert _paths(children) == [
+    'a/config-prod.yml',
+    'b/config-prod.yml',
+  ]
+
+def test_ResourceViewer__search_subresources__include_and_exclude_combined(tmp_path):
+  root = tmp_path / 'src'
+  _write(root / 'env' / 'values.yml', 'k: v')
+  _write(root / 'env' / 'secret.yml', 'k: v')
+  _write(root / 'env' / 'secret-values.yml', 'k: v')
+  _write(root / 'other' / 'values.yml', 'k: v')
+
+  viewer = build_scoped_viewer(str(root))
+
+  children = viewer.search_subresources(resource_types=[ResourceType.YAML],
+                                        template=False,
+                                        includes=['env/**'],
+                                        excludes=['**/secret*'])
+
+  assert _paths(children) == ['env/values.yml']
+
+def test_ResourceViewer__search_subresources__include_limits_to_yaml_templates(tmp_path):
+  root = tmp_path / 'src'
+  _write(root / 'env' / 'tpl.yml.j2', 'k: {{ v }}')
+  _write(root / 'env' / 'tpl.txt.j2', 'plain')
+  _write(root / 'env' / 'plain.yml', 'k: v')
+
+  viewer = build_scoped_viewer(str(root))
+
+  # template=True + YAML types + include should still behave predictably
+  tpl = viewer.search_subresources(resource_types=[ResourceType.YAML],
+                                   template=True,
+                                   includes=['env/**'])
+  assert _paths(tpl) == ['env/tpl.yml.j2']
+
 ##################
 ### GenericWriter
 ##################
