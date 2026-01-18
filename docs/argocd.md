@@ -45,7 +45,7 @@ vars:
     ignoreDifferences: <argocd_ignoreDifferences>  ## (OPTIONAL) default: []
 ```
 
-Parameters `parent_app` and `parent_app_env` are used to define the parent application and its environment for each child application. This allows you to create a hierarchy where the bootstrap application manages deployment of other applications.
+Parameters `parent_app` and `parent_app_env` are used to define the parent application and its environment for each child application. This allows you to create a hierarchy where the bootstrap application manages the deployment of other applications.
 
 ## Local vs ArgoCD
 
