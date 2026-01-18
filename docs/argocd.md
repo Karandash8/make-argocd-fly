@@ -2,7 +2,7 @@
 
 This document explains how to use `make-argocd-fly` to implement the ArgoCD app-of-apps pattern, which allows you to manage multiple applications in a Kubernetes cluster using ArgoCD.
 
-The app-of-apps pattern is a powerful way to structure your applications in a hierarchical manner, where one top-level application (the "bootstrap" application) manages the deployment of other applications. This approach simplifies management of complex deployments and allows for better organization of resources.
+The app-of-apps pattern is a powerful way to structure your applications in a hierarchical manner, where one top-level application (the "bootstrap" application) manages the deployment of other applications. This approach simplifies the management of complex deployments and allows for better organization of resources.
 
 ## 🎯 What is the App-of-Apps Pattern?
 
