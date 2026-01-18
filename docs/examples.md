@@ -88,16 +88,16 @@ kind delete cluster --name local-kind
 
 ## 🧠 Why This Example Matters
 
-### 🧩 Rendered Manifest Pattern
+### Rendered Manifest Pattern
 This example demonstrates the **Rendered Manifest Pattern**, where manifests are **fully generated and version-controlled** before deployment.
 You can inspect, lint, and diff them — ensuring clarity about what gets deployed.
 
-### 🧰 Flexible Deployment Model
+### Flexible Deployment Model
 `make-argocd-fly` supports **both** deployment models:
 - **Local flows:** render + deploy with `kubectl` — no ArgoCD needed.
 - **GitOps flows:** render + commit + let ArgoCD deploy from the repository.
 
-### 🏗 Same Configuration, Multiple Environments
+### Same Configuration, Multiple Environments
 The exact same configuration can target multiple environments:
 - For `local`, no ArgoCD CRs are generated; manifests are applied manually.
 - For `dev`, `staging`, or `prod`, you define separate environments in `config/*.yml` and optionally use `parent_app` relations to generate ArgoCD `Application` CRs automatically.

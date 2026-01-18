@@ -2,7 +2,7 @@
 
 This document explains how to use `make-argocd-fly` to implement the ArgoCD app-of-apps pattern, which allows you to manage multiple applications in a Kubernetes cluster using ArgoCD.
 
-The app-of-apps pattern is a powerful way to structure your applications in a hierarchical manner, where one top-level application (the "bootstrap" application) manages the deployment of other applications. This approach simplifies the management of complex deployments and allows for better organization of resources.
+The app-of-apps pattern is a powerful way to structure your applications in a hierarchical manner, where one top-level application (the "bootstrap" application) manages the deployment of other applications. This approach simplifies management of complex deployments and allows for better organization of resources.
 
 ## 🎯 What is the App-of-Apps Pattern?
 
@@ -12,7 +12,7 @@ This pattern is particularly useful for large projects with multiple microservic
 
 ## 🚀 Using `make-argocd-fly` for App-of-Apps
 
-`make-argocd-fly` simplifies the implementation of the app-of-apps pattern by automatically generating the necessary ArgoCD `Application` resources based on your configuration. You can define your applications and their relationships in a structured way, and `make-argocd-fly` will handle the generation of the appropriate YAML files for you.
+`make-argocd-fly` simplifies implementation of the app-of-apps pattern by automatically generating necessary ArgoCD `Application` resources based on your configuration. You can define your applications and their relationships in a structured way, and `make-argocd-fly` will handle the generation of the appropriate YAML files for you.
 
 ## 🛠️ Configuration Example
 
@@ -45,27 +45,7 @@ vars:
     ignoreDifferences: <argocd_ignoreDifferences>  ## (OPTIONAL) default: []
 ```
 
-Parameters `parent_app` and `parent_app_env` are used to define the parent application and its environment for each child application. This allows you to create a hierarchy where the bootstrap application manages the deployment of other applications.
-
----
-
-## 🧩 Rendered Manifest Pattern
-
-The [Rendered Manifest Pattern](https://www.youtube.com/watch?v=TonN-369Qfo) addresses common challenges of using Helm or Kustomize directly inside ArgoCD.
-
-### The problem with in-cluster rendering
-- Version drift between clusters or plugin versions
-- Difficult debugging, since you don’t see the rendered YAML
-- Diffs in Git don’t reflect the actual resources being applied
-- No easy way to run linters or policy checks on manifests before deploy
-
-### How `make-argocd-fly` solves it
-- Renders all templates **ahead of time**, outside the cluster
-- Stores the rendered manifests in Git, per environment
-- Generates ArgoCD `Application` resources that point only to plain YAML
-- Ensures that what you review in Git is exactly what gets deployed
-
-By adopting this pattern with `make-argocd-fly`, you get a workflow that is **deterministic, auditable, and CI/CD friendly**, while keeping ArgoCD focused purely on syncing Kubernetes manifests.
+Parameters `parent_app` and `parent_app_env` are used to define the parent application and its environment for each child application. This allows you to create a hierarchy where the bootstrap application manages deployment of other applications.
 
 ## Local vs ArgoCD
 
@@ -77,4 +57,4 @@ By adopting this pattern with `make-argocd-fly`, you get a workflow that is **de
 | Works offline | ✅ | ❌ |
 | Best for | quick local testing | managed GitOps in clusters |
 
-For real environments (`dev`, `staging`, `prod`), define separate environments and (optionally) `parent_app` relations to generate ArgoCD `Application` CRs. For `local`, deploy the rendered YAML via `kubectl`.
+For real environments (`dev`, `staging`, `prod`), define separate environments and (optionally) `parent_app` relations to generate ArgoCD `Application` CRs. For `local`, deploy rendered YAMLs via `kubectl`.

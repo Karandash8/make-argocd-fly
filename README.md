@@ -53,22 +53,22 @@ It automates rendering of Helm charts, Kustomize overlays, and Jinja2 templates,
 
 ## 💡 Key Features
 
-* ✅ **Helm rendering**
+* **Helm rendering**
 Render Helm charts into raw manifests.
 
-* ✅ **Kustomize overlays**
+* **Kustomize overlays**
 Render Kustomize overlays into fully resolved Kubernetes manifests. See the full, flattened configuration before deployment.
 
-* ✅ **Jinja2 templating**
+* **Jinja2 templating**
 Use variables, logic, and partials to build composable app definitions.
 
-* ✅ **Multi-environment support**
+* **Multi-environment support**
 Define once and deploy to multiple environments (e.g. `dev`, `staging`, `prod`) with clean separation of concerns.
 
-* ✅ **ArgoCD Application generation**
+* **ArgoCD Application generation**
 Automatically generate Application CRs based on your configuration and environment layout.
 
-* ✅ **Repeatable & Git-friendly**
+* **Repeatable & Git-friendly**
 Fully GitOps-compatible. Output is deterministic and fits naturally into pull request workflows.
 
 ---

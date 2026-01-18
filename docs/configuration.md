@@ -56,7 +56,19 @@ The scope of parameters and variables determines their visibility and accessibil
 - **Environment**: Accessible within a specific environment and its applications.
 - **Application**: Accessible only within a specific application.
 
-If a variable is defined at multiple levels, the most specific level takes precedence. Variables cascade from `global -> environment -> application`, with more specific values overriding broader ones.
+```yaml
+envs:
+  <env_name>:
+    apps:
+      <app_name>:
+        params: {...}
+        vars:   {...}
+    vars: {...}
+vars: {...}
+```
+_Precedence_: `global < environment < application`.
+
+If a variable is defined at multiple levels, the most specific level takes precedence.
 
 In order to unset a variable or a key of a dictionary variable in a more specific scope, you can set it to `null`.
 
@@ -67,7 +79,8 @@ Available parameters include:
 
 - `parent_app`: The parent application for the current application.
 - `parent_app_env`: The environment of the parent application.
-- `non_k8s_files_to_render`: A list of non-Kubernetes files to render (e.g., `values.yml` file for a Helm chart).
+- `app_type`: The type of the application (`k8s` or `generic`).
+- `non_k8s_files_to_render`: A list of non-Kubernetes files to render.
 - `exclude_rendering`: A list of files to exclude from rendering.
 
 ## 🧩 Variables
@@ -96,18 +109,3 @@ Variables can reference other variables in the config files, using the following
 
 Variable references can also be embedded within strings:
 - ```prefix-${var_name}-suffix```
-
----
-
-## Schema Overview
-```yaml
-envs:
-  <env_name>:
-    apps:
-      <app_name>:
-        params: {...}
-        vars:   {...}
-    vars: {...}
-vars: {...}
-```
-_Precedence_: `global < environment < application`.
