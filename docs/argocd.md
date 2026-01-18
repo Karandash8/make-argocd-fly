@@ -57,4 +57,4 @@ Parameters `parent_app` and `parent_app_env` are used to define the parent appli
 | Works offline | ✅ | ❌ |
 | Best for | quick local testing | managed GitOps in clusters |
 
-For real environments (`dev`, `staging`, `prod`), define separate environments and (optionally) `parent_app` relations to generate ArgoCD `Application` CRs. For `local`, deploy rendered YAMLs via `kubectl`.
+For real environments (`dev`, `staging`, `prod`), define separate environments and (optionally) `parent_app` relations to generate ArgoCD `Application` CRs. For `local`, deploy the rendered YAML files via `kubectl`.
