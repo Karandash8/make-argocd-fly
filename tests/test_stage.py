@@ -13,6 +13,7 @@ from make_argocd_fly.resource.viewer import ResourceType
 from make_argocd_fly.config import populate_config
 from make_argocd_fly.util import check_lists_equal
 from make_argocd_fly.type import PipelineType, WriterType
+from make_argocd_fly.param import Params
 
 ###################
 ### _resolve_template_vars
@@ -48,6 +49,9 @@ def test__resolve_template_vars__no_vars(mocker):
 ### DiscoverK8sAppOfAppsApplication
 ###################
 
+def _get_params() -> Params:
+    return Params()
+
 @pytest.mark.asyncio
 async def test_DiscoverK8sAppOfAppsApplication__run__single_app_same_env(tmp_path):
   CONFIG = '''\
@@ -77,7 +81,7 @@ async def test_DiscoverK8sAppOfAppsApplication__run__single_app_same_env(tmp_pat
 
   parent_app_env_name = "test_env"
   parent_app_name = "bootstrap"
-  ctx = Context(parent_app_env_name, parent_app_name)
+  ctx = Context(parent_app_env_name, parent_app_name, _get_params())
   stage = DiscoverK8sAppOfAppsApplication(
     requires={},
     provides={'templated_resources': 'discovered.templated_resources', 'output_dir': 'discovered.output_dir'},
@@ -128,7 +132,7 @@ async def test_DiscoverK8sAppOfAppsApplication__run__multiple_apps_same_env(tmp_
 
   parent_app_name = "bootstrap"
   parent_app_env_name = "test_env"
-  ctx = Context(parent_app_env_name, parent_app_name)
+  ctx = Context(parent_app_env_name, parent_app_name, _get_params())
   stage = DiscoverK8sAppOfAppsApplication(
     requires={},
     provides={'templated_resources': 'discovered.templated_resources', 'output_dir': 'discovered.output_dir'},
@@ -182,7 +186,7 @@ async def test_DiscoverK8sAppOfAppsApplication__run__multiple_apps_different_env
 
   parent_app_name = "bootstrap"
   parent_app_env_name = "test_env"
-  ctx = Context(parent_app_env_name, parent_app_name)
+  ctx = Context(parent_app_env_name, parent_app_name, _get_params())
   stage = DiscoverK8sAppOfAppsApplication(
     requires={},
     provides={'templated_resources': 'discovered.templated_resources', 'output_dir': 'discovered.output_dir'},
@@ -201,7 +205,7 @@ async def test_DiscoverK8sAppOfAppsApplication__run__multiple_apps_different_env
 ###################
 
 def _ctx():
-  return Context('my_env', 'my_app')
+  return Context('my_env', 'my_app', _get_params())
 
 
 def _stage(pipeline_kind: PipelineType):

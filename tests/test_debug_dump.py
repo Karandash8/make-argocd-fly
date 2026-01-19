@@ -8,6 +8,7 @@ import pytest
 from make_argocd_fly import default
 from make_argocd_fly.context import Context, ctx_set
 from make_argocd_fly.debug_dump import _serialize_debug, StageContextDumper
+from make_argocd_fly.param import Params
 
 
 ###################
@@ -70,8 +71,11 @@ def _patch_get_config(tmp_path, mocker):
 ### StageContextDumper.enabled == False
 ###################
 
+def _get_params() -> Params:
+    return Params()
+
 def test_StageContextDumper__disabled_is_noop():
-  ctx = Context('env', 'app')
+  ctx = Context('env', 'app', _get_params())
   dumper = StageContextDumper(enabled=False, ctx=ctx)
 
   # dump_root should not be initialised
@@ -91,7 +95,7 @@ def test_StageContextDumper__dump_success_writes_json(tmp_path, mocker):
 
   env_name = 'env1'
   app_name = 'app1'
-  ctx = Context(env_name, app_name)
+  ctx = Context(env_name, app_name, _get_params())
   # Simulate that one stage already ran and updated trace
   ctx.trace.append({'stage': 'Prev', 'ms': 1.23})
 
@@ -131,7 +135,7 @@ def test_StageContextDumper__dump_success_handles_resolve_and_ctx_get_errors(tmp
 
   env_name = 'env'
   app_name = 'app'
-  ctx = Context(env_name, app_name)
+  ctx = Context(env_name, app_name, _get_params())
   ctx.trace.append({'stage': 'S', 'ms': 10.0})
 
   stage = _DummyStage(
@@ -169,7 +173,7 @@ def test_StageContextDumper__dump_success_file_write_failure_is_logged_not_raise
 
   env_name = 'env'
   app_name = 'app'
-  ctx = Context(env_name, app_name)
+  ctx = Context(env_name, app_name, _get_params())
   ctx.trace.append({'stage': 'S', 'ms': 5.0})
 
   ctx_set(ctx, 'in_ns.value', 1)
@@ -203,7 +207,7 @@ def test_StageContextDumper__dump_error_writes_json(tmp_path, mocker):
 
   env_name = 'env'
   app_name = 'app'
-  ctx = Context(env_name, app_name)
+  ctx = Context(env_name, app_name, _get_params())
   # No trace entries yet -> index 00
   assert len(ctx.trace) == 0
 
@@ -237,7 +241,7 @@ def test_StageContextDumper__dump_error_file_write_failure_is_logged_not_raised(
 
   env_name = 'env'
   app_name = 'app'
-  ctx = Context(env_name, app_name)
+  ctx = Context(env_name, app_name, _get_params())
   ctx.trace.append({'stage': 'S', 'ms': 5.0})
 
   ctx_set(ctx, 'in_ns.value', 1)

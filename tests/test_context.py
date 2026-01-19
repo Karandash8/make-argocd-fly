@@ -1,13 +1,17 @@
 import pytest
 from make_argocd_fly.context import NS, Context, ctx_get, ctx_set
+from make_argocd_fly.param import Params
 
+
+def _get_params() -> Params:
+    return Params()
 
 ##################
 ### Context
 ##################
 
 def test_Context__ns() -> None:
-    ctx = Context("test_env", "test_app")
+    ctx = Context("test_env", "test_app", _get_params())
     ns = ctx.ns("test_ns")
 
     assert ctx.env_name == "test_env"
@@ -19,7 +23,7 @@ def test_Context__ns() -> None:
 ##################
 
 def test_ctx__get() -> None:
-    ctx = Context("test_env", "test_app")
+    ctx = Context("test_env", "test_app", _get_params())
     ns = ctx.ns("test_ns")
     ns.data["key"] = "value"
 
@@ -32,7 +36,7 @@ def test_ctx__get() -> None:
 ##################
 
 def test_ctx__set() -> None:
-    ctx = Context("test_env", "test_app")
+    ctx = Context("test_env", "test_app", _get_params())
 
     ctx_set(ctx, "test_ns.key", "value")
     ns = ctx.ns("test_ns")

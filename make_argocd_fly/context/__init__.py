@@ -2,6 +2,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from make_argocd_fly.param import Params
+
 
 log = logging.getLogger(__name__)
 
@@ -12,9 +14,10 @@ class NS:
 
 
 class Context:
-  def __init__(self, env_name: str, app_name: str):
+  def __init__(self, env_name: str, app_name: str, params: Params):
     self.env_name = env_name
     self.app_name = app_name
+    self.params = params
     self.trace: list[dict] = []
     self._ns: dict[str, NS] = {}
 

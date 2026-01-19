@@ -255,14 +255,13 @@ def _build_pipeline(kind: PipelineType, limits: RuntimeLimits) -> Pipeline:
 
 def build_pipeline(ctx: Context, limits: RuntimeLimits, viewer: ScopedViewer) -> Pipeline:
   config = get_config()
-  params = config.get_params(ctx.env_name, ctx.app_name)
 
-  if params.app_type == ApplicationTypes.K8S:
+  if ctx.params.app_type == ApplicationTypes.K8S:
     try:
       viewer = viewer.go_to(ctx.app_name)
       ctx_set(ctx, 'source.viewer', viewer)
 
-      exclude_rendering = ensure_list(params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
+      exclude_rendering = ensure_list(ctx.params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
       kustomize_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML],
                                                            name_pattern='kustomization|Kustomization',
                                                            search_subdirs=['.', 'base'] + config.list_envs(),
@@ -272,7 +271,6 @@ def build_pipeline(ctx: Context, limits: RuntimeLimits, viewer: ScopedViewer) ->
                                                           name_pattern='helmfile',
                                                           depth=1,
                                                           excludes=exclude_rendering))
-
       if kustomize_children:
         return _build_pipeline(PipelineType.K8S_KUSTOMIZE, limits)
       elif helmfile_children:
@@ -281,12 +279,12 @@ def build_pipeline(ctx: Context, limits: RuntimeLimits, viewer: ScopedViewer) ->
         return _build_pipeline(PipelineType.K8S_SIMPLE, limits)
     except PathDoesNotExistError:
       return _build_pipeline(PipelineType.K8S_APP_OF_APPS, limits)
-  elif params.app_type == ApplicationTypes.GENERIC:
+  elif ctx.params.app_type == ApplicationTypes.GENERIC:
     viewer = viewer.go_to(ctx.app_name)
     ctx_set(ctx, 'source.viewer', viewer)
 
     return _build_pipeline(PipelineType.GENERIC, limits)
   else:
-    log.error(f'Unknown application type \'{params.app_type}\' in application {ctx.app_name} in environment {ctx.env_name}.'
+    log.error(f'Unknown application type \'{ctx.params.app_type}\' in application {ctx.app_name} in environment {ctx.env_name}.'
               f' Valid types are: {[t.value for t in ApplicationTypes]}')
     raise ConfigFileError()

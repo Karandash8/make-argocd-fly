@@ -162,10 +162,9 @@ class DiscoverK8sSimpleApplication(Stage):
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
     config = get_config()
-    app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
 
-    exclude_rendering = ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
+    exclude_rendering = ensure_list(ctx.params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
 
     out_resources = _discover_resources(viewer,
@@ -193,7 +192,6 @@ class DiscoverK8sKustomizeApplication(Stage):
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
     config = get_config()
-    app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
 
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
@@ -214,8 +212,8 @@ class DiscoverK8sKustomizeApplication(Stage):
 
     search_subdirs = candidate_subdirs or None
 
-    non_k8s_files = ensure_list(app_params.non_k8s_files_to_render, ParamNames.NON_K8S_FILES_TO_RENDER)
-    exclude_rendering = ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
+    non_k8s_files = ensure_list(ctx.params.non_k8s_files_to_render, ParamNames.NON_K8S_FILES_TO_RENDER)
+    exclude_rendering = ensure_list(ctx.params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
 
     # 1) regular YAML resources (non-template), exclude both lists
     out_resources = _discover_resources(viewer,
@@ -287,10 +285,9 @@ class DiscoverK8sHelmfileApplication(Stage):
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
     config = get_config()
-    app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
 
-    exclude_rendering = ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
+    exclude_rendering = ensure_list(ctx.params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
 
     out_resources = _discover_resources(viewer,
@@ -323,12 +320,12 @@ class DiscoverK8sAppOfAppsApplication(Stage):
     discovered_apps = []
     for env_name in config.list_envs():
       for app_name in config.list_apps(env_name):
-        app_params = config.get_params(env_name, app_name)
+        params = config.get_params(env_name, app_name)
 
-        if app_params.parent_app:
-          if (app_params.parent_app == ctx.app_name and
-              ((app_params.parent_app_env is None and env_name == ctx.env_name) or
-                (app_params.parent_app_env is not None and app_params.parent_app_env == ctx.env_name))):
+        if params.parent_app:
+          if (params.parent_app == ctx.app_name and
+              ((params.parent_app_env is None and env_name == ctx.env_name) or
+                (params.parent_app_env is not None and params.parent_app_env == ctx.env_name))):
             discovered_apps.append((env_name, app_name))
 
     out_templated_resources = []
@@ -363,10 +360,9 @@ class DiscoverGenericApplication(Stage):
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
     config = get_config()
-    app_params = get_config().get_params(ctx.env_name, ctx.app_name)
     viewer = ctx_get(ctx, self.requires['viewer'])
 
-    exclude_rendering = ensure_list(app_params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
+    exclude_rendering = ensure_list(ctx.params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
 
     all_file_types = [resource_type for resource_type in ResourceType if

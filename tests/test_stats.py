@@ -5,6 +5,7 @@ from make_argocd_fly.stats import StageStats, _collect, print_stats
 from make_argocd_fly.context import Context
 from make_argocd_fly.pipeline import Pipeline
 from make_argocd_fly.type import PipelineType
+from make_argocd_fly.param import Params
 
 
 ###################
@@ -38,13 +39,16 @@ def test_StageStats__multiple_samples():
 ### _collect
 ###################
 
+def _get_params() -> Params:
+    return Params()
+
 def test__collect__groups_by_pipeline_and_stage_index():
   # Two apps of the same pipeline type, with two stages each
-  ctx1 = Context('env1', 'app1')
+  ctx1 = Context('env1', 'app1', _get_params())
   ctx1.trace.append({'stage': 'StageA', 'index': 0, 'ms': 10.0})
   ctx1.trace.append({'stage': 'StageB', 'index': 1, 'ms': 20.0})
 
-  ctx2 = Context('env1', 'app2')
+  ctx2 = Context('env1', 'app2', _get_params())
   ctx2.trace.append({'stage': 'StageA', 'index': 0, 'ms': 40.0})
   ctx2.trace.append({'stage': 'StageB', 'index': 1, 'ms': 80.0})
 
@@ -90,7 +94,7 @@ def test_print_stats__no_apps_logs_message(caplog):
 def test_print_stats__logs_summary_and_stage_lines(caplog):
   caplog.set_level(logging.INFO)
 
-  ctx = Context('env1', 'app1')
+  ctx = Context('env1', 'app1', _get_params())
   # single stage, deterministic timing
   ctx.trace.append({'stage': 'MyStage', 'index': 0, 'ms': 50.0})
 

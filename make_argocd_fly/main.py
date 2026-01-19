@@ -48,7 +48,7 @@ async def generate() -> None:
   log.info('Creating applications')
   for env_name in config.list_filtered_envs():
     for app_name in config.list_filtered_apps(env_name):
-      ctx = Context(env_name, app_name)
+      ctx = Context(env_name, app_name, params=config.get_params(env_name, app_name))
       pipeline = build_pipeline(ctx, limits, viewer)
 
       apps.append((pipeline, ctx))
