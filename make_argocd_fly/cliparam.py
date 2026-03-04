@@ -15,9 +15,9 @@ class CLIParams:
     self.tmp_dir = default.TMP_DIR
     self.render_apps = None
     self.render_envs = None
-    self.skip_generate = False
+    self.skip_generate = False  # TODO: to be deprecated
     self.preserve_tmp_dir = False
-    self.remove_output_dir = False
+    self.remove_output_dir = False  # TODO: to be removed
     self.print_vars = False
     self.var_identifier = default.VAR_IDENTIFIER
     self.skip_latest_version_check = False

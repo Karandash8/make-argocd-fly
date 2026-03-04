@@ -21,3 +21,7 @@ Existing Jinja2 extensions were renamed in order to make their function more cle
 ## `v0.4.4`
 ### Variables debugging CLI parameter deprecation
 `--print-vars` CLI parameter is deprecated and will be removed in the future. Use `--dump-context` parameter instead to dump the entire relevant context including variables.
+
+## `v0.4.6`
+### Output directory removal CLI parameter deprecation
+`--remove-output-dir` CLI parameter is deprecated and will be removed in the future. The output directory is now fully regenerated when no filters are applied, so there is no need to remove it before rendering.

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 from make_argocd_fly.config import populate_config, get_config, Config, ConfigKeywords
 from make_argocd_fly.exception import ConfigFileError, InternalError
 from make_argocd_fly.util import check_lists_equal
+from make_argocd_fly import default
 
 
 ##################
@@ -31,7 +32,8 @@ def test_populate_config__default_values(tmp_path):
 
   assert isinstance(config, Config)
   assert config.source_dir == str(source_dir_path)
-  assert config.output_dir == str(root_dir / output_dir)
+  assert config.runtime_output_dir == str(root_dir / f'{default.RUNTIME_DIR_PREFIX}{output_dir}')
+  assert config.final_output_dir == str(root_dir / output_dir)
   assert config.tmp_dir == str(root_dir / tmp_dir)
 
 def test_populate_config__non_default_values(tmp_path):
@@ -59,7 +61,8 @@ def test_populate_config__non_default_values(tmp_path):
 
   assert isinstance(config, Config)
   assert config.source_dir == str(source_dir_path)
-  assert config.output_dir == str(root_dir / output_dir)
+  assert config.runtime_output_dir == str(root_dir / f'{default.RUNTIME_DIR_PREFIX}{output_dir}')
+  assert config.final_output_dir == str(root_dir / output_dir)
   assert config.tmp_dir == str(root_dir / tmp_dir)
 
 def test_populate_config__missing_source_dir(tmp_path):
@@ -83,7 +86,10 @@ def test_populate_config__not_populated_config(tmp_path):
     config.source_dir
 
   with pytest.raises(InternalError):
-    config.output_dir
+    config.runtime_output_dir
+
+  with pytest.raises(InternalError):
+    config.final_output_dir
 
   with pytest.raises(InternalError):
     config.tmp_dir
