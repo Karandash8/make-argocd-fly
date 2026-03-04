@@ -111,6 +111,7 @@ def cleanup() -> None:
 def deprecation_warning() -> None:
   pass
 
+
 def main(**kwargs) -> None:  # noqa: C901
   try:
     if kwargs.get('remove_output_dir'):
