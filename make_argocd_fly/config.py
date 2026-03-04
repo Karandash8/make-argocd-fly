@@ -92,7 +92,7 @@ class Config:
     envs = self.list_envs()
     render_envs = self.cli_params.render_envs
 
-    if not render_envs:
+    if render_envs is None:
       return envs
 
     selected = set(render_envs.split(','))
@@ -114,7 +114,7 @@ class Config:
     """Return apps in env filtered according to --render-apps, if provided."""
     apps = self.list_apps(env_name)
     render_apps = self.cli_params.render_apps
-    if not render_apps:
+    if render_apps is None:
       return apps
 
     selected = set(render_apps.split(','))
