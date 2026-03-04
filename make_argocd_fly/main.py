@@ -103,8 +103,11 @@ def cleanup() -> None:
   cli_params = get_cli_params()
 
   if not cli_params.preserve_tmp_dir and not cli_params.dump_context:
-    remove_dir(config.tmp_dir)
-    remove_dir(config.runtime_output_dir)
+    try:
+      remove_dir(config.tmp_dir)
+      remove_dir(config.runtime_output_dir)
+    except InternalError:
+      log.warning('Error during cleanup, some temporary files may be left behind')
 
 
 @deprecated(version='v0.4.6', reason='`--remove-output-dir` is deprecated, output directory is fully regenerated when no filters are applied')
