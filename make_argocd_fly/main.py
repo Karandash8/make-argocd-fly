@@ -1,19 +1,18 @@
 import logging
-import logging.config
-import os
 import argparse
 import time
-import shutil
 import asyncio
 import subprocess
 import yamllint
+from deprecated import deprecated
 
 from make_argocd_fly import default
 from make_argocd_fly.warning import init_warnings
 from make_argocd_fly.resource.viewer import build_scoped_viewer
 from make_argocd_fly.cliparam import populate_cli_params, get_cli_params
 from make_argocd_fly.config import populate_config, get_config
-from make_argocd_fly.util import init_logging, latest_version_check, get_package_name, get_current_version
+from make_argocd_fly.util import (init_logging, latest_version_check, get_package_name, get_current_version,
+                                  remove_dir, move_dir, copy_dir)
 from make_argocd_fly.exception import (TemplateRenderingError, YamlError, InternalError, ConfigFileError, KustomizeError,
                                        PathDoesNotExistError, HelmfileError)
 from make_argocd_fly.pipeline import build_pipeline
@@ -76,7 +75,7 @@ def run_yamllint() -> None:
 
   log.info('Running yamllint')
   config = get_config()
-  process = subprocess.Popen(['yamllint', '-d', '{extends: default, rules: {line-length: disable}}', config.output_dir],
+  process = subprocess.Popen(['yamllint', '-d', '{extends: default, rules: {line-length: disable}}', config.final_output_dir],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                              universal_newlines=True)
   stdout, _ = process.communicate()
@@ -90,7 +89,7 @@ def run_kube_linter() -> None:
 
   log.info('Running kube-linter')
   config = get_config()
-  process = subprocess.Popen(['kube-linter', 'lint', config.output_dir],
+  process = subprocess.Popen(['kube-linter', 'lint', config.final_output_dir],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                              universal_newlines=True)
   stdout, stderr = process.communicate()
@@ -99,47 +98,88 @@ def run_kube_linter() -> None:
   log.info(stderr)
 
 
-def remove_dir(dir: str) -> None:
-  if os.path.exists(dir):
-    shutil.rmtree(dir)
+def cleanup() -> None:
+  config = get_config()
+  cli_params = get_cli_params()
+
+  if not cli_params.preserve_tmp_dir and not cli_params.dump_context:
+    try:
+      remove_dir(config.tmp_dir)
+      remove_dir(config.runtime_output_dir)
+    except InternalError:
+      log.warning('Error during cleanup, some temporary files may be left behind')
+
+
+@deprecated(version='v0.4.6', reason='`--remove-output-dir` is deprecated, output directory is fully regenerated when no filters are applied')
+def deprecation_warning() -> None:
+  pass
 
 
 def main(**kwargs) -> None:  # noqa: C901
   try:
+    if kwargs.get('remove_output_dir'):
+      deprecation_warning()
+
     cli_params = populate_cli_params(**kwargs)
-    config = populate_config(cli_params.root_dir, cli_params.config_dir, cli_params.source_dir,
-                             cli_params.output_dir, cli_params.tmp_dir)
+    config = populate_config(cli_params.root_dir,
+                             cli_params.config_dir,
+                             cli_params.source_dir,
+                             cli_params.output_dir,
+                             cli_params.tmp_dir)
 
     latest_version_check()
-    remove_dir(config.tmp_dir)
 
+    full_run = not cli_params.render_envs and not cli_params.render_apps
+    old_output_dir = f'{config.final_output_dir}{default.OLD_OUTPUT_DIR_SUFFIX}'
+
+    remove_dir(config.tmp_dir)
+    remove_dir(config.runtime_output_dir)
+    remove_dir(old_output_dir)
+
+    # TO BE REMOVED
     if cli_params.remove_output_dir:
       log.info('Wiping output directory')
-      remove_dir(config.output_dir)
+      full_run = True
 
+    if not full_run:
+      log.debug('Partial run: copying existing output directory to preserve unchanged applications')
+      copy_dir(config.final_output_dir, config.runtime_output_dir)
+
+    # TO BE DEPRECATED
+    did_generate = False
     if not cli_params.skip_generate:
       asyncio.run(generate())
+      did_generate = True
 
-    if not cli_params.preserve_tmp_dir and not cli_params.dump_context:
-      remove_dir(config.tmp_dir)
+    if did_generate:
+      move_dir(config.final_output_dir, old_output_dir)
+      move_dir(config.runtime_output_dir, config.final_output_dir)
+      remove_dir(old_output_dir)
+
+    cleanup()
 
     # TODO: it does not make sense to write yamls on disk and then read them again to run through linters
     run_yamllint()
     run_kube_linter()
   except (TemplateRenderingError, YamlError, KustomizeError, HelmfileError) as e:
     log.critical(f'Error generating application {e.app_name} in environment {e.env_name}')
+    cleanup()
     exit(1)
   except InternalError:
     log.critical('Internal error')
+    cleanup()
     exit(1)
   except ConfigFileError:
     log.critical('Config file error')
+    cleanup()
     exit(1)
   except PathDoesNotExistError as e:
     log.critical(f'Path does not exist {e.path}')
+    cleanup()
     exit(1)
   except FileNotFoundError as e:
     log.critical(f'File or directory not found {e.filename}')
+    cleanup()
     exit(1)
   except Exception as e:
     raise e
@@ -156,7 +196,7 @@ def cli_entry_point() -> None:
   parser.add_argument('--render-envs', type=str, default=None, help='Comma separate list of environments to render')
   parser.add_argument('--skip-generate', action='store_true', help='Skip resource generation')
   parser.add_argument('--preserve-tmp-dir', action='store_true', help='Preserve temporary directory')
-  parser.add_argument('--remove-output-dir', action='store_true', help='Remove output directory')
+  parser.add_argument('--remove-output-dir', action='store_true', help='Remove output directory (DEPRECATED)')
   parser.add_argument('--print-vars', action='store_true', help='Print variables for each application (DEPRECATED)')
   parser.add_argument('--var-identifier', type=str, default=default.VAR_IDENTIFIER, help='Variable prefix in configuration files (default: $)')
   parser.add_argument('--skip-latest-version-check', action='store_true', help='Skip latest version check')

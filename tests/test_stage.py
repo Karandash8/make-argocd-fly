@@ -41,7 +41,7 @@ def test__resolve_template_vars__no_vars(mocker):
   mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value=global_vars_return_value)
   mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
   mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
-  mocker.patch('make_argocd_fly.config.Config.output_dir', new_callable=PropertyMock, return_value=output_dir)
+  mocker.patch('make_argocd_fly.config.Config.final_output_dir', new_callable=PropertyMock, return_value=output_dir)
 
   assert _resolve_template_vars(env_name, app_name) == expected_vars
 

@@ -1,6 +1,5 @@
 import logging
 import os
-import shutil
 import asyncio
 import textwrap
 import yaml
@@ -29,7 +28,7 @@ from make_argocd_fly.renderer import JinjaRenderer
 from make_argocd_fly.exception import (UndefinedTemplateVariableError, TemplateRenderingError, InternalError,
                                        KustomizeError, PathDoesNotExistError, ConfigFileError, HelmfileError,
                                        OutputFilenameConstructionError)
-from make_argocd_fly.util import extract_single_resource, get_app_rel_path, ensure_list, is_one_of
+from make_argocd_fly.util import extract_single_resource, get_app_rel_path, ensure_list, is_one_of, remove_dir
 from make_argocd_fly.limits import RuntimeLimits
 from make_argocd_fly.namegen import (K8sInfo, SourceInfo, K8sPolicy, SourcePolicy, Deduper, RoutingRules,
                                      KUSTOMIZE_BASENAMES, HELMFILE_BASENAMES)
@@ -58,7 +57,7 @@ def _resolve_template_vars(env_name: str, app_name: str) -> dict:
     'argocd_application_cr_template': default.ARGOCD_APPLICATION_CR_TEMPLATE,
     '__application': {
       'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
-      'path': os.path.join(os.path.basename(config.output_dir), env_name, app_name)
+      'path': os.path.join(os.path.basename(config.final_output_dir), env_name, app_name)
     },
     'argocd': default.ARGOCD_DEFAULTS,
     'env_name': env_name,
@@ -179,7 +178,7 @@ class DiscoverK8sSimpleApplication(Stage):
 
     ctx_set(ctx, self.provides['resources'], out_resources)
     ctx_set(ctx, self.provides['templated_resources'], out_templated_resources)
-    ctx_set(ctx, self.provides['output_dir'], config.output_dir)
+    ctx_set(ctx, self.provides['output_dir'], config.runtime_output_dir)
 
 
 class DiscoverK8sKustomizeApplication(Stage):
@@ -252,7 +251,7 @@ class DiscoverK8sKustomizeApplication(Stage):
     ctx_set(ctx, self.provides['extra_resources'], out_extra_resources)
     ctx_set(ctx, self.provides['templated_extra_resources'], out_templated_extra_resources)
     ctx_set(ctx, self.provides['tmp_dir'], os.path.join(config.tmp_dir, default.KUSTOMIZE_DIR))
-    ctx_set(ctx, self.provides['output_dir'], config.output_dir)
+    ctx_set(ctx, self.provides['output_dir'], config.runtime_output_dir)
 
     if list(viewer.search_subresources(resource_types=[ResourceType.YAML],
                                        name_pattern='kustomization|Kustomization',
@@ -303,7 +302,7 @@ class DiscoverK8sHelmfileApplication(Stage):
     ctx_set(ctx, self.provides['resources'], out_resources)
     ctx_set(ctx, self.provides['templated_resources'], out_templated_resources)
     ctx_set(ctx, self.provides['tmp_dir'], os.path.join(config.tmp_dir, default.HELMFILE_DIR))
-    ctx_set(ctx, self.provides['output_dir'], config.output_dir)
+    ctx_set(ctx, self.provides['output_dir'], config.runtime_output_dir)
 
 
 class DiscoverK8sAppOfAppsApplication(Stage):
@@ -347,7 +346,7 @@ class DiscoverK8sAppOfAppsApplication(Stage):
 
     ctx_set(ctx, self.provides['templated_resources'], out_templated_resources)
 
-    ctx_set(ctx, self.provides['output_dir'], config.output_dir)
+    ctx_set(ctx, self.provides['output_dir'], config.runtime_output_dir)
 
 
 class DiscoverGenericApplication(Stage):
@@ -381,7 +380,7 @@ class DiscoverGenericApplication(Stage):
 
     ctx_set(ctx, self.provides['resources'], out_resources)
     ctx_set(ctx, self.provides['templated_resources'], out_templated_resources)
-    ctx_set(ctx, self.provides['output_dir'], config.output_dir)
+    ctx_set(ctx, self.provides['output_dir'], config.runtime_output_dir)
 
 
 class RenderTemplates(Stage):
@@ -584,8 +583,7 @@ class WriteOnDisk(Stage):
     self._written = set()
 
     app_output_dir = os.path.join(output_dir, get_app_rel_path(ctx.env_name, ctx.app_name))
-    if os.path.exists(app_output_dir):
-      shutil.rmtree(app_output_dir)
+    remove_dir(app_output_dir)
 
     try:
       async with asyncio.TaskGroup() as tg:

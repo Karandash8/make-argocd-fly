@@ -25,7 +25,6 @@ make-argocd-fly -h
 | `--render-envs`        | Comma-separated list of environments to render                           |
 | `--render-apps`        | Comma-separated list of applications to render                           |
 | `--skip-generate`      | Skip resource generation step                                            |
-| `--remove-output-dir`  | Remove existing output directory before rendering                        |
 | `--preserve-tmp-dir`   | Keep temporary directory after execution                                 |
 
 ---

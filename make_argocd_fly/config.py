@@ -24,7 +24,8 @@ class Config:
   def __init__(self) -> None:
     self.config = None
     self._source_dir = None
-    self._output_dir = None
+    self._runtime_output_dir = None
+    self._final_output_dir = None
     self._tmp_dir = None
 
     self.cli_params = get_cli_params()
@@ -41,12 +42,20 @@ class Config:
     return self._source_dir
 
   @property
-  def output_dir(self) -> str:
-    if not self._output_dir:
+  def runtime_output_dir(self) -> str:
+    if not self._runtime_output_dir:
       log.error('Config is not populated')
       raise InternalError()
 
-    return self._output_dir
+    return self._runtime_output_dir
+
+  @property
+  def final_output_dir(self) -> str:
+    if not self._final_output_dir:
+      log.error('Config is not populated')
+      raise InternalError()
+
+    return self._final_output_dir
 
   @property
   def tmp_dir(self) -> str:
@@ -224,12 +233,13 @@ def populate_config(root_dir: str = default.ROOT_DIR,
 
   config.populate_config(config=merged_config,
                          _source_dir=build_path(root_dir, source_dir),
-                         _output_dir=build_path(root_dir, output_dir, allow_missing=True),
+                         _runtime_output_dir=build_path(root_dir, f'{default.RUNTIME_DIR_PREFIX}{output_dir}', allow_missing=True),
+                         _final_output_dir=build_path(root_dir, output_dir, allow_missing=True),
                          _tmp_dir=build_path(root_dir, tmp_dir, allow_missing=True))
 
   log.debug(f'Config directory: {build_path(root_dir, config_dir)}')
   log.debug(f'Source directory: {config.source_dir}')
-  log.debug(f'Output directory: {config.output_dir}')
+  log.debug(f'Output directory: {config.final_output_dir}')
   log.debug(f'Temporary directory: {config.tmp_dir}')
 
   return config

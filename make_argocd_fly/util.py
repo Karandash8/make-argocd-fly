@@ -4,6 +4,7 @@ import re
 import os
 import copy
 import ast
+import shutil
 import json
 import fnmatch
 import ssl
@@ -335,3 +336,22 @@ def is_match(path: str, patterns: Iterable[str]) -> bool:
 def is_one_of(path: str, names: Iterable[str]) -> bool:
   '''True if basename (case-sensitive) is in names.'''
   return PurePosixPath(path).name in names
+
+
+def remove_dir(dir: str) -> None:
+  if os.path.exists(dir):
+    shutil.rmtree(dir)
+
+
+def move_dir(src: str, dst: str) -> None:
+  if os.path.exists(src):
+    if os.path.exists(dst):
+      shutil.rmtree(dst)
+    shutil.move(src, dst)
+
+
+def copy_dir(src: str, dst: str) -> None:
+  if os.path.exists(src):
+    if os.path.exists(dst):
+      shutil.rmtree(dst)
+    shutil.copytree(src, dst)
