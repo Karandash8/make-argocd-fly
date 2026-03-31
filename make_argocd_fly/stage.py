@@ -410,7 +410,7 @@ class RenderTemplates(Stage):
                                       data=result,
                                       origin=template.origin,
                                       source_path=template.source_path))
-      except (UndefinedTemplateVariableError, PathDoesNotExistError):
+      except (UndefinedTemplateVariableError, PathDoesNotExistError, InternalError):
         log.error(f'Error rendering template {template.origin}')
         raise TemplateRenderingError(template.origin, ctx.app_name, ctx.env_name) from None
 

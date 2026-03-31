@@ -323,10 +323,10 @@ class JinjaRenderer():
     self.viewer = viewer
 
   def render(self, content: str) -> str:
-    template = self.env.from_string(content)
-    template.filename = self.template_origin
-
     try:
+      template = self.env.from_string(content)
+      template.filename = self.template_origin
+
       rendered = template.render(self.template_vars)
     except jinja2.exceptions.UndefinedError as e:
       variable_name = extract_undefined_variable(str(e))
@@ -336,5 +336,8 @@ class JinjaRenderer():
     except TypeError:
       log.error(f'Likely a missing variable in template {self.template_origin}')
       raise UndefinedTemplateVariableError('Unknown variable in template') from None
+    except jinja2.exceptions.TemplateSyntaxError as e:
+      log.error(f'Syntax error: {e.message} at line {e.lineno}')
+      raise InternalError() from None
 
     return rendered

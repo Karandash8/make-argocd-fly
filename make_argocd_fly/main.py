@@ -14,7 +14,7 @@ from make_argocd_fly.config import populate_config, get_config
 from make_argocd_fly.util import (init_logging, latest_version_check, get_package_name, get_current_version,
                                   remove_dir, move_dir, copy_dir)
 from make_argocd_fly.exception import (TemplateRenderingError, YamlError, InternalError, ConfigFileError, KustomizeError,
-                                       PathDoesNotExistError, HelmfileError)
+                                       PathDoesNotExistError, HelmfileError, YamlObjectRequiredError)
 from make_argocd_fly.pipeline import build_pipeline
 from make_argocd_fly.context import Context
 from make_argocd_fly.limits import RuntimeLimits
@@ -165,7 +165,7 @@ def main(**kwargs) -> None:  # noqa: C901
     log.critical(f'Error generating application {e.app_name} in environment {e.env_name}')
     cleanup()
     exit(1)
-  except InternalError:
+  except (InternalError, YamlObjectRequiredError):
     log.critical('Internal error')
     cleanup()
     exit(1)
@@ -179,6 +179,10 @@ def main(**kwargs) -> None:  # noqa: C901
     exit(1)
   except FileNotFoundError as e:
     log.critical(f'File or directory not found {e.filename}')
+    cleanup()
+    exit(1)
+  except KeyboardInterrupt:
+    log.warning('Interrupted by user')
     cleanup()
     exit(1)
   except Exception as e:
