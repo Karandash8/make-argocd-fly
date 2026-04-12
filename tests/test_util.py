@@ -4,7 +4,7 @@ import textwrap
 
 from make_argocd_fly.util import (extract_single_resource, merge_dicts_with_overrides, merge_dicts_without_duplicates, VarsResolver,
                                   get_module_name, get_package_name, build_path, extract_undefined_variable)
-from make_argocd_fly.exception import InternalError, UnknownJinja2Error, MergeError, ConfigFileError
+from make_argocd_fly.exception import InternalError, MergeError, ConfigFileError, PathDoesNotExistError
 
 
 ###################
@@ -177,13 +177,13 @@ def test_merge_dicts_without_duplicates__simple_keys():
   result = merge_dicts_without_duplicates(dict1, dict2)
   assert result == {'a': 1, 'b': 2, 'c': 4}
 
+# Duplicate key 'b'
 def test_merge_dicts_without_duplicates__simple_keys_with_duplicate(caplog):
   dict1 = {'a': 1, 'b': 2}
   dict2 = {'b': 3, 'c': 4}
 
   with pytest.raises(MergeError):
     merge_dicts_without_duplicates(dict1, dict2)
-  assert 'Duplicate key \'b\'' in caplog.text
 
 def test_merge_dicts_without_duplicates__nested_keys():
   dict1 = {'a': 1, 'b': {'c': 2, 'd': 3}}
@@ -192,29 +192,29 @@ def test_merge_dicts_without_duplicates__nested_keys():
   result = merge_dicts_without_duplicates(dict1, dict2)
   assert result == {'a': 1, 'b': {'c': 2, 'd': 3, 'e': 4, 'f': 5}, 'f': 6}
 
+# Duplicate key 'b->c'
 def test_merge_dicts_without_duplicates__nested_keys_with_duplicate(caplog):
   dict1 = {'a': 1, 'b': {'c': 2, 'd': 3}}
   dict2 = {'b': {'c': 4, 'e': 5}, 'f': 6}
 
   with pytest.raises(MergeError):
     merge_dicts_without_duplicates(dict1, dict2)
-  assert 'Duplicate key \'b->c\'' in caplog.text
 
+# Duplicate key 'b' with different types
 def test_merge_dicts_without_duplicates__duplicate_different_types(caplog):
   dict1 = {'a': 1, 'b': 2}
   dict2 = {'b': [3, 4], 'c': 5}
 
   with pytest.raises(MergeError):
     merge_dicts_without_duplicates(dict1, dict2)
-  assert 'Duplicate key \'b\'' in caplog.text
 
+# Duplicate key 'b' with different types (list vs non-list)
 def test_merge_dicts_without_duplicates__duplicate_different_types_2(caplog):
   dict1 = {'a': 1, 'b': [3, 4]}
   dict2 = {'b': 2, 'c': 5}
 
   with pytest.raises(MergeError):
     merge_dicts_without_duplicates(dict1, dict2)
-  assert 'Duplicate key \'b\'' in caplog.text
 
 def test_merge_dicts_without_duplicates__with_list():
   dict1 = {'a': 1, 'b': [2, 3]}
@@ -223,21 +223,21 @@ def test_merge_dicts_without_duplicates__with_list():
   result = merge_dicts_without_duplicates(dict1, dict2)
   assert result == {'a': 1, 'b': [2, 3], 'c': 6}
 
+# Duplicate key 'b'
 def test_merge_dicts_without_duplicates__with_list_duplicate(caplog):
   dict1 = {'a': 1, 'b': [2, 3]}
   dict2 = {'b': {'c': 4}, 'd': 5}
 
   with pytest.raises(MergeError):
     merge_dicts_without_duplicates(dict1, dict2)
-  assert 'Duplicate key \'b\'' in caplog.text
 
+# Duplicate key 'b'
 def test_merge_dicts_without_duplicates__with_list_extend_duplicate(caplog):
   dict1 = {'a': 1, 'b': [2, 3]}
   dict2 = {'b': [3, 4], 'c': 5}
 
   with pytest.raises(MergeError):
     merge_dicts_without_duplicates(dict1, dict2)
-  assert 'Duplicate item \'b->[1]\'' in caplog.text
 
 def test_merge_dicts_without_duplicates__with_list_extend_simple():
   dict1 = {'a': 1, 'b': [2, 3]}
@@ -253,13 +253,13 @@ def test_merge_dicts_without_duplicates__with_list_of_list_extend():
   result = merge_dicts_without_duplicates(dict1, dict2)
   assert result == {'a': 1, 'b': [[2, 3], [4, 5], [6, 7], [8, 9]], 'c': 10}
 
+# Duplicate item 'b->[1]'
 def test_merge_dicts_without_duplicates__with_list_of_list_extend_duplicate(caplog):
   dict1 = {'a': 1, 'b': [[2, 3], [4, 5]]}
   dict2 = {'b': [[4, 5], [8, 9]], 'c': 10}
 
   with pytest.raises(MergeError):
     merge_dicts_without_duplicates(dict1, dict2)
-  assert 'Duplicate item \'b->[1]\'' in caplog.text
 
 def test_merge_dicts_without_duplicates__with_list_of_dicts_extend():
   dict1 = {'a': 1, 'b': [{'x': 2}, {'y': 3}]}
@@ -268,13 +268,13 @@ def test_merge_dicts_without_duplicates__with_list_of_dicts_extend():
   result = merge_dicts_without_duplicates(dict1, dict2)
   assert result == {'a': 1, 'b': [{'x': 2}, {'y': 3}, {'z': 4}, {'w': 5}], 'c': 6}
 
+# Duplicate item 'b->[1]'
 def test_merge_dicts_without_duplicates__with_list_of_dicts_extend_duplicate(caplog):
   dict1 = {'a': 1, 'b': [{'x': 2}, {'y': 3}]}
   dict2 = {'b': [{'y': 3}, {'w': 5}], 'c': 6}
 
   with pytest.raises(MergeError):
     merge_dicts_without_duplicates(dict1, dict2)
-  assert 'Duplicate item \'b->[1]\'' in caplog.text
 
 def test_merge_dicts_without_duplicates__with_list_of_dicts_extend_complex():
   dict1 = {'a': 1, 'b': [{'x': {'y': 2}}, {'z': 3}]}
@@ -283,13 +283,13 @@ def test_merge_dicts_without_duplicates__with_list_of_dicts_extend_complex():
   result = merge_dicts_without_duplicates(dict1, dict2)
   assert result == {'a': 1, 'b': [{'x': {'y': 2}}, {'z': 3}, {'x': 2}, {'w': 5}], 'c': 6}
 
+# Duplicate item 'b->[0]'
 def test_merge_dicts_without_duplicates__with_list_of_dicts_extend_complex_duplicate(caplog):
   dict1 = {'a': 1, 'b': [{'x': {'y': 2}}, {'z': 3}]}
   dict2 = {'b': [{'x': {'y': 2}}, {'w': 5}], 'c': 6}
 
   with pytest.raises(MergeError):
     merge_dicts_without_duplicates(dict1, dict2)
-  assert 'Duplicate item \'b->[0]\'' in caplog.text
 
 ###############
 ### merge_dicts_with_overrides
@@ -557,7 +557,6 @@ def test_vars_resolver_value_with_unresolvable_var(caplog):
   vars = {'var1': '${var2}'}
   with pytest.raises(ConfigFileError):
     resolver.resolve(vars, vars)
-  assert 'Variable ${var2} not found in vars' in caplog.text
 
 def test_vars_resolver__allow_unresolved_vars_simple(caplog):
   resolver = VarsResolver()
@@ -672,7 +671,6 @@ def test_build_path_with_empty_path(tmp_path, caplog):
 
   with pytest.raises(InternalError):
     build_path(root_dir, path)
-  assert 'Path is empty' in caplog.text
 
 def test_build_path_with_none_path(tmp_path, caplog):
   root_dir = tmp_path
@@ -680,16 +678,14 @@ def test_build_path_with_none_path(tmp_path, caplog):
 
   with pytest.raises(InternalError):
     build_path(root_dir, path)
-  assert 'Path is empty' in caplog.text
 
 def test_build_path_with_nonexistent_path(tmp_path, caplog):
   root_dir = str(tmp_path)
   path = 'nonexistent_file.py'
   non_existent_path = tmp_path / 'nonexistent_file.py'
 
-  with pytest.raises(InternalError):
+  with pytest.raises(PathDoesNotExistError):
     build_path(root_dir, path)
-  assert f'Path does not exist: {non_existent_path}' in caplog.text
 
 def test_build_path_with_nonexistent_path_allow_missing(tmp_path, caplog):
   root_dir = str(tmp_path)
@@ -717,5 +713,5 @@ def test_extract_undefined_variable__jinja2_attribute():
 def test_extract_undefined_variable__exception():
   message = 'random message'
 
-  with pytest.raises(UnknownJinja2Error):
+  with pytest.raises(InternalError):
     extract_undefined_variable(message)

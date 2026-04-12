@@ -34,14 +34,12 @@ class Params:
   def populate_params(self, **kwargs) -> None:
     for param in kwargs:
       if param not in ParamNames.get_values():
-        log.error(f'Unknown parameter "{param}" in Params')
-        raise ConfigFileError()
+        raise ConfigFileError(f'Unknown parameter `{param}` in Params')
 
     try:
       if 'app_type' in kwargs:
         kwargs['app_type'] = ApplicationTypes(kwargs['app_type'])
     except ValueError:
-      log.error(f'Unknown application type \'{kwargs["app_type"]}\'. Valid types: {[t.value for t in ApplicationTypes]}')
-      raise ConfigFileError()
+      raise ConfigFileError(f'Unknown application type `{kwargs["app_type"]}`. Valid types: {[t.value for t in ApplicationTypes]}')
 
     self.__dict__.update(kwargs)

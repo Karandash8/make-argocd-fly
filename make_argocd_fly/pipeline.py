@@ -285,6 +285,5 @@ def build_pipeline(ctx: Context, limits: RuntimeLimits, viewer: ScopedViewer) ->
 
     return _build_pipeline(PipelineType.GENERIC, limits)
   else:
-    log.error(f'Unknown application type \'{ctx.params.app_type}\' in application {ctx.app_name} in environment {ctx.env_name}.'
-              f' Valid types are: {[t.value for t in ApplicationTypes]}')
-    raise ConfigFileError()
+    raise ConfigFileError(f'Unknown application type `{ctx.params.app_type}` in application `{ctx.app_name}` in environment `{ctx.env_name}`.'
+                          f' Valid types are: {[t.value for t in ApplicationTypes]}')

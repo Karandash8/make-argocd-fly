@@ -1,9 +1,8 @@
 import os
 import pytest
-from make_argocd_fly.resource.viewer import ResourceViewer, _get_resource_params, ResourceType, build_scoped_viewer
+from make_argocd_fly.resource.viewer import _get_resource_params, ResourceType, build_scoped_viewer
 from make_argocd_fly.resource.writer import GenericWriter, YamlWriter
-from make_argocd_fly.exception import InternalError, YamlObjectRequiredError
-from make_argocd_fly.param import ApplicationTypes
+from make_argocd_fly.exception import InternalError
 from make_argocd_fly.util import check_lists_equal
 
 ##################
@@ -812,14 +811,14 @@ def test_YamlWriter__write__non_mapping_raises(tmp_path):
 
   writer = YamlWriter()
 
-  with pytest.raises(YamlObjectRequiredError):
+  with pytest.raises(InternalError):
     writer.write(output_path=file,
                  data='key: value',      # not a dict
                  env_name='env',
                  app_name='app',
                  origin='/a/b/c')
 
-  with pytest.raises(YamlObjectRequiredError):
+  with pytest.raises(InternalError):
     writer.write(output_path=file,
                  data=['a', 'b'],        # also not a dict
                  env_name='env',

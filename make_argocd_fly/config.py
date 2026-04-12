@@ -6,7 +6,7 @@ from make_argocd_fly import default
 from make_argocd_fly.cliparam import get_cli_params
 from make_argocd_fly.param import Params
 from make_argocd_fly.util import build_path, merge_dicts_without_duplicates, merge_dicts_with_overrides, VarsResolver
-from make_argocd_fly.exception import InternalError, ConfigFileError, MergeError
+from make_argocd_fly.exception import ConfigFileError, MergeError, AppError, InternalError
 from make_argocd_fly.resource.viewer import build_scoped_viewer, ResourceType
 
 
@@ -36,39 +36,34 @@ class Config:
   @property
   def source_dir(self) -> str:
     if not self._source_dir:
-      log.error('Config is not populated')
-      raise InternalError()
+      raise InternalError('Config is not populated')
 
     return self._source_dir
 
   @property
   def runtime_output_dir(self) -> str:
     if not self._runtime_output_dir:
-      log.error('Config is not populated')
-      raise InternalError()
+      raise InternalError('Config is not populated')
 
     return self._runtime_output_dir
 
   @property
   def final_output_dir(self) -> str:
     if not self._final_output_dir:
-      log.error('Config is not populated')
-      raise InternalError()
+      raise InternalError('Config is not populated')
 
     return self._final_output_dir
 
   @property
   def tmp_dir(self) -> str:
     if not self._tmp_dir:
-      log.error('Config is not populated')
-      raise InternalError()
+      raise InternalError('Config is not populated')
 
     return self._tmp_dir
 
   def list_envs(self) -> list[str]:
     if self.config is None:
-      log.error('Config is not populated')
-      raise InternalError()
+      raise InternalError('Config is not populated')
 
     if ConfigKeywords.ENVS not in self.config:
       log.warning('Missing `envs` keyword in config')
@@ -78,12 +73,10 @@ class Config:
 
   def get_env(self, env_name: str) -> dict:
     if self.config is None:
-      log.error('Config is not populated')
-      raise InternalError()
+      raise InternalError('Config is not populated')
 
     if env_name not in self.list_envs():
-      log.error(f'Environment {env_name} is not defined')
-      raise ConfigFileError
+      raise ConfigFileError(f'Environment `{env_name}` is not defined')
 
     return self.config[ConfigKeywords.ENVS][env_name]
 
@@ -100,8 +93,7 @@ class Config:
 
   def list_apps(self, env_name: str) -> list[str]:
     if self.config is None:
-      log.error('Config is not populated')
-      raise InternalError()
+      raise InternalError('Config is not populated')
 
     env = self.get_env(env_name)
     if ConfigKeywords.APPS not in env:
@@ -122,20 +114,17 @@ class Config:
 
   def get_app(self, env_name: str, app_name: str) -> dict:
     if self.config is None:
-      log.error('Config is not populated')
-      raise InternalError()
+      raise InternalError('Config is not populated')
 
     env = self.get_env(env_name)
     if app_name not in self.list_apps(env_name):
-      log.error(f'Application {app_name} is not defined in environment {env_name}')
-      raise ConfigFileError
+      raise ConfigFileError(f'Application `{app_name}` is not defined in environment `{env_name}`')
 
     return env[ConfigKeywords.APPS][app_name]
 
   def _get_global_scope(self, keyword: ConfigKeywords) -> dict:
     if self.config is None:
-      log.error('Config is not populated')
-      raise InternalError()
+      raise InternalError('Config is not populated')
 
     return self.config[keyword] if keyword in self.config else {}
 
@@ -199,8 +188,8 @@ class Config:
     try:
       params.populate_params(**merge_dicts_with_overrides(global_params, env_params, app_params))
     except ConfigFileError as e:
-      log.error(f'Error populating params for application {app_name} in environment {env_name}')
-      raise e
+      log.error(f'{e}')
+      raise AppError(app_name or '<undefined>', env_name or '<undefined>', 'Error populating params') from e
 
     return params
 
@@ -222,14 +211,12 @@ def populate_config(root_dir: str = default.ROOT_DIR,
       log.debug(f'Found config file: {child.rel_path}')
       try:
         config_files_content.append(yaml.safe_load(child.content))
-      except yaml.YAMLError:
-        log.error(f'Invalid YAML in config file {child.rel_path}')
-        raise ConfigFileError
+      except yaml.YAMLError as e:
+        raise ConfigFileError(f'Invalid YAML in config file `{child.rel_path}`: {e}') from e
 
     merged_config = merge_dicts_without_duplicates(*config_files_content)
-  except MergeError:
-    log.error('Error merging config files')
-    raise ConfigFileError
+  except MergeError as e:
+    raise ConfigFileError(f'Error merging config files: {e}') from e
 
   config.populate_config(config=merged_config,
                          _source_dir=build_path(root_dir, source_dir),

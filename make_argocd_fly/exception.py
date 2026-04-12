@@ -9,15 +9,48 @@ class UserError(MakeArgoCDFlyError):
 class InternalError(MakeArgoCDFlyError):
   '''Programming error or unexpected internal state.'''
 
-  def __init__(self, message: str = 'Internal error') -> None:
-    super().__init__(message)
-
 
 class AppError(UserError):
-  def __init__(self, message: str, app_name: str, env_name: str) -> None:
+  def __init__(self, app_name: str, env_name: str, message: str) -> None:
     self.app_name = app_name
     self.env_name = env_name
     super().__init__(message)
+
+
+class PathDoesNotExistError(UserError):
+  def __init__(self, path: str, message: str | None = None) -> None:
+    self.path = path
+    super().__init__(message or f'Path does not exist `{path}`')
+
+
+class ConfigFileError(UserError):
+  def __init__(self, message: str | None = None) -> None:
+    super().__init__(message or 'Config file error')
+
+
+class UndefinedTemplateVariableError(UserError):
+  def __init__(self, variable_name: str, message: str | None = None) -> None:
+    self.variable_name = variable_name
+    super().__init__(message or f'Variable {variable_name} is undefined')
+
+
+class OutputFilenameConstructionError(UserError):
+  def __init__(self, key: str | None = None, message: str | None = None) -> None:
+    self.key = key
+    default = f"Missing key '{key}' for output filename construction" if key else \
+              'Required fields are missing for output filename construction'
+    super().__init__(message or default)
+
+
+class MergeError(UserError):
+  def __init__(self, message: str | None = None) -> None:
+    super().__init__(message or 'Error merging dictionaries')
+
+
+class TemplateRenderingError(AppError):
+  def __init__(self, template_filename: str, app_name: str, env_name: str, message: str | None = None) -> None:
+    self.template_filename = template_filename
+    super().__init__(app_name, env_name, message or f'Error rendering template {template_filename}')
 
 
 class ExternalToolError(AppError):
@@ -25,72 +58,14 @@ class ExternalToolError(AppError):
 
   def __init__(self, tool: str, app_name: str, env_name: str, message: str | None = None) -> None:
     self.tool = tool
-    super().__init__(message or f'Error running {tool} for application {app_name} in environment {env_name}',
-                     app_name,
-                     env_name)
-
-
-class PathDoesNotExistError(UserError):
-  def __init__(self, path: str) -> None:
-    self.path = path
-    super().__init__(f'Path does not exist {path}')
-
-
-class ConfigFileError(UserError):
-  def __init__(self, message: str = 'Config file error') -> None:
-    super().__init__(message)
-
-
-class MergeError(InternalError):
-  def __init__(self, message: str = 'Error merging dictionaries') -> None:
-    super().__init__(message)
-
-
-class UndefinedTemplateVariableError(UserError):
-  def __init__(self, variable_name: str) -> None:
-    self.variable_name = variable_name
-    super().__init__(f'Variable {variable_name} is undefined')
-
-
-class TemplateRenderingError(AppError):
-  def __init__(self, template_filename: str, app_name: str, env_name: str) -> None:
-    self.template_filename = template_filename
-    super().__init__(f'Error rendering template {template_filename}',
-                     app_name,
-                     env_name)
-
-
-class YamlError(AppError):
-  def __init__(self, app_name: str, env_name: str, message: str | None = None) -> None:
-    super().__init__(message or f'YAML error in application {app_name} in environment {env_name}',
-                     app_name,
-                     env_name)
+    super().__init__(app_name, env_name, message or f'Error during execution of `{tool}` binary')
 
 
 class KustomizeError(ExternalToolError):
-  def __init__(self, app_name: str, env_name: str) -> None:
-    super().__init__('kustomize', app_name, env_name)
+  def __init__(self, app_name: str, env_name: str, message: str | None = None) -> None:
+    super().__init__('kustomize', app_name, env_name, message)
 
 
 class HelmfileError(ExternalToolError):
-  def __init__(self, app_name: str, env_name: str) -> None:
-    super().__init__('helmfile', app_name, env_name)
-
-
-class UnknownJinja2Error(InternalError):
-  def __init__(self, message: str = 'Unknown error in jinja2 template') -> None:
-    super().__init__(message)
-
-
-class OutputFilenameConstructionError(UserError):
-  def __init__(self, key: str | None = None) -> None:
-    self.key = key
-    if key is None:
-      super().__init__('Required fields are missing for output filename construction')
-    else:
-      super().__init__(f'Missing key \'{key}\' for output filename construction')
-
-
-class YamlObjectRequiredError(InternalError):
-  def __init__(self) -> None:
-    super().__init__('YamlWriter requires a mapping (dict) yaml_obj payload')
+  def __init__(self, app_name: str, env_name: str, message: str | None = None) -> None:
+    super().__init__('helmfile', app_name, env_name, message)

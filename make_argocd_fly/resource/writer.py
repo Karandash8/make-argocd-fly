@@ -5,7 +5,7 @@ import yaml
 from yaml import SafeDumper
 from typing import Any, Final
 
-from make_argocd_fly.exception import YamlObjectRequiredError
+from make_argocd_fly.exception import InternalError
 
 log = logging.getLogger(__name__)
 
@@ -61,8 +61,7 @@ class YamlWriter(AbstractWriter):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     if not isinstance(data, dict):
-      log.error('YamlWriter requires dict yaml_obj; got %s from %s', type(data).__name__, origin)
-      raise YamlObjectRequiredError()
+      raise InternalError(f'YamlWriter requires dict yaml_obj; got {type(data).__name__} from {origin}')
 
     with open(output_path, 'w') as f:
       yaml.dump(data, f, Dumper=YamlDumper,

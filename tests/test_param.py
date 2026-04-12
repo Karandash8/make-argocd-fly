@@ -47,5 +47,4 @@ def test_Params__populate_params__unknown_param(caplog) -> None:
 
   with pytest.raises(ConfigFileError):
     params.populate_params(unknown_param='value')
-  assert 'Unknown parameter "unknown_param" in Params' in caplog.text
 

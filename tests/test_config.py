@@ -3,7 +3,7 @@ import textwrap
 from unittest.mock import MagicMock
 
 from make_argocd_fly.config import populate_config, get_config, Config, ConfigKeywords
-from make_argocd_fly.exception import ConfigFileError, InternalError
+from make_argocd_fly.exception import ConfigFileError, PathDoesNotExistError, InternalError
 from make_argocd_fly.util import check_lists_equal
 from make_argocd_fly import default
 
@@ -76,7 +76,7 @@ def test_populate_config__missing_source_dir(tmp_path):
   config_file_path = config_dir_path / config_file
   config_file_path.write_text('vars: {}')
 
-  with pytest.raises(InternalError):
+  with pytest.raises(PathDoesNotExistError):
     populate_config(root_dir=root_dir)
 
 def test_populate_config__not_populated_config(tmp_path):
@@ -103,7 +103,6 @@ def test_Config__list_envs__config_not_populated(tmp_path, caplog):
 
   with pytest.raises(InternalError):
     config.list_envs()
-  assert 'Config is not populated' in caplog.text
 
 def test_Config__list_envs__valid_config(tmp_path):
   CONFIG = '''\
@@ -159,7 +158,6 @@ def test_Config__get_env__config_not_populated(tmp_path, caplog):
 
   with pytest.raises(InternalError):
     config.get_env('test_env')
-  assert 'Config is not populated' in caplog.text
 
 def test_Config__get_env__valid_config(tmp_path):
   CONFIG = '''\
@@ -204,7 +202,6 @@ def test_Config__get_env__undefined_env(tmp_path, caplog):
 
   with pytest.raises(ConfigFileError):
     config.get_env('test_env3')
-  assert 'Environment test_env3 is not defined' in caplog.text
 
 ##################
 ### Config.list_apps
@@ -215,7 +212,6 @@ def test_Config__list_apps__config_not_populated(tmp_path, caplog):
 
   with pytest.raises(InternalError):
     config.list_apps('test_env')
-  assert 'Config is not populated' in caplog.text
 
 def test_Config__list_apps__valid_config(tmp_path):
   CONFIG = '''\
@@ -275,7 +271,6 @@ def test_Config__get_app__config_not_populated(tmp_path, caplog):
 
   with pytest.raises(InternalError):
     config.get_app('test_env', 'app1')
-  assert 'Config is not populated' in caplog.text
 
 def test_Config__get_app__valid_config(tmp_path):
   CONFIG = '''\
@@ -331,7 +326,6 @@ def test_Config__get_app__undefined_app(tmp_path, caplog):
 
   with pytest.raises(ConfigFileError):
     config.get_app('test_env', 'app3')
-  assert 'Application app3 is not defined in environment test_env' in caplog.text
 
 ##################
 ### Config._get_global_scope
@@ -342,7 +336,6 @@ def test_Config___get_global_scope__config_not_populated(tmp_path, caplog):
 
   with pytest.raises(InternalError):
     config._get_global_scope(ConfigKeywords.VARS)
-  assert 'Config is not populated' in caplog.text
 
 def test_Config___get_global_scope__valid_config(tmp_path):
   CONFIG = '''\
@@ -552,7 +545,6 @@ def test_Config___get_app_scope__missing_app(tmp_path, caplog):
 
   with pytest.raises(ConfigFileError):
     config._get_app_scope(ConfigKeywords.VARS, 'test_env', 'test_app2')
-  assert 'Application test_app2 is not defined in environment test_env' in caplog.text
 
 def test_Config___get_app_scope__undefined_vars(tmp_path):
   CONFIG = '''\

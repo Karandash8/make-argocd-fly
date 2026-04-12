@@ -66,8 +66,7 @@ class RawIncludeExtension(Extension):
 
   def _render(self, filename):
     if not self.environment.loader:
-      log.error("Jinja2 environment loader is not set")
-      raise InternalError()
+      raise InternalError("Jinja2 environment loader is not set")
 
     (source, _, _) = self.environment.loader.get_source(self.environment, filename)
 
@@ -86,8 +85,7 @@ class FileListExtension(Extension):
 
   def _render(self, dir_path: str, prepend_path: str | None = None) -> str:
     if not self.environment.loader:
-      log.error("Jinja2 environment loader is not set")
-      raise InternalError()
+      raise InternalError("Jinja2 environment loader is not set")
 
     children = sorted(self.environment.loader.list_templates(dir_path), key=lambda child: child.name)
     yaml_names_as_list = []
@@ -125,8 +123,7 @@ class IncludeMapExtension(Extension):
 
   def _render(self, path: str) -> str:
     if not self.environment.loader:
-      log.error("Jinja2 environment loader is not set")
-      raise InternalError()
+      raise InternalError("Jinja2 environment loader is not set")
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -160,8 +157,7 @@ class RawIncludeMapExtension(Extension):
 
   def _render(self, path: str) -> str:
     if not self.environment.loader:
-      log.error("Jinja2 environment loader is not set")
-      raise InternalError()
+      raise InternalError("Jinja2 environment loader is not set")
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -191,8 +187,7 @@ class IncludeListExtension(Extension):
 
   def _render(self, path: str) -> str:
     if not self.environment.loader:
-      log.error("Jinja2 environment loader is not set")
-      raise InternalError()
+      raise InternalError("Jinja2 environment loader is not set")
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -223,8 +218,7 @@ class RawIncludeListExtension(Extension):
 
   def _render(self, path: str) -> str:
     if not self.environment.loader:
-      log.error("Jinja2 environment loader is not set")
-      raise InternalError()
+      raise InternalError("Jinja2 environment loader is not set")
 
     children = sorted(self.environment.loader.list_templates(path), key=lambda child: child.name)
     kv_as_yaml_str = []
@@ -274,41 +268,29 @@ class JinjaRenderer():
       match = self._unresolved_re.search(value)
       if match:
         unresolved = match.group(0)
-        log.error(f'Unresolved variable reference: {unresolved}')
-        raise UndefinedTemplateVariableError(unresolved)
+        raise UndefinedTemplateVariableError(unresolved, f'Unresolved variable reference: `{unresolved}`')
 
     return value
 
   def _get_source(self, path: str):
     if not self.viewer:
-      log.error("Resource viewer is not set")
-      raise InternalError()
+      raise InternalError("Resource viewer is not set")
 
-    try:
-      target = self.viewer.go_to(os.path.normpath(path))
-    except PathDoesNotExistError:
-      log.error(f'Path does not exist {path}')
-      raise
+    target = self.viewer.go_to(os.path.normpath(path))
 
     return (target.content, path, None)
 
   def _get_rendered(self, path: str):
     if not self.viewer:
-      log.error("Resource viewer is not set")
-      raise InternalError()
+      raise InternalError("Resource viewer is not set")
 
-    try:
-      target = self.viewer.go_to(os.path.normpath(path))
-    except PathDoesNotExistError:
-      log.error(f'Path does not exist {path}')
-      raise
+    target = self.viewer.go_to(os.path.normpath(path))
 
     return (self.render(target.content), path, None)
 
   def _list_templates(self, path: str) -> List[ScopedViewer]:
     if not self.viewer:
-      log.error("Resource viewer is not set")
-      raise InternalError()
+      raise InternalError("Resource viewer is not set")
 
     return list(self.viewer.search_subresources(resource_types=self.file_types,
                                                 search_subdirs=[os.path.normpath(path)]))
@@ -331,13 +313,10 @@ class JinjaRenderer():
     except jinja2.exceptions.UndefinedError as e:
       variable_name = extract_undefined_variable(str(e))
 
-      log.error(f'Variable "{variable_name}" is undefined')
-      raise UndefinedTemplateVariableError(variable_name) from None
+      raise UndefinedTemplateVariableError(variable_name, f'Variable `{variable_name}` is undefined') from None
     except TypeError:
-      log.error(f'Likely a missing variable in template {self.template_origin}')
-      raise UndefinedTemplateVariableError('Unknown variable in template') from None
+      raise UndefinedTemplateVariableError('<unknown>', f'Likely an undefined variable in template `{self.template_origin}`') from None
     except jinja2.exceptions.TemplateSyntaxError as e:
-      log.error(f'Syntax error: {e.message} at line {e.lineno}')
-      raise InternalError() from None
+      raise InternalError(f'Syntax error: {e.message} at line {e.lineno}') from None
 
     return rendered

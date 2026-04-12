@@ -38,7 +38,6 @@ def test_JinjaRenderer_get_source_does_not_exist(tmp_path, caplog):
 
   with pytest.raises(PathDoesNotExistError):
     renderer._get_source('template.txt.j2')
-  assert 'Path does not exist template.txt.j2' in caplog.text
 
 def test_JinjaRenderer_get_source_same_filename(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -131,7 +130,6 @@ def test_JinjaRenderer_get_rendered_does_not_exist(tmp_path, caplog):
 
   with pytest.raises(PathDoesNotExistError):
     renderer._get_rendered('template.txt.j2')
-  assert 'Path does not exist template.txt.j2' in caplog.text
 
 def test_JinjaRenderer__get_rendered__similar_filenames(tmp_path):
   dir_root = tmp_path / 'dir_root'
@@ -225,7 +223,6 @@ def test_JinjaRenderer__render_with_unresolved_var(caplog):
   renderer.set_template_vars({'var': '${unresolved_var}'})
   with pytest.raises(UndefinedTemplateVariableError):
     assert renderer.render(TEMPLATE)
-  assert 'Unresolved variable reference: ${unresolved_var}' in caplog.text
 
 def test_JinjaRenderer__render_with_unresolved_var_in_string(caplog):
   renderer = JinjaRenderer()
@@ -237,7 +234,6 @@ def test_JinjaRenderer__render_with_unresolved_var_in_string(caplog):
   renderer.set_template_vars({'var': 'str_${unresolved_var}_str'})
   with pytest.raises(UndefinedTemplateVariableError):
     assert renderer.render(TEMPLATE)
-  assert 'Unresolved variable reference: ${unresolved_var}' in caplog.text
 
 def test_JinjaRenderer__render_missing_template(tmp_path):
   dir_root = tmp_path / 'dir_root'
