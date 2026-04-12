@@ -19,7 +19,7 @@ from packaging.version import Version
 
 from make_argocd_fly import default
 from make_argocd_fly.cliparam import get_cli_params
-from make_argocd_fly.exception import UnknownJinja2Error, InternalError, MergeError, ConfigFileError
+from make_argocd_fly.exception import InternalError, MergeError, ConfigFileError, PathDoesNotExistError
 
 
 log = logging.getLogger(__name__)
@@ -27,8 +27,7 @@ log = logging.getLogger(__name__)
 
 def build_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
   if not path:
-    log.error('Path is empty')
-    raise InternalError()
+    raise PathDoesNotExistError(path, 'Path is empty')
 
   if os.path.isabs(path):
     abs_path = path
@@ -36,8 +35,7 @@ def build_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
     abs_path = os.path.join(root_dir, path)
 
   if (not allow_missing) and (not os.path.exists(abs_path)):
-    log.error(f'Path does not exist: {abs_path}')
-    raise InternalError()
+    raise PathDoesNotExistError(abs_path, f'Path does not exist: `{abs_path}`')
 
   return abs_path
 
@@ -80,8 +78,7 @@ class VarsResolver:
         self.resolution_counter += 1
       except KeyError:
         if not allow_unresolved:
-          log.error(f'Variable {value[var_start - 1:var_end + 1]} not found in vars')
-          raise ConfigFileError
+          raise ConfigFileError(f'Variable `{value[var_start - 1:var_end + 1]}` not found in vars')
         else:
           resolved_value += self.var_identifier
           resolved_value += value[var_start:var_end + 1]
@@ -134,8 +131,7 @@ class VarsResolver:
 
 def extract_single_resource(multi_resource_yml: str | None) -> Iterator[str]:
   if multi_resource_yml is None:
-    log.error('Multi-resource YAML is empty')
-    raise InternalError()
+    raise InternalError('Multi-resource YAML is empty')
 
   for resource_yml in multi_resource_yml.split('\n---\n'):
     resource_yml = resource_yml.strip()
@@ -163,8 +159,7 @@ def merge_lists_without_duplicates(*lists, key_path: list | None = None):
     for item in lst:
       if item in merged:
         item_path = '->'.join(key_path + [f'[{merged.index(item)}]'])
-        log.error(f'Duplicate item \'{item_path}\'')
-        raise MergeError
+        raise MergeError(f'Duplicate item `{item_path}`')
       else:
         merged.append(item)
 
@@ -189,8 +184,7 @@ def merge_dicts_without_duplicates(*dicts, key_path: list | None = None):
         # If the value is a list and already exists in merged, merge the lists
         merged[key] = merge_lists_without_duplicates(merged[key], value, key_path=key_path + [key])
       elif key in merged:
-        log.error('Duplicate key \'{}\''.format('->'.join(key_path + [key])))
-        raise MergeError
+        raise MergeError(f'Duplicate key `{"->".join(key_path + [key])}`')
       else:
         merged[key] = value
 
@@ -300,7 +294,7 @@ def extract_undefined_variable(message: str) -> str:
   elif attr_match:
     variable_name = attr_match.group(1)
   else:
-    raise UnknownJinja2Error
+    raise InternalError('Unknown error in jinja2 template')
 
   return variable_name
 
@@ -310,8 +304,7 @@ def ensure_list(value: Any, param_name: str) -> list[str]:
     return []
 
   if not isinstance(value, list):
-    log.error(f'Application parameter {param_name} must be a list')
-    raise InternalError()
+    raise InternalError(f'Application parameter `{param_name}` must be a list')
 
   return value
 

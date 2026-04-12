@@ -268,8 +268,8 @@ class DiscoverK8sKustomizeApplication(Stage):
                                          depth=1)):
       kustomize_exec_dir = '.'
     else:
-      log.error(f'Missing kustomization.yml in the application directory. Skipping application {ctx.app_name} in environment {ctx.env_name}')
-      raise InternalError()
+      raise InternalError(f'Missing kustomization.yml in the application directory. Skipping application `{ctx.app_name}`'
+                          f'in environment `{ctx.env_name}`')
 
     ctx_set(ctx, self.provides['kustomize_exec_dir'], kustomize_exec_dir)
 
@@ -340,9 +340,8 @@ class DiscoverK8sAppOfAppsApplication(Stage):
           source_path=None,
         ))
       except TypeError:
-        log.error(f'Error rendering Jinja template for application {ctx.app_name} in environment {ctx.env_name}. '
-                  f'Ensure that the template is correctly defined in the config file.')
-        raise ConfigFileError
+        raise ConfigFileError(f'Error rendering Jinja template for application `{ctx.app_name}` in environment `{ctx.env_name}`. '
+                              f'Ensure that the template is correctly defined in the config file.')
 
     ctx_set(ctx, self.provides['templated_resources'], out_templated_resources)
 
@@ -410,9 +409,9 @@ class RenderTemplates(Stage):
                                       data=result,
                                       origin=template.origin,
                                       source_path=template.source_path))
-      except (UndefinedTemplateVariableError, PathDoesNotExistError, InternalError):
-        log.error(f'Error rendering template {template.origin}')
-        raise TemplateRenderingError(template.origin, ctx.app_name, ctx.env_name) from None
+      except (UndefinedTemplateVariableError, PathDoesNotExistError, InternalError) as e:
+        log.error(f'{e}')
+        raise TemplateRenderingError(template.origin, ctx.app_name, ctx.env_name, f'Error rendering template {template.origin}') from e
 
     ctx_set(ctx, self.provides['resources'], out_resources)
 
@@ -482,8 +481,7 @@ class GenerateNames(Stage):
     self.src_policy = SourcePolicy()
 
     if self.pipeline_kind is None:
-      log.error(f'PipelineType must be provided to {self.name} stage')
-      raise InternalError()
+      raise InternalError(f'PipelineType must be provided to `{self.name}` stage')
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} (pipeline_kind={self.pipeline_kind})')
@@ -562,15 +560,13 @@ class WriteOnDisk(Stage):
     self._written = set()
 
     if self.limits is None:
-      log.error(f'RuntimeLimits must be provided to {self.name} stage')
-      raise InternalError()
+      raise InternalError(f'RuntimeLimits must be provided to `{self.name}` stage')
 
   async def _write_one(self, writer: AbstractWriter, payload: Any, output_dir: str, ctx: Context, resource: Resource) -> None:
     async with self.limits.io_sem:
       path = os.path.join(output_dir, resource.output_path)
       if path in self._written:
-        log.error(f'Duplicate output: {path}')
-        raise InternalError()
+        raise InternalError(f'Duplicate output: {path}')
       self._written.add(path)
 
       # Offload the blocking write to a thread, bounded by io_sem
@@ -589,13 +585,11 @@ class WriteOnDisk(Stage):
       async with asyncio.TaskGroup() as tg:
         for resource in sorted(resources, key=lambda r: r.output_path):
           if resource.output_path is None:
-            log.error(f'Resource {resource.origin} passed to {self.name} stage without output_path')
-            raise InternalError()
+            raise InternalError(f'Resource `{resource.origin}` passed to `{self.name}` stage without output_path')
 
           # Disallow writing non-files
           if resource.resource_type in (ResourceType.DIRECTORY, ResourceType.DOES_NOT_EXIST):
-            log.error(f'Cannot write resource of type {resource.resource_type.name} (origin={resource.origin})')
-            raise InternalError()
+            raise InternalError(f'Cannot write resource of type `{resource.resource_type.name}` (origin=`{resource.origin}`)')
 
           if resource.writer_type == WriterType.K8S_YAML:
             writer = YAML_WRITER
@@ -621,8 +615,7 @@ class KustomizeBuild(Stage):
     self.limits = limits
 
     if self.limits is None:
-      log.error(f'RuntimeLimits must be provided to {self.name} stage')
-      raise InternalError()
+      raise InternalError(f'RuntimeLimits must be provided to `{self.name}` stage')
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
@@ -653,8 +646,7 @@ class KustomizeBuild(Stage):
         else:
           raise KustomizeError(ctx.app_name, ctx.env_name)
     except FileNotFoundError as e:
-      log.error(f'Failed generating application {ctx.app_name} in environment {ctx.env_name}')
-      raise e
+      raise KustomizeError(ctx.app_name, ctx.env_name, 'Kustomize executable not found') from e
 
     resources = []
 
@@ -674,8 +666,7 @@ class HelmfileRun(Stage):
     self.limits = limits
 
     if self.limits is None:
-      log.error(f'RuntimeLimits must be provided to {self.name} stage')
-      raise InternalError()
+      raise InternalError(f'RuntimeLimits must be provided to `{self.name}` stage')
 
   async def run(self, ctx: Context) -> None:
     log.debug(f'Run {self.name} stage')
@@ -705,8 +696,7 @@ class HelmfileRun(Stage):
         else:
           raise HelmfileError(ctx.app_name, ctx.env_name)
     except FileNotFoundError as e:
-      log.error(f'Failed generating application {ctx.app_name} in environment {ctx.env_name}')
-      raise e
+      raise HelmfileError(ctx.app_name, ctx.env_name, 'Helmfile executable not found') from e
 
     resources = []
 
