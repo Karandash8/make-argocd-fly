@@ -1,0 +1,20 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-27-kustomize-exclude-wrong-match-management
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: url
+    targetRevision: revision
+    path: output/management/app_27_kustomize_exclude_wrong_match
+  destination:
+    server: management-api-server
+    namespace: argocd
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true

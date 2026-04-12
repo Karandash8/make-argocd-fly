@@ -69,6 +69,7 @@ envs:
       app_24_extra_files: {params: {parent_app: service_deployer, non_k8s_files_to_render: ['init_*', 'subdir/']}}
       app_25_local_helm: {params: {parent_app: service_deployer, non_k8s_files_to_render: ['helm_local/']}}
       app_26_kustomize_shared_dirs: {params: {parent_app: service_deployer}}
+      app_27_kustomize_exclude_wrong_match: {params: {parent_app: service_deployer, exclude_rendering: ['mana']}}
   external_1:
     apps:
       bootstrap: {}

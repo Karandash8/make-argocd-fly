@@ -313,10 +313,10 @@ def is_match(path: str, patterns: Iterable[str]) -> bool:
   '''Match by prefix or glob; patterns are posix-like relative paths.'''
   posix = str(PurePosixPath(path))
   for pat in patterns:
-    pat_posix = str(PurePosixPath(pat))
+    pat_posix = str(PurePosixPath(pat)).rstrip('/')
 
-    # prefix match
-    if posix.startswith(pat_posix.rstrip('/')):
+    # prefix match — require a segment boundary after the pattern
+    if posix == pat_posix or posix.startswith(pat_posix + '/'):
       return True
 
     # glob match
