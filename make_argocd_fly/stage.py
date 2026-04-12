@@ -195,37 +195,22 @@ class DiscoverK8sKustomizeApplication(Stage):
 
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
 
-    # Determine search_subdirs:
-    # look for root-level "base" and "<env_name>" directories; if none exist, use None
-    candidate_subdirs: list[str] = []
-
-    if list(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
-                                       name_pattern=r'^base$',
-                                       depth=1)):
-      candidate_subdirs.append('base')
-
-    if list(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
-                                       name_pattern=fr'^{ctx.env_name}$',
-                                       depth=1)):
-      candidate_subdirs.append(ctx.env_name)
-
-    search_subdirs = candidate_subdirs or None
-
+    other_envs = list(set(config.list_envs()) - {ctx.env_name})
     non_k8s_files = ensure_list(ctx.params.non_k8s_files_to_render, ParamNames.NON_K8S_FILES_TO_RENDER)
     exclude_rendering = ensure_list(ctx.params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
 
     # 1) regular YAML resources (non-template), exclude both lists
     out_resources = _discover_resources(viewer,
                                         resource_types=[ResourceType.YAML],
-                                        search_subdirs=search_subdirs,
-                                        excludes=exclude_rendering + non_k8s_files)
+                                        search_subdirs=None,
+                                        excludes=other_envs + exclude_rendering + non_k8s_files)
 
     # 2) regular YAML templated resources, exclude both lists
     out_templated_resources = _discover_templated_resources(viewer,
                                                             resource_types=[ResourceType.YAML],
                                                             resolved_vars=resolved_vars,
-                                                            search_subdirs=search_subdirs,
-                                                            excludes=exclude_rendering + non_k8s_files)
+                                                            search_subdirs=None,
+                                                            excludes=other_envs + exclude_rendering + non_k8s_files)
 
     all_file_types = [resource_type for resource_type in ResourceType if
                       (resource_type != ResourceType.DIRECTORY and
@@ -234,16 +219,16 @@ class DiscoverK8sKustomizeApplication(Stage):
     # 3) extra resources: include only non_k8s_files_to_render (any file type), exclude exclude_rendering
     out_extra_resources = _discover_extra_resources(viewer,
                                                     resource_types=all_file_types,
-                                                    search_subdirs=search_subdirs,
-                                                    excludes=exclude_rendering,
+                                                    search_subdirs=None,
+                                                    excludes=other_envs + exclude_rendering,
                                                     includes=non_k8s_files)
 
     # 4) templated extra resources: include only non_k8s_files_to_render (any file type), exclude exclude_rendering
     out_templated_extra_resources = _discover_templated_extra_resources(viewer,
                                                                         resource_types=all_file_types,
                                                                         resolved_vars=resolved_vars,
-                                                                        search_subdirs=search_subdirs,
-                                                                        excludes=exclude_rendering,
+                                                                        search_subdirs=None,
+                                                                        excludes=other_envs + exclude_rendering,
                                                                         includes=non_k8s_files)
 
     ctx_set(ctx, self.provides['resources'], out_resources)
