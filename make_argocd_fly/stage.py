@@ -268,7 +268,7 @@ class DiscoverK8sKustomizeApplication(Stage):
                                          depth=1)):
       kustomize_exec_dir = '.'
     else:
-      raise InternalError(f'Missing kustomization.yml in the application directory. Skipping application `{ctx.app_name}`'
+      raise InternalError(f'Missing kustomization in the application directory. Skipping application `{ctx.app_name}` '
                           f'in environment `{ctx.env_name}`')
 
     ctx_set(ctx, self.provides['kustomize_exec_dir'], kustomize_exec_dir)

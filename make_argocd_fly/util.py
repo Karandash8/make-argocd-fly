@@ -25,9 +25,9 @@ from make_argocd_fly.exception import InternalError, MergeError, ConfigFileError
 log = logging.getLogger(__name__)
 
 
-def build_path(root_dir: str, path: str, allow_missing: bool = False) -> str:
+def build_path(root_dir: str | os.PathLike[str], path: str | None, allow_missing: bool = False) -> str:
   if not path:
-    raise PathDoesNotExistError(path, 'Path is empty')
+    raise InternalError('Unknown path')
 
   if os.path.isabs(path):
     abs_path = path

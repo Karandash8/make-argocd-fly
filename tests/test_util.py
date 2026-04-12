@@ -669,14 +669,14 @@ def test_build_path_with_empty_path(tmp_path, caplog):
   root_dir = tmp_path
   path = ''
 
-  with pytest.raises(PathDoesNotExistError):
+  with pytest.raises(InternalError):
     build_path(root_dir, path)
 
 def test_build_path_with_none_path(tmp_path, caplog):
   root_dir = tmp_path
   path = None
 
-  with pytest.raises(PathDoesNotExistError):
+  with pytest.raises(InternalError):
     build_path(root_dir, path)
 
 def test_build_path_with_nonexistent_path(tmp_path, caplog):
