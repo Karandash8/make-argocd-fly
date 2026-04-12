@@ -3,7 +3,7 @@ import pytest
 import textwrap
 
 from make_argocd_fly.util import (extract_single_resource, merge_dicts_with_overrides, merge_dicts_without_duplicates, VarsResolver,
-                                  get_module_name, get_package_name, build_path, extract_undefined_variable)
+                                  get_module_name, get_package_name, build_path, extract_undefined_variable, is_match)
 from make_argocd_fly.exception import InternalError, MergeError, ConfigFileError, PathDoesNotExistError
 
 
@@ -715,3 +715,70 @@ def test_extract_undefined_variable__exception():
 
   with pytest.raises(InternalError):
     extract_undefined_variable(message)
+
+################
+### is_match
+################
+
+def test_is_match__empty_patterns():
+  assert is_match('prod/foo.yaml', []) == False
+
+def test_is_match__exact_file_match():
+  assert is_match('foo.yaml', ['foo.yaml']) == True
+
+def test_is_match__exact_directory_match():
+  assert is_match('prod', ['prod']) == True
+
+def test_is_match__prefix_match_direct_child():
+  assert is_match('prod/foo.yaml', ['prod']) == True
+
+def test_is_match__prefix_match_nested_child():
+  assert is_match('prod/patches/foo.yaml', ['prod']) == True
+
+def test_is_match__prefix_no_match_shared_prefix():
+  # 'prod' must not match 'production/foo.yaml'
+  assert is_match('production/foo.yaml', ['prod']) == False
+
+def test_is_match__prefix_no_match_partial_segment():
+  # 'pro' must not match 'prod/foo.yaml'
+  assert is_match('prod/foo.yaml', ['pro']) == False
+
+def test_is_match__prefix_match_trailing_slash_in_pattern():
+  # trailing slash in pattern should still work
+  assert is_match('prod/foo.yaml', ['prod/']) == True
+
+def test_is_match__glob_match_wildcard_extension():
+  assert is_match('foo.yaml', ['*.yaml']) == True
+
+def test_is_match__glob_match_wildcard_filename():
+  assert is_match('foo.yaml', ['foo.*']) == True
+
+def test_is_match__glob_match_in_subdir():
+  assert is_match('prod/foo.yaml', ['prod/*.yaml']) == True
+
+def test_is_match__glob_no_match():
+  assert is_match('foo.txt', ['*.yaml']) == False
+
+def test_is_match__no_match():
+  assert is_match('staging/foo.yaml', ['prod']) == False
+
+def test_is_match__multiple_patterns_first_matches():
+  assert is_match('prod/foo.yaml', ['prod', 'staging']) == True
+
+def test_is_match__multiple_patterns_second_matches():
+  assert is_match('staging/foo.yaml', ['prod', 'staging']) == True
+
+def test_is_match__multiple_patterns_none_match():
+  assert is_match('common/foo.yaml', ['prod', 'staging']) == False
+
+def test_is_match__env_name_prefix_collision():
+  # Core regression test: envs 'prod' and 'production' must not bleed into each other
+  assert is_match('production/foo.yaml', ['prod']) == False
+  assert is_match('prod/foo.yaml', ['production']) == False
+
+def test_is_match__env_name_exact_dir_excluded():
+  assert is_match('prod', ['prod', 'staging']) == True
+
+def test_is_match__root_level_file_not_excluded_by_env_pattern():
+  # a file at root level whose name starts with an env name should not be excluded
+  assert is_match('production.yaml', ['prod']) == False
