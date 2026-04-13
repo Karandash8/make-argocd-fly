@@ -37,11 +37,11 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements.dev.txt ]; then pip install -r requirements.dev.txt; fi
+          python3 -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then python3 -m pip install -r requirements.txt; fi
+          if [ -f requirements.dev.txt ]; then python3 -m pip install -r requirements.dev.txt; fi
       - name: Build package
-        run: python -m build
+        run: python3 -m build
       - name: Store the distribution packages
         uses: actions/upload-artifact@v4
         with:
@@ -83,8 +83,8 @@ jobs:
       - name: Install pip packages
         run: |
           cd gh-action-pypi-publish
-          PIP_CONSTRAINT=requirements/runtime-prerequisites.txt pip install -r requirements/runtime-prerequisites.in
-          PIP_CONSTRAINT=requirements/runtime.txt pip install -r requirements/runtime.in
+          PIP_CONSTRAINT=requirements/runtime-prerequisites.txt python3 -m pip install -r requirements/runtime-prerequisites.in
+          PIP_CONSTRAINT=requirements/runtime.txt python3 -m pip install -r requirements/runtime.in
       - name: Prepare scripts
         run: |
           sudo mkdir /app
@@ -140,8 +140,8 @@ jobs:
       - name: Install pip packages
         run: |
           cd gh-action-pypi-publish
-          PIP_CONSTRAINT=requirements/runtime-prerequisites.txt pip install -r requirements/runtime-prerequisites.in
-          PIP_CONSTRAINT=requirements/runtime.txt pip install -r requirements/runtime.in
+          PIP_CONSTRAINT=requirements/runtime-prerequisites.txt python3 -m pip install -r requirements/runtime-prerequisites.in
+          PIP_CONSTRAINT=requirements/runtime.txt python3 -m pip install -r requirements/runtime.in
       - name: Prepare scripts
         run: |
           sudo mkdir /app

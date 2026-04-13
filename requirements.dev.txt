@@ -10,4 +10,3 @@ yelp-gprof2dot==1.2.0
 flake8==7.3.0
 tox==4.52.1
 tox-gh-actions==3.5.0
-
