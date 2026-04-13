@@ -36,9 +36,11 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "${{ matrix.python-version }}"
+      - if: ${{ runner.arch == 'arm64' && matrix.python-version != '3.12' }}
+        name: Upgrade pip (deadsnakes)
+        run: python3 -m pip install --upgrade pip
       - name: Install dependencies
         run: |
-          python3 -m pip install --upgrade pip
           if [ -f requirements.txt ]; then python3 -m pip install -r requirements.txt; fi
           if [ -f requirements.dev.txt ]; then python3 -m pip install -r requirements.dev.txt; fi
       - name: "Run tox for ${{ matrix.python-version }}"
