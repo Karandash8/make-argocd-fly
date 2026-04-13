@@ -55,6 +55,7 @@ class Params:
       if 'application_name' in kwargs:
         kwargs['application_name'] = ApplicationNameFormat(kwargs['application_name'])
     except ValueError:
-      raise ConfigFileError(f'Unknown application_name value `{kwargs["application_name"]}`. Valid values: {[f.value for f in ApplicationNameFormat]}')
+      raise ConfigFileError(f'Unknown application_name value `{kwargs["application_name"]}`. '
+                            f'Valid values: {[f.value for f in ApplicationNameFormat]}')
 
     self.__dict__.update(kwargs)

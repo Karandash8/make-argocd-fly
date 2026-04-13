@@ -56,9 +56,9 @@ def _resolve_template_vars(env_name: str, app_name: str) -> dict:
   params = config.get_params(env_name, app_name)
 
   if params.application_name == ApplicationNameFormat.FULL:
-    name_segment = app_name.replace('/', '-').replace('_', '-')
+    name_segment = app_name.replace('/', '-')
   else:
-    name_segment = os.path.basename(app_name).replace('_', '-')
+    name_segment = os.path.basename(app_name)
 
   extra = {
     'argocd_application_cr_template': default.ARGOCD_APPLICATION_CR_TEMPLATE,

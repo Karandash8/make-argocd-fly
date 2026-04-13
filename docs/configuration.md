@@ -83,7 +83,7 @@ Available parameters include:
 - `non_k8s_files_to_render`: A list of non-Kubernetes files to render.
 - `exclude_rendering`: A list of files to exclude from rendering.
 - `kustomize_common_dirs`: A list of additional directories to include when rendering a Kustomize application. See [Kustomize & Helm Applications](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/kustomize.md) for details.
-- `application_name`: Controls the format of the ArgoCD `Application` CR `name` field for app-of-apps child applications. Accepted values: `short` (default, uses only the last segment of the application path), `full` (uses the full application path with slashes replaced by dashes). Use `full` when multiple applications share the same directory basename to avoid name collisions.
+- `application_name`: Controls the format of the ArgoCD `Application` CR `name` field for app-of-apps child applications. Accepted values: `short` (default, uses only the last segment of the application path and replaces underscores with dashes), `full` (uses the full application path and replaces slashes and underscores with dashes). Use `full` when multiple applications share the same directory basename to avoid name collisions.
 
 ## 🧩 Variables
 Variables are used to define values that can be used in Jinja2 templates across all applications in `source/` directory.
