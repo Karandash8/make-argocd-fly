@@ -1,6 +1,6 @@
 import pytest
 from make_argocd_fly.exception import ConfigFileError
-from make_argocd_fly.param import Params, ApplicationTypes
+from make_argocd_fly.param import Params, ApplicationTypes, ApplicationNameFormat
 
 ##################
 ### Params.populate_params
@@ -15,6 +15,7 @@ def test_Params__populate_params__empty() -> None:
   assert params.non_k8s_files_to_render == []
   assert params.exclude_rendering == []
   assert params.kustomize_common_dirs == []
+  assert params.application_name == ApplicationNameFormat.SHORT
 
 def test_Params__populate_params__all() -> None:
   params = Params()
@@ -24,7 +25,8 @@ def test_Params__populate_params__all() -> None:
     parent_app_env='test_env',
     non_k8s_files_to_render=['file1', 'file2'],
     exclude_rendering=['file3', 'file4'],
-    kustomize_common_dirs=['common', 'shared']
+    kustomize_common_dirs=['common', 'shared'],
+    application_name='full'
   )
   assert params.app_type == ApplicationTypes.K8S
   assert params.parent_app == 'test_app'
@@ -32,6 +34,7 @@ def test_Params__populate_params__all() -> None:
   assert params.non_k8s_files_to_render == ['file1', 'file2']
   assert params.exclude_rendering == ['file3', 'file4']
   assert params.kustomize_common_dirs == ['common', 'shared']
+  assert params.application_name == ApplicationNameFormat.FULL
 
 def test_Params__populate_params__partial() -> None:
   params = Params()
@@ -45,6 +48,7 @@ def test_Params__populate_params__partial() -> None:
   assert params.non_k8s_files_to_render == ['file1']
   assert params.exclude_rendering == []
   assert params.kustomize_common_dirs == []
+  assert params.application_name == ApplicationNameFormat.SHORT
 
 def test_Params__populate_params__unknown_param(caplog) -> None:
   params = Params()
@@ -86,3 +90,32 @@ def test_Params__populate_params__unknown_param_alongside_kustomize_common_dirs(
   params = Params()
   with pytest.raises(ConfigFileError):
     params.populate_params(kustomize_common_dirs=['common'], unknown_param='value')
+
+def test_Params__populate_params__application_name_short() -> None:
+  params = Params()
+  params.populate_params(application_name='short')
+  assert params.application_name == ApplicationNameFormat.SHORT
+
+def test_Params__populate_params__application_name_full() -> None:
+  params = Params()
+  params.populate_params(application_name='full')
+  assert params.application_name == ApplicationNameFormat.FULL
+
+def test_Params__populate_params__application_name_default_unchanged() -> None:
+  params = Params()
+  params.populate_params(parent_app='test_app')
+  assert params.application_name == ApplicationNameFormat.SHORT
+
+def test_Params__populate_params__application_name_invalid() -> None:
+  params = Params()
+  with pytest.raises(ConfigFileError):
+    params.populate_params(application_name='invalid_value')
+
+def test_Params__populate_params__application_name_with_other_params() -> None:
+  params = Params()
+  params.populate_params(
+    exclude_rendering=['prod'],
+    application_name='full'
+  )
+  assert params.exclude_rendering == ['prod']
+  assert params.application_name == ApplicationNameFormat.FULL

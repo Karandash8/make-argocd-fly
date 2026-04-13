@@ -42,8 +42,100 @@ def test__resolve_template_vars__no_vars(mocker):
   mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value=env_vars_return_value)
   mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value=app_vars_return_value)
   mocker.patch('make_argocd_fly.config.Config.final_output_dir', new_callable=PropertyMock, return_value=output_dir)
+  mocker.patch('make_argocd_fly.config.Config.get_params', return_value=Params())
 
   assert _resolve_template_vars(env_name, app_name) == expected_vars
+
+def test__resolve_template_vars__short_format_nested_app(mocker):
+  # short format: only the last path segment is used — the source of the collision bug
+  output_dir = '/output/dir'
+  env_name = 'env1'
+  app_name = 'subdir/app'
+
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config.final_output_dir', new_callable=PropertyMock, return_value=output_dir)
+  mocker.patch('make_argocd_fly.config.Config.get_params', return_value=Params())
+
+  result = _resolve_template_vars(env_name, app_name)
+  assert result['__application']['application_name'] == 'app-env1'
+
+
+def test__resolve_template_vars__short_format_collision(mocker):
+  # demonstrates that short format produces the same application_name for
+  # 'subdir/app' and 'subdir_2/app', which is the collision this feature solves
+  output_dir = '/output/dir'
+  env_name = 'env1'
+
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config.final_output_dir', new_callable=PropertyMock, return_value=output_dir)
+  mocker.patch('make_argocd_fly.config.Config.get_params', return_value=Params())
+
+  result_1 = _resolve_template_vars(env_name, 'subdir/app')
+  result_2 = _resolve_template_vars(env_name, 'subdir_2/app')
+  assert result_1['__application']['application_name'] == result_2['__application']['application_name']
+
+
+def test__resolve_template_vars__full_format_nested_app(mocker):
+  # full format: entire path is used, slashes become dashes
+  output_dir = '/output/dir'
+  env_name = 'env1'
+  app_name = 'subdir/app'
+
+  params = Params()
+  params.populate_params(application_name='full')
+
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config.final_output_dir', new_callable=PropertyMock, return_value=output_dir)
+  mocker.patch('make_argocd_fly.config.Config.get_params', return_value=params)
+
+  result = _resolve_template_vars(env_name, app_name)
+  assert result['__application']['application_name'] == 'subdir-app-env1'
+
+
+def test__resolve_template_vars__full_format_no_collision(mocker):
+  # full format: 'subdir/app' and 'subdir_2/app' now produce distinct names
+  output_dir = '/output/dir'
+  env_name = 'env1'
+
+  params = Params()
+  params.populate_params(application_name='full')
+
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config.final_output_dir', new_callable=PropertyMock, return_value=output_dir)
+  mocker.patch('make_argocd_fly.config.Config.get_params', return_value=params)
+
+  result_1 = _resolve_template_vars(env_name, 'subdir/app')
+  result_2 = _resolve_template_vars(env_name, 'subdir_2/app')
+  assert result_1['__application']['application_name'] != result_2['__application']['application_name']
+  assert result_1['__application']['application_name'] == 'subdir-app-env1'
+  assert result_2['__application']['application_name'] == 'subdir-2-app-env1'
+
+
+def test__resolve_template_vars__full_format_underscores_replaced(mocker):
+  # underscores in any part of the path are replaced with dashes
+  output_dir = '/output/dir'
+  env_name = 'my_env'
+  app_name = 'my_group/my_app'
+
+  params = Params()
+  params.populate_params(application_name='full')
+
+  mocker.patch('make_argocd_fly.config.Config._get_global_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config._get_env_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config._get_app_scope', return_value={})
+  mocker.patch('make_argocd_fly.config.Config.final_output_dir', new_callable=PropertyMock, return_value=output_dir)
+  mocker.patch('make_argocd_fly.config.Config.get_params', return_value=params)
+
+  result = _resolve_template_vars(env_name, app_name)
+  assert result['__application']['application_name'] == 'my-group-my-app-my-env'
 
 ###################
 ### DiscoverK8sAppOfAppsApplication

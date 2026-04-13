@@ -6,6 +6,11 @@ from make_argocd_fly.exception import ConfigFileError
 log = logging.getLogger(__name__)
 
 
+class ApplicationNameFormat(StrEnum):
+  SHORT = auto()
+  FULL = auto()
+
+
 class ApplicationTypes(StrEnum):
   K8S = auto()
   GENERIC = auto()
@@ -18,6 +23,7 @@ class ParamNames(StrEnum):
   NON_K8S_FILES_TO_RENDER = auto()
   EXCLUDE_RENDERING = auto()
   KUSTOMIZE_COMMON_DIRS = auto()
+  APPLICATION_NAME = auto()
 
   @classmethod
   def get_values(cls):
@@ -32,6 +38,7 @@ class Params:
     self.non_k8s_files_to_render = []
     self.exclude_rendering = []
     self.kustomize_common_dirs = []
+    self.application_name = ApplicationNameFormat.SHORT
 
   def populate_params(self, **kwargs) -> None:
     for param in kwargs:
@@ -43,5 +50,12 @@ class Params:
         kwargs['app_type'] = ApplicationTypes(kwargs['app_type'])
     except ValueError:
       raise ConfigFileError(f'Unknown application type `{kwargs["app_type"]}`. Valid types: {[t.value for t in ApplicationTypes]}')
+
+    try:
+      if 'application_name' in kwargs:
+        kwargs['application_name'] = ApplicationNameFormat(kwargs['application_name'])
+    except ValueError:
+      raise ConfigFileError(f'Unknown application_name value `{kwargs["application_name"]}`. '
+                            f'Valid values: {[f.value for f in ApplicationNameFormat]}')
 
     self.__dict__.update(kwargs)
