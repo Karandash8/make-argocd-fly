@@ -200,13 +200,13 @@ class DiscoverK8sKustomizeApplication(Stage):
     candidate_subdirs: list[str] = []
 
     if any(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
-                                       name_pattern=r'^base$',
-                                       depth=1)):
+                                      name_pattern=r'^base$',
+                                      depth=1)):
       candidate_subdirs.append('base')
 
     if any(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
-                                       name_pattern=fr'^{ctx.env_name}$',
-                                       depth=1)):
+                                      name_pattern=fr'^{ctx.env_name}$',
+                                      depth=1)):
       candidate_subdirs.append(ctx.env_name)
 
     if candidate_subdirs:
