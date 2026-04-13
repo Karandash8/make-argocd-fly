@@ -199,25 +199,26 @@ class DiscoverK8sKustomizeApplication(Stage):
     # look for root-level "base" and "<env_name>" directories; if none exist, use None
     candidate_subdirs: list[str] = []
 
-    if list(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
+    if any(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
                                        name_pattern=r'^base$',
                                        depth=1)):
       candidate_subdirs.append('base')
 
-    if list(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
+    if any(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
                                        name_pattern=fr'^{ctx.env_name}$',
                                        depth=1)):
       candidate_subdirs.append(ctx.env_name)
 
-    kustomize_common_dirs = ensure_list(ctx.params.kustomize_common_dirs, ParamNames.KUSTOMIZE_COMMON_DIRS)
-    for common_dir in kustomize_common_dirs:
-      if viewer.exists(common_dir):
-        candidate_subdirs.append(common_dir)
-      else:
-        log.warning(f'kustomize_common_dirs entry `{common_dir}` does not exist in application '
-                    f'`{ctx.app_name}`, skipping')
+    if candidate_subdirs:
+      kustomize_common_dirs = ensure_list(ctx.params.kustomize_common_dirs, ParamNames.KUSTOMIZE_COMMON_DIRS)
+      for common_dir in kustomize_common_dirs:
+        if viewer.exists(common_dir):
+          candidate_subdirs.append(common_dir)
+        else:
+          log.warning(f'kustomize_common_dirs entry `{common_dir}` does not exist in application '
+                      f'`{ctx.app_name}`, skipping')
 
-    search_subdirs = candidate_subdirs or None
+    search_subdirs = list(set(candidate_subdirs)) or None
 
     non_k8s_files = ensure_list(ctx.params.non_k8s_files_to_render, ParamNames.NON_K8S_FILES_TO_RENDER)
     exclude_rendering = ensure_list(ctx.params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
@@ -239,20 +240,23 @@ class DiscoverK8sKustomizeApplication(Stage):
                       (resource_type != ResourceType.DIRECTORY and
                        resource_type != ResourceType.DOES_NOT_EXIST)]
 
-    # 3) extra resources: include only non_k8s_files_to_render (any file type), exclude exclude_rendering
-    out_extra_resources = _discover_extra_resources(viewer,
-                                                    resource_types=all_file_types,
-                                                    search_subdirs=search_subdirs,
-                                                    excludes=exclude_rendering,
-                                                    includes=non_k8s_files)
+    out_extra_resources = []
+    out_templated_extra_resources = []
+    if non_k8s_files:
+      # 3) extra resources: include only non_k8s_files_to_render (any file type), exclude exclude_rendering
+      out_extra_resources = _discover_extra_resources(viewer,
+                                                      resource_types=all_file_types,
+                                                      search_subdirs=search_subdirs,
+                                                      excludes=exclude_rendering,
+                                                      includes=non_k8s_files)
 
-    # 4) templated extra resources: include only non_k8s_files_to_render (any file type), exclude exclude_rendering
-    out_templated_extra_resources = _discover_templated_extra_resources(viewer,
-                                                                        resource_types=all_file_types,
-                                                                        resolved_vars=resolved_vars,
-                                                                        search_subdirs=search_subdirs,
-                                                                        excludes=exclude_rendering,
-                                                                        includes=non_k8s_files)
+      # 4) templated extra resources: include only non_k8s_files_to_render (any file type), exclude exclude_rendering
+      out_templated_extra_resources = _discover_templated_extra_resources(viewer,
+                                                                          resource_types=all_file_types,
+                                                                          resolved_vars=resolved_vars,
+                                                                          search_subdirs=search_subdirs,
+                                                                          excludes=exclude_rendering,
+                                                                          includes=non_k8s_files)
 
     ctx_set(ctx, self.provides['resources'], out_resources)
     ctx_set(ctx, self.provides['templated_resources'], out_templated_resources)
@@ -654,7 +658,7 @@ class KustomizeBuild(Stage):
         else:
           raise KustomizeError(ctx.app_name, ctx.env_name)
     except FileNotFoundError as e:
-      raise KustomizeError(ctx.app_name, ctx.env_name, 'Kustomize executable not found') from e
+      raise KustomizeError(ctx.app_name, ctx.env_name, f'`{e.filename}` not found') from e
 
     resources = []
 
@@ -704,7 +708,7 @@ class HelmfileRun(Stage):
         else:
           raise HelmfileError(ctx.app_name, ctx.env_name)
     except FileNotFoundError as e:
-      raise HelmfileError(ctx.app_name, ctx.env_name, 'Helmfile executable not found') from e
+      raise HelmfileError(ctx.app_name, ctx.env_name, f'`{e.filename}` not found') from e
 
     resources = []
 
