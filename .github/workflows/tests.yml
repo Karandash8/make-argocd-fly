@@ -64,7 +64,9 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "${{ matrix.python-version }}"
-      # For arm64 + 3.12: no setup step needed, system Python 3.12 is used
+      - if: ${{ runner.arch == 'arm64' && matrix.python-version == '3.12' }}
+        name: Bootstrap pip for system Python 3.12
+        run: sudo apt-get install -y python3-pip python3-venv
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
