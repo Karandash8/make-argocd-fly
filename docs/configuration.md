@@ -82,6 +82,7 @@ Available parameters include:
 - `app_type`: The type of the application (`k8s` or `generic`).
 - `non_k8s_files_to_render`: A list of non-Kubernetes files to render.
 - `exclude_rendering`: A list of files to exclude from rendering.
+- `kustomize_common_dirs`: A list of additional directories to include when rendering a Kustomize application. See [Kustomize & Helm Applications](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/kustomize.md) for details.
 
 ## 🧩 Variables
 Variables are used to define values that can be used in Jinja2 templates across all applications in `source/` directory.

@@ -39,6 +39,40 @@ my-app/
     kustomization.yml
 ```
 
+### Common Directories
+
+By default, `make-argocd-fly` renders only the `base/` and current environment directories when preparing files for Kustomize. If your application references additional shared directories — for example, a `common/` directory with patches or resources used across multiple overlays — you can declare them with the `kustomize_common_dirs` parameter:
+
+```yaml
+envs:
+  <environment_name>:
+    apps:
+      <application_name>:
+        params:
+          kustomize_common_dirs: ['common', 'crds']
+```
+
+Directories listed in `kustomize_common_dirs` are rendered into the temporary working directory alongside `base/` and the environment overlay, making them available for Kustomize to reference.
+
+**Example structure:**
+```
+my-app/
+  base/
+    kustomization.yml
+  common/
+    patch-resources.yml
+  dev/
+    kustomization.yml
+  prod/
+    kustomization.yml
+```
+
+With `kustomize_common_dirs: ['common']`, the `common/` directory will be rendered and available for `dev/kustomization.yml` and `prod/kustomization.yml` to reference.
+
+> **Note:** If a directory listed in `kustomize_common_dirs` does not exist in the application's source directory, it is skipped with a warning rather than causing an error. This makes it safe to define the parameter at the global or environment scope where not all applications will have every listed directory.
+
+> **Note:** Jinja2 variables used inside common directories must be defined for all environments that render that application. If a variable is only available in some environments, use `kustomize_common_dirs` selectively at the environment or application scope rather than globally.
+
 ### Helm Integration Inside Kustomize
 
 Kustomize supports Helm chart inflation via:

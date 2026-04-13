@@ -17,6 +17,7 @@ class ParamNames(StrEnum):
   PARENT_APP_ENV = auto()
   NON_K8S_FILES_TO_RENDER = auto()
   EXCLUDE_RENDERING = auto()
+  KUSTOMIZE_COMMON_DIRS = auto()
 
   @classmethod
   def get_values(cls):
@@ -30,6 +31,7 @@ class Params:
     self.parent_app_env = None
     self.non_k8s_files_to_render = []
     self.exclude_rendering = []
+    self.kustomize_common_dirs = []
 
   def populate_params(self, **kwargs) -> None:
     for param in kwargs:
