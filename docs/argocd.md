@@ -47,6 +47,39 @@ vars:
 
 Parameters `parent_app` and `parent_app_env` are used to define the parent application and its environment for each child application. This allows you to create a hierarchy where the bootstrap application manages the deployment of other applications.
 
+## Application Name Format
+
+By default, the ArgoCD `Application` CR `name` field is built from the **last segment** of the application path and the environment name:
+
+```
+subdir/my-app  ->  my-app-<env>
+```
+
+This can cause **name collisions** when multiple applications share the same basename:
+
+```
+subdir/app     ->  app-<env>
+subdir_2/app   ->  app-<env>   <- collision
+```
+
+To resolve this, set the `application_name` parameter to `full` on the affected applications. This uses the **full application path** (slashes and underscores replaced with dashes):
+
+```yaml
+envs:
+  <environment_name>:
+    apps:
+      <application_name>:
+        params:
+          application_name: full
+```
+
+```
+subdir/app     ->  subdir-app-<env>
+subdir_2/app   ->  subdir-2-app-<env>   <- no collision
+```
+
+The parameter can also be set at the environment or global scope to apply it to all applications at once.
+
 ## Local vs ArgoCD
 
 | Capability | Local (kubectl) | ArgoCD |

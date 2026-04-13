@@ -21,7 +21,7 @@ from make_argocd_fly.context.data import TemplatedResource, Resource
 from make_argocd_fly.resource.viewer import ScopedViewer, ResourceType
 from make_argocd_fly import default
 from make_argocd_fly.resource.writer import AbstractWriter, GENERIC_WRITER, YAML_WRITER
-from make_argocd_fly.param import ParamNames
+from make_argocd_fly.param import ParamNames, ApplicationNameFormat
 from make_argocd_fly.config import get_config
 from make_argocd_fly.cliparam import get_cli_params
 from make_argocd_fly.renderer import JinjaRenderer
@@ -53,10 +53,17 @@ def print_vars_deprecated(app_name: str, env_name: str, vars_: dict) -> None:
 
 def _resolve_template_vars(env_name: str, app_name: str) -> dict:
   config = get_config()
+  params = config.get_params(env_name, app_name)
+
+  if params.application_name == ApplicationNameFormat.FULL:
+    name_segment = app_name.replace('/', '-').replace('_', '-')
+  else:
+    name_segment = os.path.basename(app_name).replace('_', '-')
+
   extra = {
     'argocd_application_cr_template': default.ARGOCD_APPLICATION_CR_TEMPLATE,
     '__application': {
-      'application_name': '-'.join([os.path.basename(app_name), env_name]).replace('_', '-'),
+      'application_name': f'{name_segment}-{env_name}'.replace('_', '-'),
       'path': os.path.join(os.path.basename(config.final_output_dir), env_name, app_name)
     },
     'argocd': default.ARGOCD_DEFAULTS,
