@@ -34,7 +34,7 @@ The example contains two layers:
 
 ### Step 1. Render all manifests
 
-Run `make-argocd-fly` from the example root:
+Run `make-argocd-fly` (or its shortcut `maf`) from the example root:
 
 ```bash
 make-argocd-fly
