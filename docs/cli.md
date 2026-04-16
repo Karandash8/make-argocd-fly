@@ -1,9 +1,16 @@
 # CLI Reference
 
-This section explains how to use the `make-argocd-fly` command-line interface. You can always display the full help with:
+This section explains how to use the `make-argocd-fly` command-line interface (also available as the shortcut `maf`). You can always display the full help with:
+
 
 ```bash
 make-argocd-fly -h
+```
+
+or equivalently:
+
+```bash
+maf -h
 ```
 
 ## 🔁 Input & Output Paths

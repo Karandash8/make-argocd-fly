@@ -108,6 +108,8 @@ output/
 make-argocd-fly
 ```
 
+**Shortcut:** you can also use `maf` as an alias for `make-argocd-fly`.
+
 What it does:
 - Applies Jinja2 templates with the right variables
 - Renders Helm and Kustomize into raw manifests
