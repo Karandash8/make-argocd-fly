@@ -7,6 +7,7 @@ from yaml import SafeLoader
 
 from make_argocd_fly import default
 from make_argocd_fly.stage import DiscoverK8sAppOfAppsApplication, GenerateNames, _resolve_template_vars
+from make_argocd_fly.stage.discover import _find_child_apps
 from make_argocd_fly.context import Context, ctx_set, ctx_get
 from make_argocd_fly.context.data import Resource
 from make_argocd_fly.resource.viewer import ResourceType
@@ -136,6 +137,122 @@ def test__resolve_template_vars__full_format_underscores_replaced(mocker):
 
   result = _resolve_template_vars(env_name, app_name)
   assert result['__application']['application_name'] == 'my-group-my-app-my-env'
+
+###################
+### _find_child_apps
+###################
+
+def _make_mock_config(apps_by_env: dict[str, dict]) -> MagicMock:
+  """
+  apps_by_env: { env_name: { app_name: Params } }
+  """
+  config = MagicMock()
+  config.list_envs.return_value = list(apps_by_env.keys())
+
+  def list_apps(env_name):
+    return list(apps_by_env[env_name].keys())
+
+  def get_params(env_name, app_name):
+    return apps_by_env[env_name][app_name]
+
+  config.list_apps.side_effect = list_apps
+  config.get_params.side_effect = get_params
+  return config
+
+
+def _params_with_parent(parent_app: str, parent_app_env: str | None = None) -> Params:
+  p = Params()
+  p.populate_params(parent_app=parent_app,
+                    **({'parent_app_env': parent_app_env} if parent_app_env else {}))
+  return p
+
+
+def test_find_child_apps__single_child_same_env():
+  config = _make_mock_config({
+    'env1': {
+      'bootstrap': Params(),
+      'app_1': _params_with_parent('bootstrap'),
+    }
+  })
+  assert _find_child_apps(config, 'bootstrap', 'env1') == [('env1', 'app_1')]
+
+
+def test_find_child_apps__multiple_children_same_env():
+  config = _make_mock_config({
+    'env1': {
+      'bootstrap': Params(),
+      'app_1': _params_with_parent('bootstrap'),
+      'app_2': _params_with_parent('bootstrap'),
+    }
+  })
+  result = _find_child_apps(config, 'bootstrap', 'env1')
+  assert check_lists_equal(result, [('env1', 'app_1'), ('env1', 'app_2')])
+
+
+def test_find_child_apps__child_in_different_env_with_explicit_parent_env():
+  config = _make_mock_config({
+    'env1': {
+      'bootstrap': Params(),
+    },
+    'env2': {
+      'app_1': _params_with_parent('bootstrap', parent_app_env='env1'),
+    }
+  })
+  result = _find_child_apps(config, 'bootstrap', 'env1')
+  assert result == [('env2', 'app_1')]
+
+
+def test_find_child_apps__child_without_parent_app_env_only_matches_same_env():
+  # parent_app_env=None means "same env as parent" — should NOT match if env differs
+  config = _make_mock_config({
+    'env1': {'bootstrap': Params()},
+    'env2': {'app_1': _params_with_parent('bootstrap')},  # no parent_app_env
+  })
+  result = _find_child_apps(config, 'bootstrap', 'env1')
+  assert result == []
+
+
+def test_find_child_apps__no_children():
+  config = _make_mock_config({
+    'env1': {'bootstrap': Params(), 'app_1': Params()}  # app_1 has no parent_app
+  })
+  assert _find_child_apps(config, 'bootstrap', 'env1') == []
+
+
+def test_find_child_apps__wrong_parent_name_not_matched():
+  config = _make_mock_config({
+    'env1': {
+      'bootstrap': Params(),
+      'other_bootstrap': Params(),
+      'app_1': _params_with_parent('other_bootstrap'),
+    }
+  })
+  assert _find_child_apps(config, 'bootstrap', 'env1') == []
+
+
+def test_find_child_apps__explicit_parent_env_wrong_env_not_matched():
+  # app_1 points to bootstrap in env2, not env1 — should not appear when querying env1
+  config = _make_mock_config({
+    'env1': {'bootstrap': Params()},
+    'env2': {'bootstrap': Params()},
+    'env3': {'app_1': _params_with_parent('bootstrap', parent_app_env='env2')},
+  })
+  assert _find_child_apps(config, 'bootstrap', 'env1') == []
+
+
+def test_find_child_apps__multiple_envs_mixed():
+  config = _make_mock_config({
+    'env1': {
+      'bootstrap': Params(),
+      'app_1': _params_with_parent('bootstrap'),
+    },
+    'env2': {
+      'app_2': _params_with_parent('bootstrap', parent_app_env='env1'),
+      'app_3': _params_with_parent('bootstrap'),  # no parent_app_env — only matches env2 parent
+    }
+  })
+  result = _find_child_apps(config, 'bootstrap', 'env1')
+  assert check_lists_equal(result, [('env1', 'app_1'), ('env2', 'app_2')])
 
 ###################
 ### DiscoverK8sAppOfAppsApplication
@@ -311,7 +428,7 @@ def _patch_get_config(mocker):
   mock_config = MagicMock()
   mock_config.get_params.return_value = MagicMock()
   mock_get_config.return_value = mock_config
-  mocker.patch('make_argocd_fly.stage.get_config', mock_get_config)
+  mocker.patch('make_argocd_fly.stage._base.get_config', mock_get_config)
   return mock_config
 
 
