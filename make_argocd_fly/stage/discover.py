@@ -80,7 +80,7 @@ def _resolve_kustomize_search_subdirs(viewer: ScopedViewer,
   return list(set(candidate_subdirs)) or None
 
 
-def _resolve_kustomize_exec_dir(viewer: ScopedViewer, env_name: str) -> str:
+def _resolve_kustomize_exec_dir(viewer: ScopedViewer, env_name: str, app_name: str) -> str:
   """Return the directory from which kustomize build should be executed."""
   if any(viewer.search_subresources(resource_types=[ResourceType.YAML],
                                     name_pattern='kustomization|Kustomization',
@@ -99,7 +99,7 @@ def _resolve_kustomize_exec_dir(viewer: ScopedViewer, env_name: str) -> str:
                                     depth=1)):
     return '.'
 
-  raise InternalError(f'Missing kustomization in the application directory for env `{env_name}`')
+  raise InternalError(f'Missing kustomization in the application directory for application `{app_name}` ({env_name}).')
 
 
 class DiscoverK8sKustomizeApplication:
@@ -120,7 +120,7 @@ class DiscoverK8sKustomizeApplication:
     kustomize_common_dirs = ensure_list(ctx.params.kustomize_common_dirs, ParamNames.KUSTOMIZE_COMMON_DIRS)
 
     search_subdirs = _resolve_kustomize_search_subdirs(viewer, ctx.env_name, kustomize_common_dirs, ctx.app_name)
-    kustomize_exec_dir = _resolve_kustomize_exec_dir(viewer, ctx.env_name)
+    kustomize_exec_dir = _resolve_kustomize_exec_dir(viewer, ctx.env_name, ctx.app_name)
 
     out_resources = _discover_resources(viewer,
                                         resource_types=[ResourceType.YAML],
