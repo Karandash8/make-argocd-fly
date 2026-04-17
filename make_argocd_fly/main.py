@@ -1,6 +1,7 @@
 import logging
 import argparse
 import time
+import os
 import asyncio
 import subprocess
 import yamllint
@@ -10,9 +11,9 @@ from make_argocd_fly import default
 from make_argocd_fly.warning import init_warnings
 from make_argocd_fly.resource.viewer import build_scoped_viewer
 from make_argocd_fly.cliparam import populate_cli_params, get_cli_params
-from make_argocd_fly.config import populate_config, get_config
+from make_argocd_fly.config import populate_config, get_config, Config
 from make_argocd_fly.util import (init_logging, latest_version_check, get_package_name, get_current_version,
-                                  remove_dir, move_dir, copy_dir)
+                                  remove_dir, move_dir, copy_dir_hardlinked)
 from make_argocd_fly.exception import InternalError, ConfigFileError, AppError, UserError
 from make_argocd_fly.pipeline import build_pipeline
 from make_argocd_fly.context import Context
@@ -123,6 +124,24 @@ def deprecation_warning() -> None:
   pass
 
 
+def _copy_unfiltered_apps(config: Config, src: str, dst: str) -> None:
+  """During a partial run, copy only apps that won't be re-rendered."""
+  filtered = {
+    (env_name, app_name)
+    for env_name in config.list_filtered_envs()
+    for app_name in config.list_filtered_apps(env_name)
+  }
+
+  for env_name in config.list_envs():
+    for app_name in config.list_apps(env_name):
+      if (env_name, app_name) not in filtered:
+        src_app = os.path.join(src, env_name, app_name)
+        dst_app = os.path.join(dst, env_name, app_name)
+        if os.path.exists(src_app):
+          os.makedirs(os.path.dirname(dst_app), exist_ok=True)
+          copy_dir_hardlinked(src_app, dst_app)
+
+
 def main(**kwargs) -> None:  # noqa: C901
   try:
     if kwargs.get('remove_output_dir'):
@@ -150,8 +169,8 @@ def main(**kwargs) -> None:  # noqa: C901
       full_run = True
 
     if not full_run:
-      log.debug('Partial run: copying existing output directory to preserve unchanged applications')
-      copy_dir(config.final_output_dir, config.runtime_output_dir)
+      log.info('Partial run: copying unfiltered apps to preserve unchanged applications')
+      _copy_unfiltered_apps(config, config.final_output_dir, config.runtime_output_dir)
 
     # TO BE DEPRECATED
     did_generate = False

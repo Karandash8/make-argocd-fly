@@ -3,7 +3,8 @@ import pytest
 import textwrap
 
 from make_argocd_fly.util import (extract_single_resource, merge_dicts_with_overrides, merge_dicts_without_duplicates, VarsResolver,
-                                  get_module_name, get_package_name, build_path, extract_undefined_variable, is_match)
+                                  get_module_name, get_package_name, build_path, extract_undefined_variable, is_match,
+                                  copy_dir_hardlinked)
 from make_argocd_fly.exception import InternalError, MergeError, ConfigFileError, PathDoesNotExistError
 
 
@@ -782,3 +783,82 @@ def test_is_match__env_name_exact_dir_excluded():
 def test_is_match__root_level_file_not_excluded_by_env_pattern():
   # a file at root level whose name starts with an env name should not be excluded
   assert is_match('production.yaml', ['prod']) == False
+
+################
+### copy_dir_hardlinked
+################
+
+def test_copy_dir_hardlinked__copies_files(tmp_path):
+  src = tmp_path / 'src'
+  src.mkdir()
+  (src / 'file.yaml').write_text('kind: Deployment')
+  dst = tmp_path / 'dst'
+
+  copy_dir_hardlinked(str(src), str(dst))
+
+  assert (dst / 'file.yaml').exists()
+  assert (dst / 'file.yaml').read_text() == 'kind: Deployment'
+
+
+def test_copy_dir_hardlinked__copies_subdirectories(tmp_path):
+  src = tmp_path / 'src'
+  src.mkdir()
+  subdir = src / 'subdir'
+  subdir.mkdir()
+  (subdir / 'resource.yaml').write_text('kind: Service')
+  dst = tmp_path / 'dst'
+
+  copy_dir_hardlinked(str(src), str(dst))
+
+  assert (dst / 'subdir' / 'resource.yaml').exists()
+  assert (dst / 'subdir' / 'resource.yaml').read_text() == 'kind: Service'
+
+
+def test_copy_dir_hardlinked__source_does_not_exist_is_noop(tmp_path):
+  src = tmp_path / 'nonexistent'
+  dst = tmp_path / 'dst'
+
+  copy_dir_hardlinked(str(src), str(dst))
+
+  assert not dst.exists()
+
+
+def test_copy_dir_hardlinked__replaces_existing_dst(tmp_path):
+  src = tmp_path / 'src'
+  src.mkdir()
+  (src / 'new.yaml').write_text('new content')
+
+  dst = tmp_path / 'dst'
+  dst.mkdir()
+  (dst / 'old.yaml').write_text('old content')
+
+  copy_dir_hardlinked(str(src), str(dst))
+
+  assert (dst / 'new.yaml').exists()
+  assert not (dst / 'old.yaml').exists()
+
+
+def test_copy_dir_hardlinked__hardlinks_share_inode_on_same_filesystem(tmp_path):
+  src = tmp_path / 'src'
+  src.mkdir()
+  (src / 'file.yaml').write_text('kind: Deployment')
+  dst = tmp_path / 'dst'
+
+  copy_dir_hardlinked(str(src), str(dst))
+
+  src_inode = (src / 'file.yaml').stat().st_ino
+  dst_inode = (dst / 'file.yaml').stat().st_ino
+  assert src_inode == dst_inode
+
+
+def test_copy_dir_hardlinked__multiple_files_all_copied(tmp_path):
+  src = tmp_path / 'src'
+  src.mkdir()
+  for name in ['deployment.yaml', 'service.yaml', 'configmap.yaml']:
+    (src / name).write_text(f'kind: {name}')
+  dst = tmp_path / 'dst'
+
+  copy_dir_hardlinked(str(src), str(dst))
+
+  for name in ['deployment.yaml', 'service.yaml', 'configmap.yaml']:
+    assert (dst / name).exists()
