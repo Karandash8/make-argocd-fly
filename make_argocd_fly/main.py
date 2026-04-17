@@ -56,7 +56,7 @@ async def generate() -> None:
       apps.append((pipeline, ctx))
 
   total = len(apps)
-  counter = [0]  # mutable int for nonlocal mutation inside async closure
+  counter = [0]  # shared mutable counter for progress tracking
   lock = asyncio.Lock()
   log.info(f'Rendering {total} application(s)')
 
