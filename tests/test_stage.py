@@ -2,19 +2,26 @@ import asyncio
 import pytest
 import textwrap
 import yaml
+import os
 from unittest.mock import MagicMock, PropertyMock
 from yaml import SafeLoader
 
 from make_argocd_fly import default
-from make_argocd_fly.stage import DiscoverK8sAppOfAppsApplication, GenerateNames, _resolve_template_vars
+from make_argocd_fly.stage import (DiscoverK8sAppOfAppsApplication, GenerateNames, _resolve_template_vars,
+                                   DiscoverK8sKustomizeApplication, DiscoverK8sSimpleApplication, DiscoverGenericApplication,
+                                   DiscoverK8sHelmfileApplication)
 from make_argocd_fly.stage.discover import _find_child_apps
 from make_argocd_fly.context import Context, ctx_set, ctx_get
 from make_argocd_fly.context.data import Resource
-from make_argocd_fly.resource.viewer import ResourceType
+from make_argocd_fly.resource.viewer import ResourceType, build_scoped_viewer
 from make_argocd_fly.config import populate_config
 from make_argocd_fly.util import check_lists_equal
 from make_argocd_fly.type import PipelineType, WriterType
 from make_argocd_fly.param import Params
+from make_argocd_fly.stage.discover import _resolve_kustomize_search_subdirs, _resolve_kustomize_exec_dir
+from make_argocd_fly.exception import InternalError
+from unittest.mock import patch
+
 
 ###################
 ### _resolve_template_vars
@@ -137,6 +144,571 @@ def test__resolve_template_vars__full_format_underscores_replaced(mocker):
 
   result = _resolve_template_vars(env_name, app_name)
   assert result['__application']['application_name'] == 'my-group-my-app-my-env'
+
+###################
+### DiscoverK8sSimpleApplication.run()
+###################
+
+def _patch_config(mocker, tmp_dir: str = '/tmp/kustomize', output_dir: str = '/output'):
+  mock_config = MagicMock()
+  mock_config.runtime_output_dir = output_dir
+  mock_config.tmp_dir = tmp_dir
+  mocker.patch('make_argocd_fly.stage.discover.get_config', return_value=mock_config)
+  return mock_config
+
+
+def _patch_template_vars(mocker, return_value: dict | None = None):
+  if return_value is None:
+    return_value = {'argocd_application_cr_template': ''}
+  mocker.patch('make_argocd_fly.stage.discover._resolve_template_vars', return_value=return_value)
+
+
+def _make_simple_stage():
+  return DiscoverK8sSimpleApplication(
+    requires={'viewer': 'source.viewer'},
+    provides={
+      'resources': 'discovered.resources',
+      'templated_resources': 'discovered.templated_resources',
+      'output_dir': 'discovered.output_dir',
+    }
+  )
+
+
+def _make_simple_ctx(env_name: str, app_name: str, params: Params | None = None) -> Context:
+  if params is None:
+    params = Params()
+  return Context(env_name, app_name, params)
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sSimpleApplication__run__plain_yaml_discovered_as_resource(tmp_path, mocker):
+  (tmp_path / 'deployment.yaml').write_text('kind: Deployment')
+  (tmp_path / 'service.yml').write_text('kind: Service')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_simple_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'deployment.yaml' in origins
+  assert 'service.yml' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sSimpleApplication__run__j2_files_discovered_as_templated_resources(tmp_path, mocker):
+  (tmp_path / 'deployment.yaml').write_text('kind: Deployment')
+  (tmp_path / 'configmap.yaml.j2').write_text('kind: ConfigMap\ndata:\n  key: {{ value }}')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_simple_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  templated = ctx_get(ctx, stage.provides['templated_resources'])
+
+  resource_origins = {r.origin for r in resources}
+  templated_origins = {r.origin for r in templated}
+
+  # plain YAML only in resources, template only in templated_resources
+  assert 'deployment.yaml' in resource_origins
+  assert 'configmap.yaml.j2' not in resource_origins
+  assert 'configmap.yaml.j2' in templated_origins
+  assert 'deployment.yaml' not in templated_origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sSimpleApplication__run__non_yaml_files_not_discovered(tmp_path, mocker):
+  (tmp_path / 'deployment.yaml').write_text('kind: Deployment')
+  (tmp_path / 'readme.txt').write_text('some text')
+  (tmp_path / 'script.sh').write_text('#!/bin/bash')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_simple_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'readme.txt' not in origins
+  assert 'script.sh' not in origins
+  assert 'deployment.yaml' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sSimpleApplication__run__subdirectory_files_discovered(tmp_path, mocker):
+  subdir = tmp_path / 'manifests'
+  subdir.mkdir()
+  (subdir / 'deployment.yaml').write_text('kind: Deployment')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_simple_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'manifests/deployment.yaml' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sSimpleApplication__run__exclude_rendering_filters_resources(tmp_path, mocker):
+  (tmp_path / 'deployment.yaml').write_text('kind: Deployment')
+  (tmp_path / 'secret.yaml').write_text('kind: Secret')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  params = Params()
+  params.populate_params(exclude_rendering=['secret.yaml'])
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app', params)
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_simple_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'secret.yaml' not in origins
+  assert 'deployment.yaml' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sSimpleApplication__run__exclude_rendering_also_filters_templated(tmp_path, mocker):
+  (tmp_path / 'deployment.yaml.j2').write_text('kind: Deployment\nname: {{ name }}')
+  (tmp_path / 'secret.yaml.j2').write_text('kind: Secret\nname: {{ name }}')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  params = Params()
+  params.populate_params(exclude_rendering=['secret.yaml.j2'])
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app', params)
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_simple_stage()
+  await stage.run(ctx)
+
+  templated = ctx_get(ctx, stage.provides['templated_resources'])
+  origins = {r.origin for r in templated}
+  assert 'secret.yaml.j2' not in origins
+  assert 'deployment.yaml.j2' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sSimpleApplication__run__empty_directory_produces_no_resources(tmp_path, mocker):
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_simple_stage()
+  await stage.run(ctx)
+
+  assert ctx_get(ctx, stage.provides['resources']) == []
+  assert ctx_get(ctx, stage.provides['templated_resources']) == []
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sSimpleApplication__run__output_dir_set_from_config(tmp_path, mocker):
+  _patch_config(mocker, output_dir='/my/output/dir')
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_simple_stage()
+  await stage.run(ctx)
+
+  assert ctx_get(ctx, stage.provides['output_dir']) == '/my/output/dir'
+
+###################
+### _resolve_kustomize_search_subdirs
+### _resolve_kustomize_exec_dir
+###################
+
+# --- _resolve_kustomize_search_subdirs ---
+
+def test_resolve_kustomize_search_subdirs__base_and_env(tmp_path):
+  (tmp_path / 'base').mkdir()
+  (tmp_path / 'dev').mkdir()
+  viewer = build_scoped_viewer(tmp_path)
+
+  result = _resolve_kustomize_search_subdirs(viewer, 'dev', [], 'my_app')
+  assert set(result) == {'base', 'dev'}
+
+
+def test_resolve_kustomize_search_subdirs__only_base(tmp_path):
+  (tmp_path / 'base').mkdir()
+  viewer = build_scoped_viewer(tmp_path)
+
+  result = _resolve_kustomize_search_subdirs(viewer, 'dev', [], 'my_app')
+  assert result == ['base']
+
+
+def test_resolve_kustomize_search_subdirs__only_env(tmp_path):
+  (tmp_path / 'dev').mkdir()
+  viewer = build_scoped_viewer(tmp_path)
+
+  result = _resolve_kustomize_search_subdirs(viewer, 'dev', [], 'my_app')
+  assert result == ['dev']
+
+
+def test_resolve_kustomize_search_subdirs__no_base_no_env_returns_none(tmp_path):
+  # no base or env dir — should fall through to None (search everything)
+  viewer = build_scoped_viewer(tmp_path)
+
+  result = _resolve_kustomize_search_subdirs(viewer, 'dev', [], 'my_app')
+  assert result is None
+
+
+def test_resolve_kustomize_search_subdirs__common_dir_included(tmp_path):
+  (tmp_path / 'base').mkdir()
+  (tmp_path / 'dev').mkdir()
+  (tmp_path / 'common').mkdir()
+  viewer = build_scoped_viewer(tmp_path)
+
+  result = _resolve_kustomize_search_subdirs(viewer, 'dev', ['common'], 'my_app')
+  assert set(result) == {'base', 'dev', 'common'}
+
+
+def test_resolve_kustomize_search_subdirs__missing_common_dir_skipped(tmp_path, caplog):
+  (tmp_path / 'base').mkdir()
+  viewer = build_scoped_viewer(tmp_path)
+
+  result = _resolve_kustomize_search_subdirs(viewer, 'dev', ['nonexistent'], 'my_app')
+  # nonexistent dir is skipped — only base survives
+  assert result == ['base']
+  assert 'nonexistent' in caplog.text
+
+
+def test_resolve_kustomize_search_subdirs__common_dir_only_added_when_base_or_env_exist(tmp_path):
+  # kustomize_common_dirs are only appended when candidate_subdirs is non-empty
+  (tmp_path / 'common').mkdir()
+  viewer = build_scoped_viewer(tmp_path)
+
+  result = _resolve_kustomize_search_subdirs(viewer, 'dev', ['common'], 'my_app')
+  assert result is None
+
+
+def test_resolve_kustomize_search_subdirs__multiple_common_dirs(tmp_path):
+  (tmp_path / 'base').mkdir()
+  (tmp_path / 'common').mkdir()
+  (tmp_path / 'patches').mkdir()
+  viewer = build_scoped_viewer(tmp_path)
+
+  result = _resolve_kustomize_search_subdirs(viewer, 'dev', ['common', 'patches'], 'my_app')
+  assert set(result) == {'base', 'common', 'patches'}
+
+
+# --- _resolve_kustomize_exec_dir ---
+
+def test_resolve_kustomize_exec_dir__env_dir_takes_priority(tmp_path):
+  env_dir = tmp_path / 'dev'
+  env_dir.mkdir()
+  (env_dir / 'kustomization.yaml').write_text('resources: []')
+  base_dir = tmp_path / 'base'
+  base_dir.mkdir()
+  (base_dir / 'kustomization.yaml').write_text('resources: []')
+  viewer = build_scoped_viewer(tmp_path)
+
+  assert _resolve_kustomize_exec_dir(viewer, 'dev', 'my_app') == 'dev'
+
+
+def test_resolve_kustomize_exec_dir__base_when_no_env_dir(tmp_path):
+  base_dir = tmp_path / 'base'
+  base_dir.mkdir()
+  (base_dir / 'kustomization.yaml').write_text('resources: []')
+  viewer = build_scoped_viewer(tmp_path)
+
+  assert _resolve_kustomize_exec_dir(viewer, 'dev', 'my_app') == 'base'
+
+
+def test_resolve_kustomize_exec_dir__root_when_no_env_or_base(tmp_path):
+  (tmp_path / 'kustomization.yaml').write_text('resources: []')
+  viewer = build_scoped_viewer(tmp_path)
+
+  assert _resolve_kustomize_exec_dir(viewer, 'dev', 'my_app') == '.'
+
+
+def test_resolve_kustomize_exec_dir__raises_when_no_kustomization_found(tmp_path):
+  viewer = build_scoped_viewer(tmp_path)
+
+  with pytest.raises(InternalError):
+    _resolve_kustomize_exec_dir(viewer, 'dev', 'my_app')
+
+
+def test_resolve_kustomize_exec_dir__yml_extension_also_detected(tmp_path):
+  env_dir = tmp_path / 'prod'
+  env_dir.mkdir()
+  (env_dir / 'kustomization.yml').write_text('resources: []')
+  viewer = build_scoped_viewer(tmp_path)
+
+  assert _resolve_kustomize_exec_dir(viewer, 'prod', 'my_app') == 'prod'
+
+
+def test_resolve_kustomize_exec_dir__capitalised_filename_also_detected(tmp_path):
+  base_dir = tmp_path / 'base'
+  base_dir.mkdir()
+  (base_dir / 'Kustomization.yaml').write_text('resources: []')
+  viewer = build_scoped_viewer(tmp_path)
+
+  assert _resolve_kustomize_exec_dir(viewer, 'dev', 'my_app') == 'base'
+
+###################
+### DiscoverK8sKustomizeApplication.run()
+###################
+
+def _make_kustomize_stage():
+  return DiscoverK8sKustomizeApplication(
+    requires={'viewer': 'source.viewer'},
+    provides={
+      'resources': 'discovered.resources',
+      'templated_resources': 'discovered.templated_resources',
+      'extra_resources': 'discovered.extra_resources',
+      'templated_extra_resources': 'discovered.templated_extra_resources',
+      'kustomize_exec_dir': 'discovered.kustomize_exec_dir',
+      'tmp_dir': 'discovered.tmp_dir',
+      'output_dir': 'discovered.output_dir',
+    }
+  )
+
+
+def _make_kustomize_ctx(env_name: str, app_name: str, params: Params | None = None) -> Context:
+  if params is None:
+    params = Params()
+  return Context(env_name, app_name, params)
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sKustomizeApplication__run__env_dir_layout(tmp_path, mocker):
+  # standard overlay layout: base/ + env dir with kustomization
+  env_name = 'dev'
+  app_name = 'my_app'
+
+  base_dir = tmp_path / 'base'
+  base_dir.mkdir()
+  (base_dir / 'kustomization.yaml').write_text('resources: []')
+  (base_dir / 'deployment.yaml').write_text('kind: Deployment')
+
+  env_dir = tmp_path / env_name
+  env_dir.mkdir()
+  (env_dir / 'kustomization.yaml').write_text('resources: [../base]')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_kustomize_ctx(env_name, app_name)
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_kustomize_stage()
+  await stage.run(ctx)
+
+  assert ctx_get(ctx, stage.provides['kustomize_exec_dir']) == env_name
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert f'{env_name}/kustomization.yaml' in origins
+  assert f'base/kustomization.yaml' in origins
+  assert f'base/deployment.yaml' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sKustomizeApplication__run__base_only_layout(tmp_path, mocker):
+  # only base dir exists — no env overlay
+  env_name = 'dev'
+  app_name = 'my_app'
+
+  base_dir = tmp_path / 'base'
+  base_dir.mkdir()
+  (base_dir / 'kustomization.yaml').write_text('resources: []')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_kustomize_ctx(env_name, app_name)
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_kustomize_stage()
+  await stage.run(ctx)
+
+  assert ctx_get(ctx, stage.provides['kustomize_exec_dir']) == 'base'
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert f'base/kustomization.yaml' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sKustomizeApplication__run__root_layout(tmp_path, mocker):
+  # kustomization at root — no base or env dir
+  env_name = 'dev'
+  app_name = 'my_app'
+
+  (tmp_path / 'kustomization.yaml').write_text('resources: []')
+  (tmp_path / 'deployment.yaml').write_text('kind: Deployment')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_kustomize_ctx(env_name, app_name)
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_kustomize_stage()
+  await stage.run(ctx)
+
+  assert ctx_get(ctx, stage.provides['kustomize_exec_dir']) == '.'
+  # search_subdirs is None for root layout, so all files are discovered
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'kustomization.yaml' in origins
+  assert 'deployment.yaml' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sKustomizeApplication__run__output_context_values(tmp_path, mocker):
+  env_name = 'dev'
+  app_name = 'my_app'
+
+  (tmp_path / 'kustomization.yaml').write_text('resources: []')
+
+  mock_config = _patch_config(mocker, tmp_dir='/my/tmp', output_dir='/my/output')
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_kustomize_ctx(env_name, app_name)
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_kustomize_stage()
+  await stage.run(ctx)
+
+  assert ctx_get(ctx, stage.provides['output_dir']) == '/my/output'
+  assert ctx_get(ctx, stage.provides['tmp_dir']) == os.path.join('/my/tmp', default.KUSTOMIZE_DIR)
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert f'kustomization.yaml' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sKustomizeApplication__run__resources_discovered_when_non_k8s_files_set(tmp_path, mocker):
+  env_name = 'dev'
+  app_name = 'my_app'
+
+  base_dir = tmp_path / 'base'
+  base_dir.mkdir()
+  (base_dir / 'kustomization.yaml').write_text('resources: []')
+  (base_dir / 'values.yaml').write_text('key: value')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  params = Params()
+  params.populate_params(non_k8s_files_to_render=['values.yaml'])
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_kustomize_ctx(env_name, app_name, params)
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_kustomize_stage()
+  await stage.run(ctx)
+
+  extra_resources = ctx_get(ctx, stage.provides['resources'])
+  extra_origins = {r.origin for r in extra_resources}
+  assert 'base/kustomization.yaml' in extra_origins
+  assert 'base/values.yaml' in extra_origins
+
+  assert ctx_get(ctx, stage.provides['templated_resources']) == []
+  assert ctx_get(ctx, stage.provides['extra_resources']) == []
+  assert ctx_get(ctx, stage.provides['templated_extra_resources']) == []
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sKustomizeApplication__run__exclude_rendering_filters_resources(tmp_path, mocker):
+  env_name = 'dev'
+  app_name = 'my_app'
+
+  base_dir = tmp_path / 'base'
+  base_dir.mkdir()
+  (base_dir / 'kustomization.yaml').write_text('resources: []')
+  (base_dir / 'secret.yaml').write_text('kind: Secret')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  params = Params()
+  params.populate_params(exclude_rendering=['base/secret.yaml'])
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_kustomize_ctx(env_name, app_name, params)
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_kustomize_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'base/secret.yaml' not in origins
+  assert 'base/kustomization.yaml' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sKustomizeApplication__run__common_dirs_included(tmp_path, mocker):
+  env_name = 'dev'
+  app_name = 'my_app'
+
+  base_dir = tmp_path / 'base'
+  base_dir.mkdir()
+  (base_dir / 'kustomization.yaml').write_text('resources: []')
+
+  env_dir = tmp_path / env_name
+  env_dir.mkdir()
+  (env_dir / 'kustomization.yaml').write_text('bases: [../base]')
+
+  common_dir = tmp_path / 'common'
+  common_dir.mkdir()
+  (common_dir / 'patch.yaml').write_text('kind: Patch')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  params = Params()
+  params.populate_params(kustomize_common_dirs=['common'])
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_kustomize_ctx(env_name, app_name, params)
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_kustomize_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'common/patch.yaml' in origins
 
 ###################
 ### _find_child_apps
@@ -408,6 +980,245 @@ async def test_DiscoverK8sAppOfAppsApplication__run__multiple_apps_different_env
 
   assert check_lists_equal([(template.vars['env_name'], template.vars['app_name']) for template in templated_resources],
                            [('test_env', 'app_1'), ('test_env_2', 'app_2')])
+
+###################
+### DiscoverK8sHelmfileApplication.run()
+###################
+
+def _make_helmfile_stage():
+  return DiscoverK8sHelmfileApplication(
+    requires={'viewer': 'source.viewer'},
+    provides={
+      'resources': 'discovered.resources',
+      'templated_resources': 'discovered.templated_resources',
+      'tmp_dir': 'discovered.tmp_dir',
+      'output_dir': 'discovered.output_dir',
+    }
+  )
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sHelmfileApplication__run__yaml_files_discovered(tmp_path, mocker):
+  (tmp_path / 'helmfile.yaml').write_text('releases: []')
+  (tmp_path / 'values.yaml').write_text('key: value')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_helmfile_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'helmfile.yaml' in origins
+  assert 'values.yaml' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sHelmfileApplication__run__j2_files_discovered_as_templated(tmp_path, mocker):
+  (tmp_path / 'helmfile.yaml.j2').write_text('releases:\n  - name: {{ name }}')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_helmfile_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  templated = ctx_get(ctx, stage.provides['templated_resources'])
+  assert {r.origin for r in resources} == set()
+  assert 'helmfile.yaml.j2' in {r.origin for r in templated}
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sHelmfileApplication__run__non_yaml_files_not_discovered(tmp_path, mocker):
+  (tmp_path / 'helmfile.yaml').write_text('releases: []')
+  (tmp_path / 'script.sh').write_text('#!/bin/bash')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_helmfile_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'script.sh' not in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sHelmfileApplication__run__exclude_rendering_filters_resources(tmp_path, mocker):
+  (tmp_path / 'helmfile.yaml').write_text('releases: []')
+  (tmp_path / 'secret.yaml').write_text('key: secret')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  params = Params()
+  params.populate_params(exclude_rendering=['secret.yaml'])
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app', params)
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_helmfile_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'secret.yaml' not in origins
+  assert 'helmfile.yaml' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sHelmfileApplication__run__tmp_dir_and_output_dir_set(tmp_path, mocker):
+  _patch_config(mocker, tmp_dir='/my/tmp', output_dir='/my/output')
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_helmfile_stage()
+  await stage.run(ctx)
+
+  assert ctx_get(ctx, stage.provides['output_dir']) == '/my/output'
+  assert ctx_get(ctx, stage.provides['tmp_dir']) == os.path.join('/my/tmp', default.HELMFILE_DIR)
+
+
+###################
+### DiscoverGenericApplication.run()
+###################
+
+def _make_generic_stage():
+  return DiscoverGenericApplication(
+    requires={'viewer': 'source.viewer'},
+    provides={
+      'resources': 'discovered.resources',
+      'templated_resources': 'discovered.templated_resources',
+      'output_dir': 'discovered.output_dir',
+    }
+  )
+
+
+@pytest.mark.asyncio
+async def test_DiscoverGenericApplication__run__all_file_types_discovered(tmp_path, mocker):
+  # Generic discovers everything — yaml, txt, sh, json etc.
+  (tmp_path / 'config.yaml').write_text('key: value')
+  (tmp_path / 'cluster.yml').write_text('key: value')
+  (tmp_path / 'readme.txt').write_text('some text')
+  (tmp_path / 'setup.sh').write_text('#!/bin/bash')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_generic_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'config.yaml' in origins
+  assert 'cluster.yml' in origins
+  assert 'readme.txt' in origins
+  assert 'setup.sh' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverGenericApplication__run__j2_files_in_templated_resources(tmp_path, mocker):
+  (tmp_path / 'cluster.yml.j2').write_text('nodes: {{ node_count }}')
+  (tmp_path / 'readme.txt').write_text('static content')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_generic_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  templated = ctx_get(ctx, stage.provides['templated_resources'])
+  assert 'readme.txt' in {r.origin for r in resources}
+  assert 'cluster.yml.j2' not in {r.origin for r in resources}
+  assert 'cluster.yml.j2' in {r.origin for r in templated}
+
+
+@pytest.mark.asyncio
+async def test_DiscoverGenericApplication__run__exclude_rendering_filters_all_types(tmp_path, mocker):
+  (tmp_path / 'cluster.yml').write_text('key: value')
+  (tmp_path / 'secret.txt').write_text('password=hunter2')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  params = Params()
+  params.populate_params(exclude_rendering=['secret.txt'])
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app', params)
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_generic_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'secret.txt' not in origins
+  assert 'cluster.yml' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverGenericApplication__run__subdirectory_files_discovered(tmp_path, mocker):
+  subdir = tmp_path / 'infra'
+  subdir.mkdir()
+  (subdir / 'cluster.yml').write_text('key: value')
+  (subdir / 'notes.txt').write_text('some notes')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_generic_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'infra/cluster.yml' in origins
+  assert 'infra/notes.txt' in origins
+
+
+@pytest.mark.asyncio
+async def test_DiscoverGenericApplication__run__output_dir_set_from_config(tmp_path, mocker):
+  _patch_config(mocker, output_dir='/generic/output')
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_simple_ctx('dev', 'my_app')
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_generic_stage()
+  await stage.run(ctx)
+
+  assert ctx_get(ctx, stage.provides['output_dir']) == '/generic/output'
 
 ###################
 ### GenerateNames
