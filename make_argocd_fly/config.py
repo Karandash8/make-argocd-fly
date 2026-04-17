@@ -1,5 +1,6 @@
 import logging
 import yaml
+import fnmatch
 from enum import StrEnum, auto
 
 from make_argocd_fly import default
@@ -88,8 +89,8 @@ class Config:
     if render_envs is None:
       return envs
 
-    selected = set(render_envs.split(','))
-    return [env for env in envs if env in selected]
+    patterns = list(set([p.strip() for p in list(render_envs.split(','))]))
+    return [env for env in envs if any(fnmatch.fnmatch(env, pat) for pat in patterns)]
 
   def list_apps(self, env_name: str) -> list[str]:
     if self.config is None:
@@ -109,8 +110,8 @@ class Config:
     if render_apps is None:
       return apps
 
-    selected = set(render_apps.split(','))
-    return [app for app in apps if app in selected]
+    patterns = list(set([p.strip() for p in list(render_apps.split(','))]))
+    return [app for app in apps if any(fnmatch.fnmatch(app, pat) for pat in patterns)]
 
   def get_app(self, env_name: str, app_name: str) -> dict:
     if self.config is None:

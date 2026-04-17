@@ -2,10 +2,12 @@ import pytest
 import textwrap
 from unittest.mock import MagicMock
 
+from make_argocd_fly import default
+from make_argocd_fly.cliparam import populate_cli_params
 from make_argocd_fly.config import populate_config, get_config, Config, ConfigKeywords
 from make_argocd_fly.exception import ConfigFileError, PathDoesNotExistError, InternalError
 from make_argocd_fly.util import check_lists_equal
-from make_argocd_fly import default
+
 
 
 ##################
@@ -326,6 +328,116 @@ def test_Config__get_app__undefined_app(tmp_path, caplog):
 
   with pytest.raises(ConfigFileError):
     config.get_app('test_env', 'app3')
+
+################
+### Config.list_filtered_envs
+### Config.list_filtered_apps
+################
+
+def _setup_config(tmp_path, config_yaml: str, render_envs: str | None = None, render_apps: str | None = None):
+  config_dir = tmp_path / 'config'
+  config_dir.mkdir()
+  (config_dir / 'config.yml').write_text(textwrap.dedent(config_yaml))
+  source_dir = tmp_path / 'source'
+  source_dir.mkdir()
+  populate_cli_params(render_envs=render_envs, render_apps=render_apps, skip_latest_version_check=True)
+  return populate_config(root_dir=tmp_path, config_dir=config_dir, source_dir=source_dir)
+
+
+CONFIG = '''\
+  envs:
+    dev:
+      apps:
+        frontend: {}
+        backend: {}
+        monitoring/prometheus: {}
+    staging:
+      apps:
+        frontend: {}
+        backend: {}
+    prod:
+      apps:
+        frontend: {}
+        backend: {}
+    production:
+      apps:
+        frontend: {}
+'''
+
+###################
+### list_filtered_envs
+###################
+
+def test_list_filtered_envs__no_filter_returns_all(tmp_path):
+  config = _setup_config(tmp_path, CONFIG)
+  assert set(config.list_filtered_envs()) == {'dev', 'staging', 'prod', 'production'}
+
+def test_list_filtered_envs__exact_match(tmp_path):
+  config = _setup_config(tmp_path, CONFIG, render_envs='dev')
+  assert config.list_filtered_envs() == ['dev']
+
+def test_list_filtered_envs__multiple_exact(tmp_path):
+  config = _setup_config(tmp_path, CONFIG, render_envs='dev,staging')
+  assert set(config.list_filtered_envs()) == {'dev', 'staging'}
+
+def test_list_filtered_envs__glob_wildcard(tmp_path):
+  config = _setup_config(tmp_path, CONFIG, render_envs='pro*')
+  assert set(config.list_filtered_envs()) == {'prod', 'production'}
+
+def test_list_filtered_envs__glob_no_collision(tmp_path):
+  # 'prod' exact should not match 'production'
+  config = _setup_config(tmp_path, CONFIG, render_envs='prod')
+  assert config.list_filtered_envs() == ['prod']
+
+def test_list_filtered_envs__multiple_patterns(tmp_path):
+  config = _setup_config(tmp_path, CONFIG, render_envs='dev,pro*')
+  assert set(config.list_filtered_envs()) == {'dev', 'prod', 'production'}
+
+def test_list_filtered_envs__pattern_no_match_returns_empty(tmp_path):
+  config = _setup_config(tmp_path, CONFIG, render_envs='nonexistent*')
+  assert config.list_filtered_envs() == []
+
+def test_list_filtered_envs__strips_whitespace_around_patterns(tmp_path):
+  config = _setup_config(tmp_path, CONFIG, render_envs='dev, staging')
+  assert set(config.list_filtered_envs()) == {'dev', 'staging'}
+
+###################
+### list_filtered_apps
+###################
+
+def test_list_filtered_apps__no_filter_returns_all(tmp_path):
+  config = _setup_config(tmp_path, CONFIG)
+  assert set(config.list_filtered_apps('dev')) == {'frontend', 'backend', 'monitoring/prometheus'}
+
+def test_list_filtered_apps__exact_match(tmp_path):
+  config = _setup_config(tmp_path, CONFIG, render_apps='frontend')
+  assert config.list_filtered_apps('dev') == ['frontend']
+
+def test_list_filtered_apps__multiple_exact(tmp_path):
+  config = _setup_config(tmp_path, CONFIG, render_apps='frontend,backend')
+  assert set(config.list_filtered_apps('dev')) == {'frontend', 'backend'}
+
+def test_list_filtered_apps__glob_wildcard(tmp_path):
+  config = _setup_config(tmp_path, CONFIG, render_apps='back*')
+  assert config.list_filtered_apps('dev') == ['backend']
+
+def test_list_filtered_apps__glob_matches_path_app(tmp_path):
+  config = _setup_config(tmp_path, CONFIG, render_apps='monitoring/*')
+  assert config.list_filtered_apps('dev') == ['monitoring/prometheus']
+
+def test_list_filtered_apps__pattern_no_match_returns_empty(tmp_path):
+  config = _setup_config(tmp_path, CONFIG, render_apps='nonexistent*')
+  assert config.list_filtered_apps('dev') == []
+
+def test_list_filtered_apps__strips_whitespace_around_patterns(tmp_path):
+  config = _setup_config(tmp_path, CONFIG, render_apps='frontend, backend')
+  assert set(config.list_filtered_apps('dev')) == {'frontend', 'backend'}
+
+def test_list_filtered_apps__filter_applies_per_env(tmp_path):
+  # same pattern applied to different envs - only matches what exists in each
+  config = _setup_config(tmp_path, CONFIG, render_apps='monitoring/*')
+  assert config.list_filtered_apps('dev') == ['monitoring/prometheus']
+  assert config.list_filtered_apps('staging') == []
 
 ##################
 ### Config._get_global_scope
