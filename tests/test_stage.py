@@ -439,7 +439,7 @@ def test_resolve_kustomize_exec_dir__env_dir_takes_priority(tmp_path):
   (base_dir / 'kustomization.yaml').write_text('resources: []')
   viewer = build_scoped_viewer(tmp_path)
 
-  assert _resolve_kustomize_exec_dir(viewer, 'dev') == 'dev'
+  assert _resolve_kustomize_exec_dir(viewer, 'dev', 'my_app') == 'dev'
 
 
 def test_resolve_kustomize_exec_dir__base_when_no_env_dir(tmp_path):
@@ -448,21 +448,21 @@ def test_resolve_kustomize_exec_dir__base_when_no_env_dir(tmp_path):
   (base_dir / 'kustomization.yaml').write_text('resources: []')
   viewer = build_scoped_viewer(tmp_path)
 
-  assert _resolve_kustomize_exec_dir(viewer, 'dev') == 'base'
+  assert _resolve_kustomize_exec_dir(viewer, 'dev', 'my_app') == 'base'
 
 
 def test_resolve_kustomize_exec_dir__root_when_no_env_or_base(tmp_path):
   (tmp_path / 'kustomization.yaml').write_text('resources: []')
   viewer = build_scoped_viewer(tmp_path)
 
-  assert _resolve_kustomize_exec_dir(viewer, 'dev') == '.'
+  assert _resolve_kustomize_exec_dir(viewer, 'dev', 'my_app') == '.'
 
 
 def test_resolve_kustomize_exec_dir__raises_when_no_kustomization_found(tmp_path):
   viewer = build_scoped_viewer(tmp_path)
 
   with pytest.raises(InternalError):
-    _resolve_kustomize_exec_dir(viewer, 'dev')
+    _resolve_kustomize_exec_dir(viewer, 'dev', 'my_app')
 
 
 def test_resolve_kustomize_exec_dir__yml_extension_also_detected(tmp_path):
@@ -471,7 +471,7 @@ def test_resolve_kustomize_exec_dir__yml_extension_also_detected(tmp_path):
   (env_dir / 'kustomization.yml').write_text('resources: []')
   viewer = build_scoped_viewer(tmp_path)
 
-  assert _resolve_kustomize_exec_dir(viewer, 'prod') == 'prod'
+  assert _resolve_kustomize_exec_dir(viewer, 'prod', 'my_app') == 'prod'
 
 
 def test_resolve_kustomize_exec_dir__capitalised_filename_also_detected(tmp_path):
@@ -480,7 +480,7 @@ def test_resolve_kustomize_exec_dir__capitalised_filename_also_detected(tmp_path
   (base_dir / 'Kustomization.yaml').write_text('resources: []')
   viewer = build_scoped_viewer(tmp_path)
 
-  assert _resolve_kustomize_exec_dir(viewer, 'dev') == 'base'
+  assert _resolve_kustomize_exec_dir(viewer, 'dev', 'my_app') == 'base'
 
 ###################
 ### DiscoverK8sKustomizeApplication.run()
