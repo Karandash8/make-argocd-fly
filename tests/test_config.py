@@ -1,15 +1,13 @@
 import pytest
 import textwrap
 from unittest.mock import MagicMock
-import textwrap
-import pytest
 
-from make_argocd_fly.config import populate_config, get_config
+from make_argocd_fly import default
 from make_argocd_fly.cliparam import populate_cli_params
 from make_argocd_fly.config import populate_config, get_config, Config, ConfigKeywords
 from make_argocd_fly.exception import ConfigFileError, PathDoesNotExistError, InternalError
 from make_argocd_fly.util import check_lists_equal
-from make_argocd_fly import default
+
 
 
 ##################

@@ -89,7 +89,7 @@ class Config:
     if render_envs is None:
       return envs
 
-    patterns = [p.strip() for p in set(render_envs.split(','))]
+    patterns = list(set([p.strip() for p in list(render_envs.split(','))]))
     return [env for env in envs if any(fnmatch.fnmatch(env, pat) for pat in patterns)]
 
   def list_apps(self, env_name: str) -> list[str]:
@@ -110,7 +110,7 @@ class Config:
     if render_apps is None:
       return apps
 
-    patterns = [p.strip() for p in set(render_apps.split(','))]
+    patterns = list(set([p.strip() for p in list(render_apps.split(','))]))
     return [app for app in apps if any(fnmatch.fnmatch(app, pat) for pat in patterns)]
 
   def get_app(self, env_name: str, app_name: str) -> dict:
