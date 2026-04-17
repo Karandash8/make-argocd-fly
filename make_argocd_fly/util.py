@@ -343,8 +343,15 @@ def move_dir(src: str, dst: str) -> None:
     shutil.move(src, dst)
 
 
-def copy_dir(src: str, dst: str) -> None:
-  if os.path.exists(src):
-    if os.path.exists(dst):
-      shutil.rmtree(dst)
+def copy_dir_hardlinked(src: str, dst: str) -> None:
+  """Copy directory using hardlinks where possible, falling back to a regular copy."""
+  if not os.path.exists(src):
+    return
+  if os.path.exists(dst):
+    shutil.rmtree(dst)
+  try:
+    shutil.copytree(src, dst, copy_function=os.link)
+  except OSError:
+    # Cross-filesystem or unsupported platform — fall back to regular copy
+    shutil.rmtree(dst, ignore_errors=True)
     shutil.copytree(src, dst)
