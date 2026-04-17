@@ -235,9 +235,9 @@ class DiscoverK8sAppOfAppsApplication:
           origin='Application',
           source_path=None,
         ))
-      except TypeError:
+      except TypeError as e:
         raise ConfigFileError(f'Error rendering Jinja template for application `{ctx.app_name}` in environment `{ctx.env_name}`. '
-                              f'Ensure that the template is correctly defined in the config file.')
+                              f'Ensure that the template is correctly defined in the config file.') from e
 
     ctx_set(ctx, self.provides['templated_resources'], out_templated_resources)
     ctx_set(ctx, self.provides['output_dir'], config.runtime_output_dir)

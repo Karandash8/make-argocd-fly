@@ -47,16 +47,17 @@ class WriteOnDisk:
     app_output_dir = os.path.join(output_dir, get_app_rel_path(ctx.env_name, ctx.app_name))
     remove_dir(app_output_dir)
 
+    for resource in resources:
+      if resource.output_path is None:
+        raise InternalError(f'Resource `{resource.origin}` passed to `{self.name}` stage without output_path')
+
+      # Disallow writing non-files
+      if resource.resource_type in (ResourceType.DIRECTORY, ResourceType.DOES_NOT_EXIST):
+        raise InternalError(f'Cannot write resource of type `{resource.resource_type.name}` (origin=`{resource.origin}`)')
+
     try:
       async with asyncio.TaskGroup() as tg:
         for resource in sorted(resources, key=lambda r: r.output_path):
-          if resource.output_path is None:
-            raise InternalError(f'Resource `{resource.origin}` passed to `{self.name}` stage without output_path')
-
-          # Disallow writing non-files
-          if resource.resource_type in (ResourceType.DIRECTORY, ResourceType.DOES_NOT_EXIST):
-            raise InternalError(f'Cannot write resource of type `{resource.resource_type.name}` (origin=`{resource.origin}`)')
-
           if resource.writer_type == WriterType.K8S_YAML:
             writer = YAML_WRITER
             payload = resource.yaml_obj
