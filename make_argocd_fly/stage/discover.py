@@ -4,7 +4,7 @@ import textwrap
 
 from make_argocd_fly.context import Context, ctx_get, ctx_set
 from make_argocd_fly.context.data import TemplatedResource
-from make_argocd_fly.resource.viewer import ResourceType
+from make_argocd_fly.resource.viewer import ResourceType, ScopedViewer
 from make_argocd_fly import default
 from make_argocd_fly.param import ParamNames
 from make_argocd_fly.config import get_config, Config
@@ -52,6 +52,56 @@ class DiscoverK8sSimpleApplication:
     ctx_set(ctx, self.provides['output_dir'], config.runtime_output_dir)
 
 
+def _resolve_kustomize_search_subdirs(viewer: ScopedViewer,
+                                      env_name: str,
+                                      kustomize_common_dirs: list[str],
+                                      app_name: str) -> list[str] | None:
+  """Return the list of subdirs to search for resources, or None to search all."""
+  candidate_subdirs: list[str] = []
+
+  if any(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
+                                    name_pattern=r'^base$',
+                                    depth=1)):
+    candidate_subdirs.append('base')
+
+  if any(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
+                                    name_pattern=fr'^{env_name}$',
+                                    depth=1)):
+    candidate_subdirs.append(env_name)
+
+  if candidate_subdirs:
+    for common_dir in kustomize_common_dirs:
+      if viewer.exists(common_dir):
+        candidate_subdirs.append(common_dir)
+      else:
+        log.warning(f'kustomize_common_dirs entry `{common_dir}` does not exist in application '
+                    f'`{app_name}`, skipping')
+
+  return list(set(candidate_subdirs)) or None
+
+
+def _resolve_kustomize_exec_dir(viewer: ScopedViewer, env_name: str) -> str:
+  """Return the directory from which kustomize build should be executed."""
+  if any(viewer.search_subresources(resource_types=[ResourceType.YAML],
+                                    name_pattern='kustomization|Kustomization',
+                                    search_subdirs=[env_name],
+                                    depth=1)):
+    return env_name
+
+  if any(viewer.search_subresources(resource_types=[ResourceType.YAML],
+                                    name_pattern='kustomization|Kustomization',
+                                    search_subdirs=['base'],
+                                    depth=1)):
+    return 'base'
+
+  if any(viewer.search_subresources(resource_types=[ResourceType.YAML],
+                                    name_pattern='kustomization|Kustomization',
+                                    depth=1)):
+    return '.'
+
+  raise InternalError(f'Missing kustomization in the application directory for env `{env_name}`')
+
+
 class DiscoverK8sKustomizeApplication:
   name = 'DiscoverK8sKustomizeApplication'
 
@@ -65,42 +115,17 @@ class DiscoverK8sKustomizeApplication:
     viewer = ctx_get(ctx, self.requires['viewer'])
 
     resolved_vars = _resolve_template_vars(ctx.env_name, ctx.app_name)
-
-    # Determine search_subdirs:
-    # look for root-level "base" and "<env_name>" directories; if none exist, use None
-    candidate_subdirs: list[str] = []
-
-    if any(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
-                                      name_pattern=r'^base$',
-                                      depth=1)):
-      candidate_subdirs.append('base')
-
-    if any(viewer.search_subresources(resource_types=[ResourceType.DIRECTORY],
-                                      name_pattern=fr'^{ctx.env_name}$',
-                                      depth=1)):
-      candidate_subdirs.append(ctx.env_name)
-
-    if candidate_subdirs:
-      kustomize_common_dirs = ensure_list(ctx.params.kustomize_common_dirs, ParamNames.KUSTOMIZE_COMMON_DIRS)
-      for common_dir in kustomize_common_dirs:
-        if viewer.exists(common_dir):
-          candidate_subdirs.append(common_dir)
-        else:
-          log.warning(f'kustomize_common_dirs entry `{common_dir}` does not exist in application '
-                      f'`{ctx.app_name}`, skipping')
-
-    search_subdirs = list(set(candidate_subdirs)) or None
-
     non_k8s_files = ensure_list(ctx.params.non_k8s_files_to_render, ParamNames.NON_K8S_FILES_TO_RENDER)
     exclude_rendering = ensure_list(ctx.params.exclude_rendering, ParamNames.EXCLUDE_RENDERING)
+    kustomize_common_dirs = ensure_list(ctx.params.kustomize_common_dirs, ParamNames.KUSTOMIZE_COMMON_DIRS)
 
-    # 1) regular YAML resources (non-template), exclude both lists
+    search_subdirs = _resolve_kustomize_search_subdirs(viewer, ctx.env_name, kustomize_common_dirs, ctx.app_name)
+    kustomize_exec_dir = _resolve_kustomize_exec_dir(viewer, ctx.env_name)
+
     out_resources = _discover_resources(viewer,
                                         resource_types=[ResourceType.YAML],
                                         search_subdirs=search_subdirs,
                                         excludes=exclude_rendering + non_k8s_files)
-
-    # 2) regular YAML templated resources, exclude both lists
     out_templated_resources = _discover_templated_resources(viewer,
                                                             resource_types=[ResourceType.YAML],
                                                             resolved_vars=resolved_vars,
@@ -114,14 +139,11 @@ class DiscoverK8sKustomizeApplication:
     out_extra_resources = []
     out_templated_extra_resources = []
     if non_k8s_files:
-      # 3) extra resources: include only non_k8s_files_to_render (any file type), exclude exclude_rendering
       out_extra_resources = _discover_extra_resources(viewer,
                                                       resource_types=all_file_types,
                                                       search_subdirs=search_subdirs,
                                                       excludes=exclude_rendering,
                                                       includes=non_k8s_files)
-
-      # 4) templated extra resources: include only non_k8s_files_to_render (any file type), exclude exclude_rendering
       out_templated_extra_resources = _discover_templated_extra_resources(viewer,
                                                                           resource_types=all_file_types,
                                                                           resolved_vars=resolved_vars,
@@ -135,25 +157,6 @@ class DiscoverK8sKustomizeApplication:
     ctx_set(ctx, self.provides['templated_extra_resources'], out_templated_extra_resources)
     ctx_set(ctx, self.provides['tmp_dir'], os.path.join(config.tmp_dir, default.KUSTOMIZE_DIR))
     ctx_set(ctx, self.provides['output_dir'], config.runtime_output_dir)
-
-    if list(viewer.search_subresources(resource_types=[ResourceType.YAML],
-                                       name_pattern='kustomization|Kustomization',
-                                       search_subdirs=[ctx.env_name],
-                                       depth=1)):
-      kustomize_exec_dir = ctx.env_name
-    elif list(viewer.search_subresources(resource_types=[ResourceType.YAML],
-                                         name_pattern='kustomization|Kustomization',
-                                         search_subdirs=['base'],
-                                         depth=1)):
-      kustomize_exec_dir = 'base'
-    elif list(viewer.search_subresources(resource_types=[ResourceType.YAML],
-                                         name_pattern='kustomization|Kustomization',
-                                         depth=1)):
-      kustomize_exec_dir = '.'
-    else:
-      raise InternalError(f'Missing kustomization in the application directory. Skipping application `{ctx.app_name}` '
-                          f'in environment `{ctx.env_name}`')
-
     ctx_set(ctx, self.provides['kustomize_exec_dir'], kustomize_exec_dir)
 
 
