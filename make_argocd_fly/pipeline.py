@@ -51,8 +51,6 @@ class Pipeline:
       })
       dumper.dump_success(ctx, stage)
 
-    log.info(f'Updated application {ctx.app_name} in environment {ctx.env_name}')
-
 
 @dataclass(frozen=True)
 class StageSpec:
