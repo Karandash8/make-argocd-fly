@@ -25,9 +25,14 @@ logging.basicConfig(level=default.LOGLEVEL)
 log = logging.getLogger(__name__)
 
 
-async def run_one_app(pipeline, ctx, limits: RuntimeLimits):
+async def run_one_app(pipeline, ctx, limits: RuntimeLimits,
+                      counter: list[int], total: int, lock: asyncio.Lock) -> None:
   async with limits.app_sem:
     await pipeline.run(ctx)
+
+  async with lock:
+    counter[0] += 1
+    log.info(f'[{counter[0]}/{total}] Rendered application {ctx.app_name} ({ctx.env_name})')
 
 
 async def generate() -> None:
@@ -43,7 +48,6 @@ async def generate() -> None:
 
   viewer = build_scoped_viewer(config.source_dir)
 
-  log.info('Creating applications')
   for env_name in config.list_filtered_envs():
     for app_name in config.list_filtered_apps(env_name):
       ctx = Context(env_name, app_name, params=config.get_params(env_name, app_name))
@@ -51,11 +55,16 @@ async def generate() -> None:
 
       apps.append((pipeline, ctx))
 
+  total = len(apps)
+  counter = [0]  # mutable int for nonlocal mutation inside async closure
+  lock = asyncio.Lock()
+  log.info(f'Rendering {total} application(s)')
+
   t0 = time.perf_counter()
   try:
     async with asyncio.TaskGroup() as tg:
       for (pipeline, ctx) in apps:
-        tg.create_task(run_one_app(pipeline, ctx, limits))
+        tg.create_task(run_one_app(pipeline, ctx, limits, counter, total, lock))
   except ExceptionGroup as e:
     if e.exceptions:
       raise e.exceptions[0]
