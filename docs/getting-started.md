@@ -56,8 +56,30 @@ The structure will mirror your environment and application layout for easy navig
 For a reference project structure, see the [example under `examples/app_types`](https://github.com/Karandash8/make-argocd-fly/tree/main/examples/app_types).
 
 ## 🚀 First Run
+Create a minimal config and source application:
+
+```yaml
+# config/apps.yml
+envs:
+  local:
+    apps:
+      hello: {}
+```
+
+```yaml
+# source/hello/configmap.yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hello
+data:
+  message: hello
+```
+
 To render your applications, run the following command:
 
 ```bash
 make-argocd-fly [OPTIONS]
 ```
+
+The rendered file will be written under `output/local/hello/`.

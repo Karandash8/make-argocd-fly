@@ -29,10 +29,12 @@ maf -h
 
 | Flag                   | Description                                                              |
 |------------------------|--------------------------------------------------------------------------|
-| `--render-envs`        | Comma-separated list of environments to render                           |
-| `--render-apps`        | Comma-separated list of applications to render                           |
+| `--render-envs`        | Comma-separated glob patterns for environments to render                 |
+| `--render-apps`        | Comma-separated glob patterns for applications to render                 |
 | `--skip-generate`      | Skip resource generation step                                            |
 | `--preserve-tmp-dir`   | Keep temporary directory after execution                                 |
+
+When `--render-envs` or `--render-apps` is used, `make-argocd-fly` performs a partial render. Applications that do not match the filters are copied from the existing output directory into the new output before the final swap. Examples: `--render-envs 'dev,prod'`, `--render-envs 'prod*'`, `--render-apps 'monitoring/*,frontend'`.
 
 ---
 
@@ -45,6 +47,8 @@ maf -h
 | `--var-identifier`        | Prefix used for variable interpolation in config files (default: `$`)           |
 | `--loglevel`              | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`               |
 | `--skip-latest-version-check` | Suppress remote version check                                                |
+
+`--dump-context` also preserves `.tmp` and writes JSON snapshots under `.tmp/context-dumps/<env>/<app>/`.
 
 ---
 
@@ -66,3 +70,10 @@ maf -h
 | `--max-concurrent-apps` | Max number of apps to render concurrently (default: 8) |
 | `--max-subproc` | Max number of subprocesses to run concurrently (default: number of CPU cores) |
 | `--max-io`      | Max number of I/O operations to run concurrently (default: 32) |
+
+## Deprecated Flags
+
+| Flag                  | Replacement / status                                              |
+|-----------------------|-------------------------------------------------------------------|
+| `--print-vars`        | Deprecated. Use `--dump-context` instead.                         |
+| `--remove-output-dir` | Deprecated. Full renders already regenerate the output directory. |

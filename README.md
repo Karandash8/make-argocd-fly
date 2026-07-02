@@ -1,6 +1,6 @@
 # ✈️ make-argocd-fly
 
-A powerful tool for generating **ArgoCD Applications** and their **rendered Kubernetes resources** from **Helm**, **Kustomize**, and **Jinja2** — across multiple environments, at scale.
+A powerful tool for generating **ArgoCD Applications** and their **rendered Kubernetes resources** from **Kustomize**, **Helmfile**, Kustomize Helm chart inflation, and **Jinja2** — across multiple environments, at scale.
 
 [![tests](https://img.shields.io/github/actions/workflow/status/Karandash8/make-argocd-fly/coverage.yml?branch=main)](https://github.com/Karandash8/make-argocd-fly/actions/workflows/coverage.yml)
 [![cov](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Karandash8/26eb92c97bbfac22b938afebac85e7cd/raw/covbadge.json)](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Karandash8/26eb92c97bbfac22b938afebac85e7cd/raw/covbadge.json)
@@ -12,7 +12,7 @@ A powerful tool for generating **ArgoCD Applications** and their **rendered Kube
 
 **`make-argocd-fly`** lets you:
 
-- Render **Helm charts** and **Kustomize overlays** into plain Kubernetes manifests, so you know exactly what will be deployed
+- Render **Kustomize overlays**, **Helmfile applications**, and Kustomize-managed Helm charts into plain Kubernetes manifests, so you know exactly what will be deployed
 - Add **Jinja2-based templating** for reusable parametrization
 - Automatically generate **ArgoCD Application** resources
 - Organize applications into a **well-defined directory structure**
@@ -46,15 +46,15 @@ With pre-rendered manifests you gain:
 - **Simpler ops** – ArgoCD only syncs plain YAML, reducing complexity
 
 **`make-argocd-fly` is a practical implementation of the Rendered Manifest Pattern.**
-It automates rendering of Helm charts, Kustomize overlays, and Jinja2 templates, organizes them by environment, and generates ArgoCD `Application` resources pointing to the rendered output.
+It automates rendering of Kustomize overlays, Helmfile applications, Kustomize Helm chart inflation, and Jinja2 templates, organizes them by environment, and generates ArgoCD `Application` resources pointing to the rendered output.
 
 
 ---
 
 ## 💡 Key Features
 
-* **Helm rendering**
-Render Helm charts into raw manifests.
+* **Helmfile and Kustomize Helm support**
+Render Helmfile applications and Kustomize `helmCharts` output into raw manifests.
 
 * **Kustomize overlays**
 Render Kustomize overlays into fully resolved Kubernetes manifests. See the full, flattened configuration before deployment.
@@ -112,7 +112,7 @@ make-argocd-fly
 
 What it does:
 - Applies Jinja2 templates with the right variables
-- Renders Helm and Kustomize into raw manifests
+- Renders Kustomize and Helmfile output into raw manifests
 - Generates `Application` manifests for ArgoCD
 - Organizes everything under `./output/`
 

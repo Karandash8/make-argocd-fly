@@ -94,11 +94,11 @@ This allows:
 
 ```
 {%- filter indent(width=6) %}
-{% file_list 'files/' [<prefix>] %}
+{% file_list 'files/', 'optional/prefix/' %}
 {% endfilter %}
 ```
 
-Note that there is an optional second parameter, which is a prefix that will be added to each file name in the list. This can be useful for constructing full paths or URLs.
+Note that there is an optional second parameter, separated by a comma, which is a prefix that will be added to each file name in the list. This can be useful for constructing full paths or URLs.
 
 ## 🌍 Ansible Filters & Utilities
 
@@ -118,6 +118,6 @@ Your templates also have access to:
 | Type | Source | Engine | Typical use |
 |------|--------|--------|-------------|
 | `generic` | text file / Jinja2 | Jinja2 | infra files (e.g., kind config), passthrough assets |
-| `k8s` | YAML / Jinja2 | Jinja2 + Kustomize or Helmfile | plain Kubernetes manifests |
+| `k8s` | YAML / Jinja2 | Jinja2 + Kustomize or Helmfile | plain Kubernetes manifests, app-of-apps resources |
 
 > See also: [kustomize.md](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/kustomize.md) and [Examples](https://github.com/Karandash8/make-argocd-fly/blob/main/docs/examples.md)

@@ -99,7 +99,7 @@ You can inspect, lint, and diff them — ensuring clarity about what gets deploy
 
 ### Same Configuration, Multiple Environments
 The exact same configuration can target multiple environments:
-- For `local`, no ArgoCD CRs are generated; manifests are applied manually.
+- For this `local` example, no app-of-apps parent relationships are configured, so no ArgoCD CRs are generated and manifests are applied manually.
 - For `dev`, `staging`, or `prod`, you define separate environments in `config/*.yml` and optionally use `parent_app` relations to generate ArgoCD `Application` CRs automatically.
 
 That means:

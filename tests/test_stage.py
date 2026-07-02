@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, PropertyMock
 from yaml import SafeLoader
 
 from make_argocd_fly import default
-from make_argocd_fly.stage import (DiscoverK8sAppOfAppsApplication, GenerateNames, _resolve_template_vars,
-                                   DiscoverK8sKustomizeApplication, DiscoverK8sSimpleApplication, DiscoverGenericApplication,
-                                   DiscoverK8sHelmfileApplication)
+from make_argocd_fly.stage import (DiscoverK8sAppOfAppsApplication, GenerateNames, RenderTemplates, SplitManifests, ConvertToYaml,
+                                   _resolve_template_vars, DiscoverK8sKustomizeApplication, DiscoverK8sSimpleApplication,
+                                   DiscoverGenericApplication, DiscoverK8sHelmfileApplication)
 from make_argocd_fly.stage.discover import _find_child_apps
 from make_argocd_fly.context import Context, ctx_set, ctx_get
 from make_argocd_fly.context.data import Resource
@@ -647,6 +647,84 @@ async def test_DiscoverK8sKustomizeApplication__run__resources_discovered_when_n
   assert ctx_get(ctx, stage.provides['templated_resources']) == []
   assert ctx_get(ctx, stage.provides['extra_resources']) == []
   assert ctx_get(ctx, stage.provides['templated_extra_resources']) == []
+
+
+@pytest.mark.asyncio
+async def test_DiscoverK8sKustomizeApplication__run__values_yaml_discovered_without_non_k8s_param(tmp_path, mocker):
+  env_name = 'dev'
+  app_name = 'my_app'
+
+  base_dir = tmp_path / 'base'
+  base_dir.mkdir()
+  (base_dir / 'kustomization.yaml').write_text('resources: []')
+  (base_dir / 'values.yaml').write_text('key: value')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker)
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_kustomize_ctx(env_name, app_name)
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_kustomize_stage()
+  await stage.run(ctx)
+
+  resources = ctx_get(ctx, stage.provides['resources'])
+  origins = {r.origin for r in resources}
+  assert 'base/kustomization.yaml' in origins
+  assert 'base/values.yaml' in origins
+  assert ctx_get(ctx, stage.provides['extra_resources']) == []
+
+
+@pytest.mark.asyncio
+async def test_kustomize_staging__values_yaml_template_renders_to_source_filename_without_non_k8s_param(tmp_path, mocker):
+  env_name = 'dev'
+  app_name = 'my_app'
+
+  base_dir = tmp_path / 'base'
+  base_dir.mkdir()
+  (base_dir / 'kustomization.yaml').write_text('resources: []')
+  (base_dir / 'values.yaml.j2').write_text('key: {{ value }}')
+
+  _patch_config(mocker)
+  _patch_template_vars(mocker, {'value': 'rendered'})
+
+  viewer = build_scoped_viewer(tmp_path)
+  ctx = _make_kustomize_ctx(env_name, app_name)
+  ctx_set(ctx, 'source.viewer', viewer)
+
+  stage = _make_kustomize_stage()
+  await stage.run(ctx)
+
+  render_stage = RenderTemplates(
+    requires={'viewer': 'source.viewer', 'templated_resources': 'discovered.templated_resources'},
+    provides={'resources': 'rendered.resources'},
+  )
+  await render_stage.run(ctx)
+
+  split_stage = SplitManifests(
+    requires={'resources': 'discovered.resources&rendered.resources'},
+    provides={'resources': 'staging.raw'},
+  )
+  await split_stage.run(ctx)
+
+  convert_stage = ConvertToYaml(
+    requires={'resources': 'staging.raw'},
+    provides={'resources': 'staging.parsed'},
+  )
+  await convert_stage.run(ctx)
+
+  name_stage = GenerateNames(
+    requires={'resources': 'staging.parsed'},
+    provides={'resources': 'generated.tmp_files'},
+    pipeline_kind=PipelineType.K8S_KUSTOMIZE,
+  )
+  await name_stage.run(ctx)
+
+  output_paths = {r.output_path for r in ctx_get(ctx, 'generated.tmp_files')}
+  assert f'{env_name}/{app_name}/base/kustomization.yaml' in output_paths
+  assert f'{env_name}/{app_name}/base/values.yaml' in output_paths
+  assert f'{env_name}/{app_name}/base/values.yaml.j2' not in output_paths
 
 
 @pytest.mark.asyncio

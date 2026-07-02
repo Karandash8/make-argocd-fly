@@ -1,6 +1,6 @@
 # Configuration
 
-Configuration files (`.yml`) should be placed in the `config/` directory and follow YAML syntax.
+Configuration files (`.yml` or `.yaml`) should be placed in the `config/` directory and follow YAML syntax.
 
 ## 🗂️ Structure
 
@@ -47,8 +47,8 @@ envs:
 ```
 
 Available application types:
-- `k8s` (default): Renders only Kubernetes related files and outputs YAML files with `kind` and `name` fields.
-- `generic`: Renders all files in the application directory as-is, using Jinja2 templating.
+- `k8s` (default): Renders Kubernetes YAML/Jinja files, Kustomize applications, Helmfile applications, and app-of-apps definitions. Kubernetes resources are written using filenames derived from `kind` and `metadata.name`; driver/source files such as `kustomization.yaml`, `values.yaml`, and `helmfile.yaml` preserve source-style names when staged.
+- `generic`: Renders all files in the application directory as Jinja2 templates or passthrough files and preserves source-style output paths.
 
 ## ⚖️ Variable Precedence
 The scope of parameters and variables determines their visibility and accessibility within the configuration.
@@ -98,6 +98,14 @@ Variables are used to define values that can be used in Jinja2 templates across 
   - **Description**: These variables are automatically defined based on the environment and application names.
   - **Type**: String
 
+- Auto-defined: `__application.application_name`, `__application.path`
+  - **Description**: Values used by the default ArgoCD `Application` CR template. `application_name` is controlled by the `application_name` parameter. `path` points to the rendered output path for the child application.
+  - **Type**: String
+
+- Auto-defined with defaults: `argocd`
+  - **Description**: Default ArgoCD settings used by `argocd_application_cr_template`. You normally set at least `argocd.source.repo_url` in config.
+  - **Defaults**: `namespace: argocd`, `project: default`, `source.target_revision: HEAD`, `destination.server: https://kubernetes.default.svc`, `destination.namespace: argocd`
+
 - Overridable: `argocd_application_cr_template`
   - **Description**: This variable can be overridden to customize the ArgoCD application CR template.
   - **Type**: String
@@ -111,3 +119,14 @@ Variables can reference other variables in the config files, using the following
 
 Variable references can also be embedded within strings:
 - ```prefix-${var_name}-suffix```
+
+Unresolved variable references are allowed while config scopes are being merged, but rendering fails if a final template value still contains an unresolved `${...}` reference.
+
+## Include and Exclude Patterns
+
+Parameters such as `exclude_rendering` and `non_k8s_files_to_render` match application-relative paths by prefix or glob. Examples:
+
+- `files` excludes `files/` and all children.
+- `base/secret.yaml` matches that exact file.
+- `**/secret*` matches secret-like files in any directory.
+- `subdir/` includes or excludes the whole `subdir` tree.

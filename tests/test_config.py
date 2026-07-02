@@ -38,6 +38,22 @@ def test_populate_config__default_values(tmp_path):
   assert config.final_output_dir == str(root_dir / output_dir)
   assert config.tmp_dir == str(root_dir / tmp_dir)
 
+def test_populate_config__loads_yaml_extension(tmp_path):
+  root_dir = tmp_path
+  config_dir = 'config'
+  source_dir = 'source'
+
+  config_dir_path = tmp_path / config_dir
+  config_dir_path.mkdir()
+  (config_dir_path / 'config.yaml').write_text('vars: {loaded_from_yaml: true}')
+
+  source_dir_path = tmp_path / source_dir
+  source_dir_path.mkdir()
+
+  config = populate_config(root_dir=root_dir)
+
+  assert config.config['vars']['loaded_from_yaml'] is True
+
 def test_populate_config__non_default_values(tmp_path):
   root_dir = tmp_path
   config_dir = 'config_new'
