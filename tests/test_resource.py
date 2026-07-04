@@ -726,6 +726,35 @@ def test_ResourceViewer__search_subresources__include_limits_to_yaml_templates(t
 ### GenericWriter
 ##################
 
+def test_GenericWriter__serialize__string():
+  writer = GenericWriter()
+
+  assert writer.serialize('content', 'env', 'app', 'origin') == b'content'
+
+
+def test_GenericWriter__serialize__bytes():
+  writer = GenericWriter()
+
+  assert writer.serialize(b'content', 'env', 'app', 'origin') == b'content'
+
+
+def test_GenericWriter__write__matches_serialize(tmp_path):
+  dir_root = tmp_path / 'output'
+  dir_root.mkdir()
+  file = dir_root / 'file.txt'
+  content = 'content'
+
+  writer = GenericWriter()
+  serialized = writer.serialize(content, 'env', 'app', 'origin')
+  writer.write(output_path=file,
+               data=content,
+               env_name='env',
+               app_name='app',
+               origin='origin')
+
+  assert file.read_bytes() == serialized
+
+
 def test_GenericWriter__write__simple(tmp_path):
   dir_root = tmp_path / 'output'
   dir_root.mkdir()
@@ -761,6 +790,42 @@ def test_GenericWriter__write__multiline(tmp_path):
 ##################
 ### YamlWriter
 ##################
+
+def test_YamlWriter__serialize__matches_write(tmp_path):
+  dir_root = tmp_path / 'output'
+  dir_root.mkdir()
+  file = dir_root / 'file.yaml'
+  data = {'key': 'value'}
+
+  writer = YamlWriter()
+  serialized = writer.serialize(data, 'env', 'app', 'origin')
+  writer.write(output_path=file,
+               data=data,
+               env_name='env',
+               app_name='app',
+               origin='origin')
+
+  assert file.read_bytes() == serialized
+
+
+def test_YamlWriter__serialize__multiline_string_formatting():
+  data = {'key': 'line 1\nline 2\nline 3'}
+
+  writer = YamlWriter()
+  serialized = writer.serialize(data, 'env', 'app', 'origin')
+
+  assert b'key: |-' in serialized
+  assert b'  line 1\n' in serialized
+  assert b'  line 2\n' in serialized
+  assert b'  line 3\n' in serialized
+
+
+def test_YamlWriter__serialize__non_mapping_raises():
+  writer = YamlWriter()
+
+  with pytest.raises(InternalError):
+    writer.serialize('key: value', 'env', 'app', '/a/b/c')
+
 
 def test_YamlWriter__write__dict_simple(tmp_path):
   dir_root = tmp_path / 'output'
