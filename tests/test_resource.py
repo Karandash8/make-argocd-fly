@@ -755,6 +755,19 @@ def test_GenericWriter__write__matches_serialize(tmp_path):
   assert file.read_bytes() == serialized
 
 
+def test_GenericWriter__write__current_directory(tmp_path, monkeypatch):
+  monkeypatch.chdir(tmp_path)
+
+  writer = GenericWriter()
+  writer.write(output_path='file.txt',
+               data='content',
+               env_name='env',
+               app_name='app',
+               origin='origin')
+
+  assert (tmp_path / 'file.txt').read_bytes() == b'content'
+
+
 def test_GenericWriter__write__simple(tmp_path):
   dir_root = tmp_path / 'output'
   dir_root.mkdir()
@@ -825,6 +838,21 @@ def test_YamlWriter__serialize__non_mapping_raises():
 
   with pytest.raises(InternalError):
     writer.serialize('key: value', 'env', 'app', '/a/b/c')
+
+
+def test_YamlWriter__write__current_directory(tmp_path, monkeypatch):
+  monkeypatch.chdir(tmp_path)
+  data = {'key': 'value'}
+
+  writer = YamlWriter()
+  serialized = writer.serialize(data, 'env', 'app', 'origin')
+  writer.write(output_path='file.yaml',
+               data=data,
+               env_name='env',
+               app_name='app',
+               origin='origin')
+
+  assert (tmp_path / 'file.yaml').read_bytes() == serialized
 
 
 def test_YamlWriter__write__dict_simple(tmp_path):

@@ -40,8 +40,12 @@ class AbstractWriter(ABC):
   @abstractmethod
   def serialize(self, data: Any, env_name: str, app_name: str, origin: str) -> bytes: ...
 
-  @abstractmethod
-  def write(self, output_path: str, data: Any, env_name: str, app_name: str, origin: str) -> None: ...
+  def write(self, output_path: str | os.PathLike[str], data: Any, env_name: str, app_name: str, origin: str) -> None:
+    output_dir = os.path.dirname(os.fspath(output_path))
+    if output_dir:
+      os.makedirs(output_dir, exist_ok=True)
+    with open(output_path, 'wb') as f:
+      f.write(self.serialize(data, env_name, app_name, origin))
 
 
 class GenericWriter(AbstractWriter):
@@ -51,11 +55,6 @@ class GenericWriter(AbstractWriter):
     if isinstance(data, (bytearray, memoryview)):
       return bytes(data)
     return str(data).encode('utf-8')
-
-  def write(self, output_path: str, data: Any, env_name: str, app_name: str, origin: str) -> None:
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, 'wb') as f:
-      f.write(self.serialize(data, env_name, app_name, origin))
 
 
 class YamlWriter(AbstractWriter):
@@ -76,11 +75,6 @@ class YamlWriter(AbstractWriter):
     if isinstance(serialized, bytes):
       return serialized
     return serialized.encode('utf-8')
-
-  def write(self, output_path: str, data: Any, env_name: str, app_name: str, origin: str) -> None:
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, 'wb') as f:
-      f.write(self.serialize(data, env_name, app_name, origin))
 
 
 # Stateless singletons (safe to reuse across tasks)
