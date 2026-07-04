@@ -47,6 +47,7 @@ When `--render-envs` or `--render-apps` is used, `make-argocd-fly` performs a pa
 | `--var-identifier`        | Prefix used for variable interpolation in config files (default: `$`)           |
 | `--loglevel`              | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`               |
 | `--skip-latest-version-check` | Suppress remote version check                                                |
+| `--experimental`          | Comma-separated experimental features to enable                                |
 
 `--dump-context` also preserves `.tmp` and writes JSON snapshots under `.tmp/context-dumps/<env>/<app>/`.
 

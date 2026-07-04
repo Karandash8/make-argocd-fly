@@ -1,6 +1,7 @@
 import logging
 
 from make_argocd_fly import default
+from make_argocd_fly.experimental import ExperimentalFeature, parse_experimental
 
 
 log = logging.getLogger(__name__)
@@ -29,8 +30,12 @@ class CLIParams:
     self.max_io = default.MAX_IO
     self.dump_context = False
     self.stats = False
+    self.experimental = set()
+    self.unknown_experimental = []
 
   def populate_cli_params(self, **kwargs) -> None:
+    self.experimental, self.unknown_experimental = parse_experimental(kwargs.pop('experimental', None))
+
     self.__dict__.update(kwargs)
 
 
@@ -45,3 +50,7 @@ def populate_cli_params(**kwargs) -> CLIParams:
 
 def get_cli_params() -> CLIParams:
   return cli_params
+
+
+def is_experimental_enabled(feature: ExperimentalFeature) -> bool:
+  return feature in get_cli_params().experimental

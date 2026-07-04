@@ -9,7 +9,7 @@
 ## Commands
 - Run unit tests: `pytest -q`.
 - Run one test: `pytest -q tests/test_config.py::test_list_filtered_envs__exact_match`.
-- Run tox for one installed interpreter: `python -m tox -e py311` (or `py312`, `py313`, `py314`). Plain `python -m tox` expects all four Python envs plus coverage envs.
+- For repo validation, run unit tests, both flake8 commands below, and the four CI fixture checks below. Do not run tox or build the package unless explicitly requested.
 - CI flake8 options are only in `.github/workflows/tests.yml`; run both commands when checking lint:
 
 ```bash

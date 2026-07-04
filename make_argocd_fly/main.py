@@ -148,6 +148,9 @@ def main(**kwargs) -> None:  # noqa: C901
       deprecation_warning()
 
     cli_params = populate_cli_params(**kwargs)
+    if cli_params.unknown_experimental:
+      log.warning(f'Ignoring unknown experimental feature(s): {", ".join(cli_params.unknown_experimental)}')
+
     config = populate_config(cli_params.root_dir,
                              cli_params.config_dir,
                              cli_params.source_dir,
@@ -228,6 +231,7 @@ def cli_entry_point() -> None:
   parser.add_argument('--dump-context', action='store_true', help='Dump per-stage context snapshots for debugging')
   parser.add_argument('--stats', action='store_true', help='Print execution time statistics per stage and per application')
   parser.add_argument('--max-io', type=int, default=default.MAX_IO, help='Maximum number of I/O operations to run concurrently (default: 32)')
+  parser.add_argument('--experimental', type=str, default=None, help='Comma-separated experimental features to enable')
   parser.add_argument('--loglevel', type=str, default=default.LOGLEVEL, help='DEBUG, INFO, WARNING, ERROR, CRITICAL')
   parser.add_argument('--version', action='version', version=f'{get_package_name()} {get_current_version()}', help='Show version')
   args = parser.parse_args()
