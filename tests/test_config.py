@@ -19,6 +19,7 @@ def test_populate_config__default_values(tmp_path):
   config_dir = 'config'
   source_dir = 'source'
   output_dir = 'output'
+  cache_dir = '.cache'
   tmp_dir = '.tmp'
 
   config_dir_path = tmp_path / config_dir
@@ -36,6 +37,7 @@ def test_populate_config__default_values(tmp_path):
   assert config.source_dir == str(source_dir_path)
   assert config.runtime_output_dir == str(root_dir / f'{default.RUNTIME_DIR_PREFIX}{output_dir}')
   assert config.final_output_dir == str(root_dir / output_dir)
+  assert config.cache_dir == str(root_dir / cache_dir)
   assert config.tmp_dir == str(root_dir / tmp_dir)
 
 def test_populate_config__loads_yaml_extension(tmp_path):
@@ -60,6 +62,7 @@ def test_populate_config__non_default_values(tmp_path):
   config_file = 'config_new.yml'
   source_dir = 'source_new'
   output_dir = 'output_new'
+  cache_dir = 'cache_new'
   tmp_dir = '.tmp_new'
 
   config_dir_path = tmp_path / config_dir
@@ -72,16 +75,38 @@ def test_populate_config__non_default_values(tmp_path):
   source_dir_path.mkdir()
 
   config = populate_config(root_dir=root_dir,
-                           config_dir=config_dir,
-                           source_dir=source_dir,
-                           output_dir=output_dir,
-                           tmp_dir=tmp_dir)
+                            config_dir=config_dir,
+                            source_dir=source_dir,
+                            output_dir=output_dir,
+                            cache_dir=cache_dir,
+                            tmp_dir=tmp_dir)
 
   assert isinstance(config, Config)
   assert config.source_dir == str(source_dir_path)
   assert config.runtime_output_dir == str(root_dir / f'{default.RUNTIME_DIR_PREFIX}{output_dir}')
   assert config.final_output_dir == str(root_dir / output_dir)
+  assert config.cache_dir == str(root_dir / cache_dir)
   assert config.tmp_dir == str(root_dir / tmp_dir)
+
+def test_populate_config__missing_cache_dir_allowed(tmp_path):
+  root_dir = tmp_path
+  config_dir = 'config'
+  source_dir = 'source'
+  cache_dir = 'missing_cache'
+
+  config_dir_path = tmp_path / config_dir
+  config_dir_path.mkdir()
+
+  config_file_path = config_dir_path / 'config.yml'
+  config_file_path.write_text('vars: {}')
+
+  source_dir_path = tmp_path / source_dir
+  source_dir_path.mkdir()
+
+  config = populate_config(root_dir=root_dir, cache_dir=cache_dir)
+
+  assert config.cache_dir == str(root_dir / cache_dir)
+  assert not (root_dir / cache_dir).exists()
 
 def test_populate_config__missing_source_dir(tmp_path):
   root_dir = tmp_path
@@ -108,6 +133,9 @@ def test_populate_config__not_populated_config(tmp_path):
 
   with pytest.raises(InternalError):
     config.final_output_dir
+
+  with pytest.raises(InternalError):
+    config.cache_dir
 
   with pytest.raises(InternalError):
     config.tmp_dir

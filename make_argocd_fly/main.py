@@ -151,11 +151,14 @@ def main(**kwargs) -> None:  # noqa: C901
     if cli_params.unknown_experimental:
       log.warning(f'Ignoring unknown experimental feature(s): {", ".join(cli_params.unknown_experimental)}')
 
-    config = populate_config(cli_params.root_dir,
-                             cli_params.config_dir,
-                             cli_params.source_dir,
-                             cli_params.output_dir,
-                             cli_params.tmp_dir)
+    config = populate_config(
+      cli_params.root_dir,
+      cli_params.config_dir,
+      cli_params.source_dir,
+      cli_params.output_dir,
+      cli_params.tmp_dir,
+      cli_params.cache_dir
+    )
 
     latest_version_check()
 
@@ -213,6 +216,7 @@ def cli_entry_point() -> None:
   parser.add_argument('--config-dir', type=str, default=default.CONFIG_DIR, help='Configuration files directory (default: config)')
   parser.add_argument('--source-dir', type=str, default=default.SOURCE_DIR, help='Source files directory (default: source)')
   parser.add_argument('--output-dir', type=str, default=default.OUTPUT_DIR, help='Output files directory (default: output)')
+  parser.add_argument('--cache-dir', type=str, default=default.CACHE_DIR, help='Cache files directory (default: .cache)')
   parser.add_argument('--tmp-dir', type=str, default=default.TMP_DIR, help='Temporary files directory (default: .tmp)')
   parser.add_argument('--render-apps', type=str, default=None, help='Comma separate list of applications to render')
   parser.add_argument('--render-envs', type=str, default=None, help='Comma separate list of environments to render')

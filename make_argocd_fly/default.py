@@ -5,6 +5,7 @@ ROOT_DIR = os.getcwd()
 CONFIG_DIR = 'config'
 SOURCE_DIR = 'source'
 OUTPUT_DIR = 'output'
+CACHE_DIR = '.cache'
 RUNTIME_DIR_PREFIX = '.tmp.'
 OLD_OUTPUT_DIR_SUFFIX = '.old'
 CONTEXT_DUMPS_DIR = 'context-dumps'

@@ -27,6 +27,7 @@ class Config:
     self._source_dir = None
     self._runtime_output_dir = None
     self._final_output_dir = None
+    self._cache_dir = None
     self._tmp_dir = None
 
     self.cli_params = get_cli_params()
@@ -61,6 +62,13 @@ class Config:
       raise InternalError('Config is not populated')
 
     return self._tmp_dir
+
+  @property
+  def cache_dir(self) -> str:
+    if not self._cache_dir:
+      raise InternalError('Config is not populated')
+
+    return self._cache_dir
 
   def list_envs(self) -> list[str]:
     if self.config is None:
@@ -202,7 +210,8 @@ def populate_config(root_dir: str = default.ROOT_DIR,
                     config_dir: str = default.CONFIG_DIR,
                     source_dir: str = default.SOURCE_DIR,
                     output_dir: str = default.OUTPUT_DIR,
-                    tmp_dir: str = default.TMP_DIR) -> Config:
+                    tmp_dir: str = default.TMP_DIR,
+                    cache_dir: str = default.CACHE_DIR) -> Config:
   try:
     viewer = build_scoped_viewer(build_path(root_dir, config_dir))
     yml_children = list(viewer.search_subresources(resource_types=[ResourceType.YAML], template=False))
@@ -219,15 +228,19 @@ def populate_config(root_dir: str = default.ROOT_DIR,
   except MergeError as e:
     raise ConfigFileError(f'Error merging config files: {e}') from e
 
-  config.populate_config(config=merged_config,
-                         _source_dir=build_path(root_dir, source_dir),
-                         _runtime_output_dir=build_path(root_dir, f'{default.RUNTIME_DIR_PREFIX}{output_dir}', allow_missing=True),
-                         _final_output_dir=build_path(root_dir, output_dir, allow_missing=True),
-                         _tmp_dir=build_path(root_dir, tmp_dir, allow_missing=True))
+  config.populate_config(
+    config=merged_config,
+    _source_dir=build_path(root_dir, source_dir),
+    _runtime_output_dir=build_path(root_dir, f'{default.RUNTIME_DIR_PREFIX}{output_dir}', allow_missing=True),
+    _final_output_dir=build_path(root_dir, output_dir, allow_missing=True),
+    _cache_dir=build_path(root_dir, cache_dir, allow_missing=True),
+    _tmp_dir=build_path(root_dir, tmp_dir, allow_missing=True)
+  )
 
   log.debug(f'Config directory: {build_path(root_dir, config_dir)}')
   log.debug(f'Source directory: {config.source_dir}')
   log.debug(f'Output directory: {config.final_output_dir}')
+  log.debug(f'Cache directory: {config.cache_dir}')
   log.debug(f'Temporary directory: {config.tmp_dir}')
 
   return config

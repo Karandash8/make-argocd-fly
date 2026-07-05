@@ -21,6 +21,7 @@ maf -h
 | `--config-dir`     | Directory containing config files (default: `config`)    |
 | `--source-dir`     | Directory containing source files (default: `source`)    |
 | `--output-dir`     | Directory for rendered output (default: `output`)        |
+| `--cache-dir`      | Directory for cache files (default: `.cache`)            |
 | `--tmp-dir`        | Directory for temporary files (default: `.tmp`)          |
 
 ---

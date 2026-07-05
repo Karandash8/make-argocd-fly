@@ -13,6 +13,7 @@ class CLIParams:
     self.config_dir = default.CONFIG_DIR
     self.source_dir = default.SOURCE_DIR
     self.output_dir = default.OUTPUT_DIR
+    self.cache_dir = default.CACHE_DIR
     self.tmp_dir = default.TMP_DIR
     self.render_apps = None
     self.render_envs = None
