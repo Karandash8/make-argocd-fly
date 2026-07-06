@@ -59,6 +59,22 @@ def test_build_render_scope__full_render_lists_all_selected_apps(tmp_path):
   }
 
 
+def test_build_render_scope__full_render_selected_apps_ignore_active_filters(tmp_path):
+  config = _setup_config(tmp_path, render_envs='dev', render_apps='app2')
+
+  render_scope = build_render_scope(config, full_run=True)
+
+  assert render_scope.output_scopes == ['.']
+  assert render_scope.selected_apps == {
+    ('dev', 'app1'),
+    ('dev', 'app2'),
+    ('dev', 'monitoring/prometheus'),
+    ('staging', 'app1'),
+    ('staging', 'app3'),
+    ('prod', 'app1')
+  }
+
+
 def test_build_render_scope__render_envs_limits_selected_apps_and_scopes(tmp_path):
   config = _setup_config(tmp_path, render_envs='dev')
 
