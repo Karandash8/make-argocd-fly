@@ -35,19 +35,36 @@ def _scan_dir(output_dir: str, current_dir: str, files: dict[str, FileRecord]) -
         )
 
 
+def _has_symlink_scope_component(output_dir: str, scope_rel_path: str) -> bool:
+  if scope_rel_path == '.':
+    return False
+
+  current_path = output_dir
+  for path_component in scope_rel_path.split(os.sep):
+    current_path = os.path.join(current_path, path_component)
+    if os.path.islink(current_path):
+      return True
+
+  return False
+
+
 def scan_output_scope(output_dir: str, scope_rel_path: str = '.') -> OutputInventory:
   output_dir = os.path.abspath(output_dir)
   scope_rel_path = os.path.normpath(scope_rel_path or '.')
   scope_path = output_dir if scope_rel_path == '.' else os.path.join(output_dir, scope_rel_path)
   scope_path = os.path.abspath(scope_path)
+  output_dir_real = os.path.realpath(output_dir)
+  scope_path_real = os.path.realpath(scope_path)
 
   try:
     if os.path.commonpath([output_dir, scope_path]) != output_dir:
       return OutputInventory()
+    if os.path.commonpath([output_dir_real, scope_path_real]) != output_dir_real:
+      return OutputInventory()
   except ValueError:
     return OutputInventory()
 
-  if not os.path.isdir(output_dir) or not os.path.isdir(scope_path):
+  if not os.path.isdir(output_dir) or _has_symlink_scope_component(output_dir, scope_rel_path) or not os.path.isdir(scope_path):
     return OutputInventory()
 
   files: dict[str, FileRecord] = {}

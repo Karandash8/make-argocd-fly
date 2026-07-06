@@ -140,3 +140,44 @@ def test_scan_output_scope__symlink_directories_are_not_followed(tmp_path):
   inventory = scan_output_scope(str(output_dir), 'dev/app1')
 
   assert sorted(inventory.files.keys()) == ['dev/app1/deployment.yaml']
+
+
+def test_scan_output_scope__symlink_scope_outside_output_is_not_followed(tmp_path):
+  if not hasattr(os, 'symlink'):
+    pytest.skip('os.symlink is unavailable')
+
+  output_dir = tmp_path / 'output'
+  linked_dir = tmp_path / 'linked'
+  output_dir.mkdir()
+  linked_dir.mkdir()
+  (linked_dir / 'secret.yaml').write_text('kind: Secret')
+
+  try:
+    os.symlink(str(linked_dir), str(output_dir / 'dev'))
+  except OSError:
+    pytest.skip('directory symlinks are unavailable')
+
+  inventory = scan_output_scope(str(output_dir), 'dev')
+
+  assert inventory.files == {}
+
+
+def test_scan_output_scope__intermediate_symlink_scope_outside_output_is_not_followed(tmp_path):
+  if not hasattr(os, 'symlink'):
+    pytest.skip('os.symlink is unavailable')
+
+  output_dir = tmp_path / 'output'
+  linked_dir = tmp_path / 'linked'
+  linked_app_dir = linked_dir / 'app1'
+  output_dir.mkdir()
+  linked_app_dir.mkdir(parents=True)
+  (linked_app_dir / 'secret.yaml').write_text('kind: Secret')
+
+  try:
+    os.symlink(str(linked_dir), str(output_dir / 'dev'))
+  except OSError:
+    pytest.skip('directory symlinks are unavailable')
+
+  inventory = scan_output_scope(str(output_dir), 'dev/app1')
+
+  assert inventory.files == {}
